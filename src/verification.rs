@@ -9,8 +9,8 @@
 // Kani harnesses are gated on #[cfg(kani)] — silent in normal builds.
 // Runtime checks use debug_assert! — zero cost in release.
 
-use crate::{Record, Store, DataTier, AuditEntry};
-use crate::policy::{PolicyEngine, Action};
+use crate::policy::{Action, PolicyEngine};
+use crate::{AuditEntry, DataTier, Record, Store};
 
 // ── Invariant 1: Record owner is never empty ─────────────────────────────────
 
@@ -22,7 +22,10 @@ pub fn invariant_record_owner_nonempty(record: &Record) -> bool {
 
 /// Check that all records in a store satisfy the owner invariant.
 pub fn invariant_store_owners_nonempty(store: &Store) -> bool {
-    store.records.values().all(|r| invariant_record_owner_nonempty(r))
+    store
+        .records
+        .values()
+        .all(|r| invariant_record_owner_nonempty(r))
 }
 
 // ── Invariant 2: Tier gate — Critical/Personal only readable by owner ─────────
@@ -57,7 +60,9 @@ pub fn invariant_audit_monotonic(entries: &[AuditEntry]) -> bool {
 pub fn invariant_audit_chain_noself(entries: &[AuditEntry]) -> bool {
     // Each entry's prev_hash should not equal its own hash
     // (simplified: check no two consecutive entries share prev_hash)
-    entries.windows(2).all(|w| w[0].prev_hash != w[1].prev_hash || w[0].prev_hash == [0u8; 32])
+    entries
+        .windows(2)
+        .all(|w| w[0].prev_hash != w[1].prev_hash || w[0].prev_hash == [0u8; 32])
 }
 
 // ── Invariant 4: Policy engine — owner always gets Permit ────────────────────
@@ -65,12 +70,20 @@ pub fn invariant_audit_chain_noself(entries: &[AuditEntry]) -> bool {
 /// Check that the owner bypass invariant holds for all actions and tiers.
 pub fn invariant_owner_always_permit(engine: &PolicyEngine, owner_id: &str) -> bool {
     let tiers = [DataTier::Critical, DataTier::Personal, DataTier::Noise];
-    let actions = [Action::Read, Action::Write, Action::Delete,
-                   Action::Audit, Action::Grant, Action::Admin];
+    let actions = [
+        Action::Read,
+        Action::Write,
+        Action::Delete,
+        Action::Audit,
+        Action::Grant,
+        Action::Admin,
+    ];
     for tier in &tiers {
         for action in &actions {
             let dec = engine.evaluate(owner_id, owner_id, "any:resource", action, tier, 0);
-            if !dec.is_permit() { return false; }
+            if !dec.is_permit() {
+                return false;
+            }
         }
     }
     true
@@ -81,7 +94,14 @@ pub fn invariant_owner_always_permit(engine: &PolicyEngine, owner_id: &str) -> b
 pub fn invariant_noise_readable_by_all(engine: &PolicyEngine, owner_id: &str) -> bool {
     // Noise tier should be readable by anyone (default open)
     // Owner can always read their own noise records
-    let dec = engine.evaluate(owner_id, owner_id, "noise:rec", &Action::Read, &DataTier::Noise, 0);
+    let dec = engine.evaluate(
+        owner_id,
+        owner_id,
+        "noise:rec",
+        &Action::Read,
+        &DataTier::Noise,
+        0,
+    );
     dec.is_permit()
 }
 
@@ -116,8 +136,11 @@ pub fn pre_read(record_id: &str, requester_id: &str) -> Result<(), String> {
 
 /// Post-condition: delete reduces count by exactly 1 or 0 (if not found).
 pub fn post_delete(before_count: usize, after_count: usize, found: bool) -> bool {
-    if found { after_count == before_count - 1 }
-    else      { after_count == before_count }
+    if found {
+        after_count == before_count - 1
+    } else {
+        after_count == before_count
+    }
 }
 
 // ── Property witnesses ────────────────────────────────────────────────────────
@@ -147,7 +170,10 @@ pub fn witness_critical_owner_only(record: &Record, requester: &str) -> Result<(
     if tier_gate_result == should_permit {
         Ok(())
     } else {
-        Err(format!("witness_critical_owner_only: tier gate mismatch for {}", requester))
+        Err(format!(
+            "witness_critical_owner_only: tier gate mismatch for {}",
+            requester
+        ))
     }
 }
 
@@ -162,7 +188,10 @@ pub fn witness_write_read_consistency(
     store.write(record).map_err(|e| e.to_string())?;
     match store.read(&id, &owner) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("witness_write_read_consistency: read after write failed for {}: {}", id, e)),
+        Err(e) => Err(format!(
+            "witness_write_read_consistency: read after write failed for {}: {}",
+            id, e
+        )),
     }
 }
 
@@ -173,38 +202,66 @@ pub fn witness_write_read_consistency(
 mod kani_harnesses {
     use super::*;
 
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum SymbolicIdentity {
+        OwnerA,
+        OwnerB,
+        RequesterA,
+        RequesterB,
+    }
+
+    fn symbolic_identity() -> SymbolicIdentity {
+        match kani::any::<u8>() % 4 {
+            0 => SymbolicIdentity::OwnerA,
+            1 => SymbolicIdentity::OwnerB,
+            2 => SymbolicIdentity::RequesterA,
+            _ => SymbolicIdentity::RequesterB,
+        }
+    }
+
+    fn identity_str(identity: SymbolicIdentity) -> &'static str {
+        match identity {
+            SymbolicIdentity::OwnerA => "owner-a",
+            SymbolicIdentity::OwnerB => "owner-b",
+            SymbolicIdentity::RequesterA => "requester-a",
+            SymbolicIdentity::RequesterB => "requester-b",
+        }
+    }
+
     #[kani::proof]
     fn kani_owner_nonempty_invariant() {
-        let owner: String = kani::any();
-        kani::assume(!owner.is_empty());
+        let owner = symbolic_identity();
+        let owner_string = identity_str(owner).to_owned();
+
         let record = Record {
             id: "rec:1".into(),
             tier: DataTier::Noise,
-            owner_id: owner.clone(),
+            owner_id: owner_string,
             payload: vec![],
             salt: [0u8; 32],
             created_at: 0,
         };
+
         assert!(invariant_record_owner_nonempty(&record));
     }
 
     #[kani::proof]
     fn kani_tier_gate_critical() {
-        let owner: String = kani::any();
-        let requester: String = kani::any();
-        kani::assume(!owner.is_empty());
+        let requester_is_owner: bool = kani::any();
+
         let record = Record {
             id: "rec:1".into(),
             tier: DataTier::Critical,
-            owner_id: owner.clone(),
+            owner_id: "owner".into(),
             payload: vec![],
             salt: [0u8; 32],
             created_at: 0,
         };
-        let result = invariant_tier_gate(&record, &requester);
-        // If requester is not owner, must be false for Critical
-        if requester != owner {
-            assert!(!result);
-        }
+
+        let requester = if requester_is_owner { "owner" } else { "other" };
+
+        let result = invariant_tier_gate(&record, requester);
+
+        assert_eq!(result, requester_is_owner);
     }
 }
