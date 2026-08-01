@@ -25,7 +25,7 @@ pub fn invariant_store_owners_nonempty(store: &Store) -> bool {
     store
         .records
         .values()
-        .all(|r| invariant_record_owner_nonempty(r))
+        .all(invariant_record_owner_nonempty)
 }
 
 // ── Invariant 2: Tier gate — Critical/Personal only readable by owner ─────────
@@ -40,13 +40,10 @@ pub fn invariant_tier_gate(record: &Record, requester_id: &str) -> bool {
 
 /// Check tier gate for all records in a store against a given requester.
 pub fn invariant_store_tier_gate(store: &Store, requester_id: &str) -> bool {
-    store.records.values().all(|r| {
-        // Noise is always accessible; Critical/Personal only for owner
-        match r.tier {
-            DataTier::Noise => true,
-            _ => true, // Noise already handled above; Critical/Personal existence check
-        }
-    })
+    store
+        .records
+        .values()
+        .all(|record| invariant_tier_gate(record, requester_id))
 }
 
 // ── Invariant 3: Audit log monotonicity ───────────────────────────────────────
