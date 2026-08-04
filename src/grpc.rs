@@ -1,13 +1,15 @@
 // src/grpc.rs
-// Copyright 2026 Edison Lepitel — Apache 2.0
+// Copyright 2026 Edison Lepiten / AIEONYX — Apache 2.0
 //
 // EdisonDB gRPC server — tonic 0.14
 // Mirrors server.rs pattern: EdisonDB::connect() per request via db_path.
 // No unsafe blocks in production code.
 
 use tonic::{Request, Response, Status};
+use tokio::sync::Mutex;
 use zeroize::Zeroizing;
 use edisondb::sdk::EdisonDB;
+use edisondb::EdisonError;
 
 // ── Proto generated code ─────────────────────────────────────────────────────
 
@@ -28,11 +30,15 @@ use proto::{
 
 pub struct EdisonDbGrpc {
     db_path: String,
+    operation_lock: Mutex<()>,
 }
 
 impl EdisonDbGrpc {
     pub fn new(db_path: String) -> Self {
-        Self { db_path }
+        Self {
+            db_path,
+            operation_lock: Mutex::new(()),
+        }
     }
 
     fn extract_password(
@@ -86,6 +92,7 @@ impl EdisonDb for EdisonDbGrpc {
         let payload = String::from_utf8(req.payload)
             .map_err(|_| Status::invalid_argument("payload must be valid UTF-8"))?;
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
         db.write(&req.record_id, tier, &payload)
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -103,20 +110,23 @@ impl EdisonDb for EdisonDbGrpc {
             return Err(Status::unauthenticated("owner_id is required"));
         }
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
-        match db.read(&req.record_id)
-            .map_err(|e| Status::internal(e.to_string()))?
-        {
-            Some(record) => Ok(Response::new(ReadResponse {
+        match db.read(&req.record_id) {
+            Ok(Some(record)) => Ok(Response::new(ReadResponse {
                 found:   true,
                 payload: record.payload.into_bytes(),
                 message: "ok".into(),
             })),
-            None => Ok(Response::new(ReadResponse {
+            Ok(None) => Ok(Response::new(ReadResponse {
                 found:   false,
                 payload: vec![],
                 message: "not found".into(),
             })),
+            Err(EdisonError::AccessDenied) => {
+                Err(Status::permission_denied("access denied"))
+            }
+            Err(e) => Err(Status::internal(e.to_string())),
         }
     }
 
@@ -131,6 +141,7 @@ impl EdisonDb for EdisonDbGrpc {
         }
         let tier = tier_str(req.tier)?;
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
         let records = db.list(Some(tier))
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -149,6 +160,7 @@ impl EdisonDb for EdisonDbGrpc {
             return Err(Status::unauthenticated("owner_id is required"));
         }
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
         db.delete(&req.record_id)
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -166,6 +178,7 @@ impl EdisonDb for EdisonDbGrpc {
             return Err(Status::unauthenticated("owner_id is required"));
         }
 
+        let _guard = self.operation_lock.lock().await;
         let db = self.connect(&req.owner_id, &password)?;
         let audit_entries = db.audit(Some(&req.record_id))
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -191,6 +204,7 @@ impl EdisonDb for EdisonDbGrpc {
         let payload = String::from_utf8(req.payload)
             .map_err(|_| Status::invalid_argument("payload must be valid UTF-8"))?;
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
         db.write(&req.record_id, tier, &payload)
             .map_err(|e| Status::internal(e.to_string()))?;
@@ -220,6 +234,7 @@ impl EdisonDb for EdisonDbGrpc {
 
         let top_k = if req.top_k == 0 { 10 } else { req.top_k as usize };
 
+        let _guard = self.operation_lock.lock().await;
         let mut db = self.connect(&req.owner_id, &password)?;
         let hits = db.search_vectors(&query, top_k, None)
             .map_err(|e| Status::internal(e.to_string()))?;

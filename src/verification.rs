@@ -198,6 +198,7 @@ pub fn witness_write_read_consistency(
 #[allow(unexpected_cfgs)]
 mod kani_harnesses {
     use super::*;
+    use crate::policy::tier_ceiling_allows;
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     enum SymbolicIdentity {
@@ -260,5 +261,14 @@ mod kani_harnesses {
         let result = invariant_tier_gate(&record, requester);
 
         assert_eq!(result, requester_is_owner);
+    }
+
+    #[kani::proof]
+    fn kani_policy_tier_ceiling() {
+        let requester_is_owner: bool = kani::any();
+        let allowed =
+            tier_ceiling_allows(requester_is_owner, &DataTier::Critical);
+
+        assert_eq!(allowed, requester_is_owner);
     }
 }
