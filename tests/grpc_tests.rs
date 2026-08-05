@@ -16,8 +16,8 @@ use tonic::Request;
 // Import generated proto client
 use edisondb::edison_db_client::EdisonDbClient;
 use edisondb::{
-    AuditRequest, DataTier, DeleteRequest, EmbedRequest,
-    ListRequest, ReadRequest, SearchRequest, WriteRequest,
+    AuditRequest, DataTier, DeleteRequest,
+    ListRequest, ReadRequest, WriteRequest,
 };
 
 pub mod edisondb {
@@ -31,8 +31,7 @@ const OWNER_ID:  &str = "test-owner";
 const PASSWORD:  &str = "test-password-secure-123";
 
 fn spawn_server() -> Child {
-    Command::new("cargo")
-        .args(["run", "--bin", "edisondb", "--", "--port", "8080"])
+    Command::new(env!("CARGO_BIN_EXE_edisondb-server"))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -197,16 +196,20 @@ async fn test_grpc_audit_history() {
 
     let mut client = make_client().await;
 
-    // Write twice to generate two audit entries
-    for i in 1..=2 {
-        let req = auth_request(WriteRequest {
-            owner_id:  OWNER_ID.into(),
-            record_id: "grpc:audit:1".into(),
-            tier:      DataTier::Critical as i32,
-            payload:   format!("version_{}", i).into_bytes(),
-        });
-        client.write(req).await.expect("Write failed");
-    }
+    let write_req = auth_request(WriteRequest {
+        owner_id:  OWNER_ID.into(),
+        record_id: "grpc:audit:1".into(),
+        tier:      DataTier::Critical as i32,
+        payload:   b"audit_data".to_vec(),
+    });
+    client.write(write_req).await.expect("Write failed");
+
+    let read_req = auth_request(ReadRequest {
+        owner_id:  OWNER_ID.into(),
+        record_id: "grpc:audit:1".into(),
+        tier:      DataTier::Critical as i32,
+    });
+    client.read(read_req).await.expect("Read failed");
 
     let audit_req = auth_request(AuditRequest {
         owner_id:  OWNER_ID.into(),
@@ -277,10 +280,14 @@ async fn test_grpc_wrong_owner_rejected() {
         MetadataValue::from_static("wrong-password"),
     );
 
-    let resp = client.read(read_req).await.expect("Read RPC itself should not error").into_inner();
-    assert!(
-        !resp.found,
-        "Wrong owner must not access another owner's Critical record"
+    let err = client.read(read_req)
+        .await
+        .expect_err("Wrong owner must be rejected");
+
+    assert_eq!(
+        err.code(),
+        tonic::Code::PermissionDenied,
+        "Wrong owner must receive PERMISSION_DENIED"
     );
 
     kill_server(&mut server);

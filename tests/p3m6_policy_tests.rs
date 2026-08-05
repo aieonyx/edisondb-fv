@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
-// EdisonDB P3-M6 — Policy engine tests (20 tests)
+// EdisonDB P3-M6 — Policy engine tests (22 tests)
 
 use edisondb::policy::{
-    Action, Role, Delegation, PolicyRule, PolicyEngine, AccessDecision,
+    Action, Role, Delegation, PolicyRule, PolicyEngine,
 };
 use edisondb::DataTier;
 
@@ -210,4 +210,28 @@ fn t20_delegation_isolation() {
     let dec = e.evaluate("alice", "owner1", "rec:1",
                          &Action::Read, &DataTier::Noise, NOW);
     assert!(dec.is_deny(), "delegation from owner2 must not apply to owner1 resources");
+}
+
+#[test]
+fn t21_admin_cannot_access_critical() {
+    let mut e = engine();
+    e.delegate("owner1", Delegation::permanent("sysadmin", Role::Admin, "owner1"));
+
+    let dec = e.evaluate("sysadmin", "owner1", "rec:secret",
+                         &Action::Read, &DataTier::Critical, NOW);
+
+    assert!(dec.is_deny());
+    assert!(dec.reason().contains("critical tier requires owner"));
+}
+
+#[test]
+fn t22_allow_rule_cannot_access_critical() {
+    let mut e = engine();
+    e.add_rule(PolicyRule::allow("alice", "*", Action::Read));
+
+    let dec = e.evaluate("alice", "owner1", "rec:secret",
+                         &Action::Read, &DataTier::Critical, NOW);
+
+    assert!(dec.is_deny());
+    assert!(dec.reason().contains("critical tier requires owner"));
 }

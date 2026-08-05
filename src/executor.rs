@@ -145,8 +145,11 @@ impl EqlExecutor {
     }
 
     fn exec_read(&mut self, id: String) -> Result<EqlResult, EdisonError> {
+        let read_result = self.router.read(&id, &self.owner_id);
+        self.router.save()?;
+
         let (salt, payload, tier) = {
-            let record = self.router.read(&id, &self.owner_id)?;
+            let record = read_result?;
             (record.salt, record.payload.clone(), record.tier.clone())
         };
         let key       = derive_key(&self.password, &salt)?;

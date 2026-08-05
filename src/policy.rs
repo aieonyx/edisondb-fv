@@ -206,6 +206,10 @@ impl AccessDecision {
 
 // ── Policy engine ─────────────────────────────────────────────────────────────
 
+pub fn tier_ceiling_allows(is_owner: bool, tier: &DataTier) -> bool {
+    !matches!(tier, DataTier::Critical) || is_owner
+}
+
 /// Sovereign policy engine — Inverted Admin Model extended with RBAC + rules.
 /// Evaluation order:
 ///   1. Owner bypass — owner always gets Permit
@@ -250,6 +254,10 @@ impl PolicyEngine {
         // 1. Owner bypass
         if subject == owner_id {
             return AccessDecision::Permit("owner bypass".into());
+        }
+
+        if !tier_ceiling_allows(subject == owner_id, tier) {
+            return AccessDecision::Deny("critical tier requires owner".into());
         }
 
         // 2. Explicit Deny rules (highest priority after owner)
