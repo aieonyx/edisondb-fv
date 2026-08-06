@@ -52,17 +52,26 @@ impl Record {
         payload: Vec<u8>,
         salt: [u8; 32],
     ) -> Result<Self, EdisonError> {
-        if owner_id.is_empty() {
-            return Err(EdisonError::NoOwner);
-        }
-        Ok(Record {
+        let record = Record {
             id: id.to_string(),
             tier,
             owner_id: owner_id.to_string(),
             payload,
             salt,
             created_at: now_secs(),
-        })
+        };
+        record.validate()?;
+        Ok(record)
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), EdisonError> {
+        if self.owner_id.is_empty() {
+            return Err(EdisonError::NoOwner);
+        }
+        if self.id.is_empty() {
+            return Err(EdisonError::EmptyRecordId);
+        }
+        Ok(())
     }
 
     fn is_readable_by(&self, requester_id: &str) -> bool {
@@ -78,6 +87,8 @@ impl Record {
 pub enum EdisonError {
     #[error("Record must have an owner")]
     NoOwner,
+    #[error("Record ID must not be empty")]
+    EmptyRecordId,
     #[error("Access denied — owner only")]
     AccessDenied,
     #[error("Record not found")]
@@ -98,6 +109,24 @@ pub enum EdisonError {
     AuditChainBroken,
     #[error("Embedding service unavailable — is Ollama running?")]
     EmbeddingUnavailable,
+}
+
+pub(crate) fn ensure_new_record_id(
+    id_exists: bool,
+) -> Result<(), EdisonError> {
+    if id_exists {
+        Err(EdisonError::AlreadyExists)
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn persisted_record_metadata_valid(
+    key_matches: bool,
+    tier_matches: bool,
+    id_is_unique: bool,
+) -> bool {
+    key_matches && tier_matches && id_is_unique
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,9 +208,8 @@ impl Store {
     }
 
     pub fn write(&mut self, record: Record) -> Result<(), EdisonError> {
-        if self.records.contains_key(&record.id) {
-            return Err(EdisonError::AlreadyExists);
-        }
+        record.validate()?;
+        ensure_new_record_id(self.records.contains_key(&record.id))?;
         self.append_audit(
             record.id.clone(),
             record.owner_id.clone(),
@@ -256,6 +284,13 @@ impl Store {
     }
 
     pub fn save(&self, path: &str) -> Result<(), EdisonError> {
+        for (id, record) in &self.records {
+            record.validate()?;
+            if id != &record.id {
+                return Err(EdisonError::SaveFailed);
+            }
+        }
+
         let db = Database::create(path)
             .map_err(|_| EdisonError::SaveFailed)?;
         let write_txn = db.begin_write()
@@ -305,10 +340,16 @@ impl Store {
             .map_err(|_| EdisonError::LoadFailed)?;
         for entry in table.iter()
             .map_err(|_| EdisonError::LoadFailed)? {
-            let (_key, value) = entry
+            let (key, value) = entry
                 .map_err(|_| EdisonError::LoadFailed)?;
             let record: Record = serde_json::from_str(value.value())
                 .map_err(|_| EdisonError::LoadFailed)?;
+
+            record.validate()?;
+            if key.value() != record.id {
+                return Err(EdisonError::LoadFailed);
+            }
+
             records.insert(record.id.clone(), record);
         }
         let mut audit_log = Vec::new();
