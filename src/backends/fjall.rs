@@ -2,6 +2,7 @@ use fjall::{Database, KeyspaceCreateOptions};
 use crate::{Record, AuditEntry, AuditAction, EdisonError, DataTier, now_secs};
 use super::StorageBackend;
 use sha2::{Sha256, Digest};
+use std::collections::HashSet;
 
 const CRITICAL: &str = "records_critical";
 const PERSONAL: &str = "records_personal";
@@ -29,7 +30,43 @@ impl FjallBackend {
             .map_err(|_| EdisonError::LoadFailed)?;
         let audit = db.keyspace(AUDIT, KeyspaceCreateOptions::default)
             .map_err(|_| EdisonError::LoadFailed)?;
-        Ok(Self { _db: db, critical, personal, noise, audit })
+
+        let backend = Self { _db: db, critical, personal, noise, audit };
+        backend.validate_persisted_records()?;
+        Ok(backend)
+    }
+
+    fn validate_persisted_records(&self) -> Result<(), EdisonError> {
+        let mut record_ids = HashSet::new();
+
+        for (keyspace, expected_tier) in [
+            (&self.critical, DataTier::Critical),
+            (&self.personal, DataTier::Personal),
+            (&self.noise, DataTier::Noise),
+        ] {
+            for guard in keyspace.iter() {
+                let (key, value) = guard.into_inner()
+                    .map_err(|_| EdisonError::LoadFailed)?;
+                let record: Record = serde_json::from_slice(&value)
+                    .map_err(|_| EdisonError::LoadFailed)?;
+
+                record.validate()?;
+
+                let key_matches = &*key == record.id.as_bytes();
+                let tier_matches = record.tier == expected_tier;
+                let id_is_unique = record_ids.insert(record.id.clone());
+
+                if !crate::persisted_record_metadata_valid(
+                    key_matches,
+                    tier_matches,
+                    id_is_unique,
+                ) {
+                    return Err(EdisonError::LoadFailed);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn tier_ks(&self, tier: &DataTier) -> &fjall::Keyspace {
@@ -95,11 +132,19 @@ impl FjallBackend {
 
 impl StorageBackend for FjallBackend {
     fn write(&mut self, record: Record) -> Result<(), EdisonError> {
-        let ks = self.tier_ks(&record.tier);
-        if ks.get(record.id.as_bytes())
-            .map_err(|_| EdisonError::LoadFailed)?.is_some() {
-            return Err(EdisonError::AlreadyExists);
+        record.validate()?;
+
+        let mut id_exists = false;
+        for ks in [&self.critical, &self.personal, &self.noise] {
+            if ks.get(record.id.as_bytes())
+                .map_err(|_| EdisonError::LoadFailed)?
+                .is_some()
+            {
+                id_exists = true;
+                break;
+            }
         }
+        crate::ensure_new_record_id(id_exists)?;
         self.append_audit(
             record.id.clone(),
             record.owner_id.clone(),

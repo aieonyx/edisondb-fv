@@ -198,6 +198,10 @@ pub fn witness_write_read_consistency(
 #[allow(unexpected_cfgs)]
 mod kani_harnesses {
     use super::*;
+    use crate::{
+        ensure_new_record_id,
+        persisted_record_metadata_valid,
+    };
     use crate::policy::tier_ceiling_allows;
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -270,5 +274,51 @@ mod kani_harnesses {
             tier_ceiling_allows(requester_is_owner, &DataTier::Critical);
 
         assert_eq!(allowed, requester_is_owner);
+    }
+
+    #[kani::proof]
+    fn kani_record_identity_validation() {
+        let id_empty: bool = kani::any();
+        let owner_empty: bool = kani::any();
+
+        let record = Record {
+            id: if id_empty { "" } else { "rec:1" }.into(),
+            tier: DataTier::Personal,
+            owner_id: if owner_empty { "" } else { "owner" }.into(),
+            payload: vec![],
+            salt: [0u8; 32],
+            created_at: 0,
+        };
+
+        assert_eq!(
+            record.validate().is_ok(),
+            !id_empty && !owner_empty
+        );
+    }
+
+    #[kani::proof]
+    fn kani_storage_id_immutability() {
+        let id_exists: bool = kani::any();
+
+        assert_eq!(
+            ensure_new_record_id(id_exists).is_ok(),
+            !id_exists
+        );
+    }
+
+    #[kani::proof]
+    fn kani_persisted_record_metadata() {
+        let key_matches: bool = kani::any();
+        let tier_matches: bool = kani::any();
+        let id_is_unique: bool = kani::any();
+
+        assert_eq!(
+            persisted_record_metadata_valid(
+                key_matches,
+                tier_matches,
+                id_is_unique,
+            ),
+            key_matches && tier_matches && id_is_unique
+        );
     }
 }
