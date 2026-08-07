@@ -2,27 +2,27 @@
 // EdisonDB P3-M5 — ARPi protocol integration tests (20 tests)
 
 use edisondb::arpi::{
-    ArpiHeader, ArpiTier, ArpiResponse, ArpiError,
-    validate, last_audit_hash, sha256, ARPI_VERSION, HEADER_SIZE,
+    ARPI_VERSION, ArpiError, ArpiHeader, ArpiResponse, ArpiTier, HEADER_SIZE, last_audit_hash,
+    sha256, validate,
 };
-use edisondb::{DataTier, AuditEntry, AuditAction};
+use edisondb::{AuditAction, AuditEntry, DataTier};
 
 fn make_audit_entry(record_id: &str, prev_hash: [u8; 32]) -> AuditEntry {
-    AuditEntry {
-        record_id: record_id.to_string(),
-        requester_id: "owner".to_string(),
-        action: AuditAction::Write,
-        timestamp: 1000,
-        prev_hash,
-    }
+    AuditEntry::new(record_id, "owner", AuditAction::Write, 1000, prev_hash)
 }
 
 // ── T1: ArpiTier from DataTier ────────────────────────────────────────────────
 #[test]
 fn t1_tier_from_data_tier() {
-    assert_eq!(ArpiTier::from_data_tier(&DataTier::Critical), ArpiTier::Critical);
-    assert_eq!(ArpiTier::from_data_tier(&DataTier::Personal), ArpiTier::Personal);
-    assert_eq!(ArpiTier::from_data_tier(&DataTier::Noise),    ArpiTier::Noise);
+    assert_eq!(
+        ArpiTier::from_data_tier(&DataTier::Critical),
+        ArpiTier::Critical
+    );
+    assert_eq!(
+        ArpiTier::from_data_tier(&DataTier::Personal),
+        ArpiTier::Personal
+    );
+    assert_eq!(ArpiTier::from_data_tier(&DataTier::Noise), ArpiTier::Noise);
 }
 
 // ── T2: ArpiTier u8 roundtrip ─────────────────────────────────────────────────
@@ -46,7 +46,7 @@ fn t3_tier_invalid_u8() {
 fn t4_tier_labels() {
     assert_eq!(ArpiTier::Critical.label(), "critical");
     assert_eq!(ArpiTier::Personal.label(), "personal");
-    assert_eq!(ArpiTier::Noise.label(),    "noise");
+    assert_eq!(ArpiTier::Noise.label(), "noise");
 }
 
 // ── T5: ArpiHeader new + verify ───────────────────────────────────────────────
@@ -80,10 +80,10 @@ fn t8_header_roundtrip() {
     let h = ArpiHeader::new(ArpiTier::Noise, 9999, 42, audit);
     let bytes = h.to_bytes();
     let h2 = ArpiHeader::from_bytes(&bytes).unwrap();
-    assert_eq!(h2.version,    ARPI_VERSION);
-    assert_eq!(h2.tier,       ArpiTier::Noise);
-    assert_eq!(h2.timestamp,  9999);
-    assert_eq!(h2.count,      42);
+    assert_eq!(h2.version, ARPI_VERSION);
+    assert_eq!(h2.tier, ArpiTier::Noise);
+    assert_eq!(h2.timestamp, 9999);
+    assert_eq!(h2.count, 42);
     assert_eq!(h2.audit_hash, audit);
     assert!(h2.verify());
 }
@@ -136,10 +136,8 @@ fn t13_response_truncated() {
 // ── T14: requires_auth by tier ───────────────────────────────────────────────
 #[test]
 fn t14_requires_auth() {
-    let critical = ArpiResponse::new(
-        ArpiHeader::new(ArpiTier::Critical, 0, 0, [0u8;32]), vec![]);
-    let noise = ArpiResponse::new(
-        ArpiHeader::new(ArpiTier::Noise, 0, 0, [0u8;32]), vec![]);
+    let critical = ArpiResponse::new(ArpiHeader::new(ArpiTier::Critical, 0, 0, [0u8; 32]), vec![]);
+    let noise = ArpiResponse::new(ArpiHeader::new(ArpiTier::Noise, 0, 0, [0u8; 32]), vec![]);
     assert!(critical.requires_auth());
     assert!(!noise.requires_auth());
 }
@@ -168,13 +166,16 @@ fn t17_last_audit_hash_empty() {
     assert_eq!(hash, [0u8; 32]);
 }
 
-// ── T18: last_audit_hash uses last entry ─────────────────────────────────────
+// ── T18: last_audit_hash uses sealed tail ────────────────────────────────────
 #[test]
 fn t18_last_audit_hash_entries() {
     let e1 = make_audit_entry("rec:1", [0x11u8; 32]);
     let e2 = make_audit_entry("rec:2", [0x22u8; 32]);
+    let expected = e2.entry_hash;
+
     let hash = last_audit_hash(&[e1, e2]);
-    assert_eq!(hash, [0x22u8; 32]);
+
+    assert_eq!(hash, expected);
 }
 
 // ── T19: sha256 known vector ──────────────────────────────────────────────────
@@ -182,7 +183,10 @@ fn t18_last_audit_hash_entries() {
 fn t19_sha256_empty() {
     let h = sha256(b"");
     let hex: String = h.iter().map(|b| format!("{:02x}", b)).collect();
-    assert_eq!(hex, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    assert_eq!(
+        hex,
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
 }
 
 // ── T20: from_audit builds correct header ────────────────────────────────────
@@ -192,9 +196,11 @@ fn t20_from_audit() {
         make_audit_entry("rec:1", [0xAAu8; 32]),
         make_audit_entry("rec:2", [0xBBu8; 32]),
     ];
+    let expected = entries.last().unwrap().entry_hash;
     let h = ArpiHeader::from_audit(&DataTier::Critical, &entries, 2);
+
     assert_eq!(h.tier, ArpiTier::Critical);
     assert_eq!(h.count, 2);
-    assert_eq!(h.audit_hash, [0xBBu8; 32]); // last entry
+    assert_eq!(h.audit_hash, expected);
     assert!(h.verify());
 }

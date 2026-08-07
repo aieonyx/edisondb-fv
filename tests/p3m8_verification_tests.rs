@@ -1,26 +1,23 @@
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M8 — Formal verification hooks tests (20 tests)
 
-use edisondb::{Record, Store, DataTier, AuditEntry, AuditAction};
-use edisondb::policy::{PolicyEngine, Action, Role, Delegation};
+use edisondb::policy::PolicyEngine;
 use edisondb::verification::*;
+use edisondb::{AuditAction, AuditEntry, DataTier, Record, Store};
 
 fn make_record(id: &str, tier: DataTier, owner: &str) -> Record {
     Record {
-        id: id.to_string(), tier,
+        id: id.to_string(),
+        tier,
         owner_id: owner.to_string(),
         payload: b"data".to_vec(),
-        salt: [0u8; 32], created_at: 1000,
+        salt: [0u8; 32],
+        created_at: 1000,
     }
 }
 
 fn make_audit(ts: u64, prev: [u8; 32]) -> AuditEntry {
-    AuditEntry {
-        record_id: "rec:1".into(),
-        requester_id: "owner".into(),
-        action: AuditAction::Write,
-        timestamp: ts, prev_hash: prev,
-    }
+    AuditEntry::new("rec:1", "owner", AuditAction::Write, ts, prev)
 }
 
 // ── T1: owner nonempty invariant — valid record ───────────────────────────────
@@ -41,8 +38,12 @@ fn t2_owner_nonempty_empty() {
 #[test]
 fn t3_store_owners_nonempty() {
     let mut store = Store::default();
-    store.write(make_record("rec:1", DataTier::Noise, "owner1")).unwrap();
-    store.write(make_record("rec:2", DataTier::Personal, "owner2")).unwrap();
+    store
+        .write(make_record("rec:1", DataTier::Noise, "owner1"))
+        .unwrap();
+    store
+        .write(make_record("rec:2", DataTier::Personal, "owner2"))
+        .unwrap();
     assert!(invariant_store_owners_nonempty(&store));
 }
 
@@ -83,24 +84,25 @@ fn t7_audit_monotonic_ok() {
 // ── T8: audit monotonicity — equal timestamps ok ─────────────────────────────
 #[test]
 fn t8_audit_monotonic_equal() {
-    let entries = vec![make_audit(100, [0u8;32]), make_audit(100, [1u8;32])];
+    let entries = vec![make_audit(100, [0u8; 32]), make_audit(100, [1u8; 32])];
     assert!(invariant_audit_monotonic(&entries));
 }
 
 // ── T9: audit monotonicity — descending fails ────────────────────────────────
 #[test]
 fn t9_audit_monotonic_fail() {
-    let entries = vec![make_audit(200, [0u8;32]), make_audit(100, [1u8;32])];
+    let entries = vec![make_audit(200, [0u8; 32]), make_audit(100, [1u8; 32])];
     assert!(!invariant_audit_monotonic(&entries));
 }
 
-// ── T10: audit chain noself — distinct hashes ────────────────────────────────
+// ── T10: audit chain integrity ───────────────────────────────────────────────
 #[test]
 fn t10_audit_chain_noself() {
-    let entries = vec![
-        make_audit(100, [0u8; 32]),
-        make_audit(200, [1u8; 32]),
-    ];
+    let first = make_audit(100, [0u8; 32]);
+    let second = make_audit(200, first.entry_hash);
+    let entries = vec![first, second];
+
+    assert!(invariant_audit_chain_integrity(&entries));
     assert!(invariant_audit_chain_noself(&entries));
 }
 
@@ -142,17 +144,17 @@ fn t15_pre_write_empty_id() {
 // ── T16: post_write count tracking ───────────────────────────────────────────
 #[test]
 fn t16_post_write() {
-    assert!(post_write(0, 1));   // new record
-    assert!(post_write(5, 6));   // append
-    assert!(post_write(5, 5));   // overwrite
+    assert!(post_write(0, 1)); // new record
+    assert!(post_write(5, 6)); // append
+    assert!(post_write(5, 5)); // overwrite
     assert!(!post_write(5, 7)); // jump of 2 — invalid
 }
 
 // ── T17: post_delete count tracking ──────────────────────────────────────────
 #[test]
 fn t17_post_delete() {
-    assert!(post_delete(5, 4, true));   // found and deleted
-    assert!(post_delete(5, 5, false));  // not found, no change
+    assert!(post_delete(5, 4, true)); // found and deleted
+    assert!(post_delete(5, 5, false)); // not found, no change
     assert!(!post_delete(5, 5, true)); // found but count didn't decrease
 }
 
