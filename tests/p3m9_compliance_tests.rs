@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M9 — Compliance tooling tests (20 tests)
 
-use edisondb::{Record, DataTier, AuditEntry, AuditAction};
 use edisondb::compliance::*;
+use edisondb::{AuditAction, AuditEntry, DataTier, Record};
 
 fn rec(id: &str, tier: DataTier, owner: &str, age_secs: u64) -> Record {
     Record {
-        id: id.to_string(), tier,
+        id: id.to_string(),
+        tier,
         owner_id: owner.to_string(),
         payload: b"payload".to_vec(),
         salt: [0u8; 32],
@@ -15,12 +16,7 @@ fn rec(id: &str, tier: DataTier, owner: &str, age_secs: u64) -> Record {
 }
 
 fn audit(ts: u64, action: AuditAction, requester: &str) -> AuditEntry {
-    AuditEntry {
-        record_id: "rec:1".into(),
-        requester_id: requester.to_string(),
-        action, timestamp: ts,
-        prev_hash: [0u8; 32],
-    }
+    AuditEntry::new("rec:1", requester, action, ts, [0u8; 32])
 }
 
 const NOW: u64 = 1000;
@@ -62,8 +58,8 @@ fn t4_retention_no_limit() {
 fn t5_tier_summary() {
     let r1 = rec("r1", DataTier::Critical, "o1", 0);
     let r2 = rec("r2", DataTier::Personal, "o1", 0);
-    let r3 = rec("r3", DataTier::Noise,    "o1", 0);
-    let r4 = rec("r4", DataTier::Noise,    "o2", 0);
+    let r3 = rec("r3", DataTier::Noise, "o1", 0);
+    let r4 = rec("r4", DataTier::Noise, "o2", 0);
     let s = TierSummary::from_records(&[&r1, &r2, &r3, &r4]);
     assert_eq!(s.critical_count, 1);
     assert_eq!(s.personal_count, 1);
@@ -84,20 +80,20 @@ fn t6_tier_summary_payload() {
 #[test]
 fn t7_audit_summary() {
     let entries = vec![
-        audit(100, AuditAction::Write,  "alice"),
-        audit(200, AuditAction::ReadGranted,   "alice"),
+        audit(100, AuditAction::Write, "alice"),
+        audit(200, AuditAction::ReadGranted, "alice"),
         audit(300, AuditAction::Delete, "bob"),
         audit(400, AuditAction::ReadDenied, "eve"),
     ];
     let s = AuditSummary::from_entries(&entries);
     assert_eq!(s.total_entries, 4);
-    assert_eq!(s.write_count,  1);
-    assert_eq!(s.read_count,   1);
+    assert_eq!(s.write_count, 1);
+    assert_eq!(s.read_count, 1);
     assert_eq!(s.delete_count, 1);
     assert_eq!(s.denied_count, 1);
     assert_eq!(s.unique_requesters, 3);
     assert_eq!(s.earliest_timestamp, 100);
-    assert_eq!(s.latest_timestamp,   400);
+    assert_eq!(s.latest_timestamp, 400);
 }
 
 // ── T8: AuditSummary empty ────────────────────────────────────────────────────
@@ -112,8 +108,8 @@ fn t8_audit_summary_empty() {
 #[test]
 fn t9_erasure_report() {
     let r1 = rec("r1", DataTier::Personal, "alice", 0);
-    let r2 = rec("r2", DataTier::Noise,    "alice", 0);
-    let r3 = rec("r3", DataTier::Noise,    "bob",   0);
+    let r2 = rec("r2", DataTier::Noise, "alice", 0);
+    let r3 = rec("r3", DataTier::Noise, "bob", 0);
     let entries = vec![audit(100, AuditAction::Write, "alice")];
     let report = erasure_report(&[&r1, &r2, &r3], &entries, "alice");
     assert_eq!(report.records_found, 2);
@@ -149,16 +145,26 @@ fn t12_report_retention_violation() {
     let policy = RetentionPolicy::new(1000, 1000, 100); // noise limit 100s
     let report = generate_report(&[&r1], &[], &policy, NOW, 0);
     assert!(!report.is_compliant);
-    assert!(report.violations.iter().any(|v| v.violation_type == ViolationType::RetentionExpired));
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|v| v.violation_type == ViolationType::RetentionExpired)
+    );
 }
 
 // ── T13: generate_report — missing owner violation ───────────────────────────
 #[test]
 fn t13_report_missing_owner() {
-    let mut r = rec("r1", DataTier::Noise, "", 0);
+    let r = rec("r1", DataTier::Noise, "", 0);
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[&r], &[], &policy, NOW, 0);
-    assert!(report.violations.iter().any(|v| v.violation_type == ViolationType::MissingOwner));
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|v| v.violation_type == ViolationType::MissingOwner)
+    );
 }
 
 // ── T14: generate_report — audit gap violation ───────────────────────────────
@@ -166,11 +172,16 @@ fn t13_report_missing_owner() {
 fn t14_report_audit_gap() {
     let entries = vec![
         audit(100, AuditAction::Write, "alice"),
-        audit(600, AuditAction::ReadGranted,  "alice"), // 500s gap
+        audit(600, AuditAction::ReadGranted, "alice"), // 500s gap
     ];
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[], &entries, &policy, NOW, 200); // gap threshold 200s
-    assert!(report.violations.iter().any(|v| v.violation_type == ViolationType::AuditGap));
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|v| v.violation_type == ViolationType::AuditGap)
+    );
 }
 
 // ── T15: generate_report — no audit gap below threshold ──────────────────────
@@ -178,11 +189,16 @@ fn t14_report_audit_gap() {
 fn t15_report_no_audit_gap() {
     let entries = vec![
         audit(100, AuditAction::Write, "alice"),
-        audit(150, AuditAction::ReadGranted,  "alice"), // 50s gap
+        audit(150, AuditAction::ReadGranted, "alice"), // 50s gap
     ];
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[], &entries, &policy, NOW, 200);
-    assert!(!report.violations.iter().any(|v| v.violation_type == ViolationType::AuditGap));
+    assert!(
+        !report
+            .violations
+            .iter()
+            .any(|v| v.violation_type == ViolationType::AuditGap)
+    );
 }
 
 // ── T16: generate_report — owner record counts ───────────────────────────────
@@ -190,18 +206,18 @@ fn t15_report_no_audit_gap() {
 fn t16_report_owner_counts() {
     let r1 = rec("r1", DataTier::Noise, "alice", 0);
     let r2 = rec("r2", DataTier::Noise, "alice", 0);
-    let r3 = rec("r3", DataTier::Noise, "bob",   0);
+    let r3 = rec("r3", DataTier::Noise, "bob", 0);
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[&r1, &r2, &r3], &[], &policy, NOW, 0);
     assert_eq!(report.owner_record_counts["alice"], 2);
-    assert_eq!(report.owner_record_counts["bob"],   1);
+    assert_eq!(report.owner_record_counts["bob"], 1);
 }
 
 // ── T17: generate_report — tier summary in report ────────────────────────────
 #[test]
 fn t17_report_tier_summary() {
     let r1 = rec("r1", DataTier::Critical, "o1", 0);
-    let r2 = rec("r2", DataTier::Noise,    "o1", 0);
+    let r2 = rec("r2", DataTier::Noise, "o1", 0);
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[&r1, &r2], &[], &policy, NOW, 0);
     assert_eq!(report.tier_summary.critical_count, 1);
@@ -215,19 +231,19 @@ fn t18_report_audit_summary() {
     let entries = vec![
         audit(100, AuditAction::Write, "alice"),
         audit(200, AuditAction::Write, "alice"),
-        audit(300, AuditAction::ReadGranted,  "bob"),
+        audit(300, AuditAction::ReadGranted, "bob"),
     ];
     let policy = RetentionPolicy::new(0, 0, 0);
     let report = generate_report(&[], &entries, &policy, NOW, 0);
     assert_eq!(report.audit_summary.write_count, 2);
-    assert_eq!(report.audit_summary.read_count,  1);
+    assert_eq!(report.audit_summary.read_count, 1);
     assert_eq!(report.audit_summary.unique_requesters, 2);
 }
 
 // ── T19: multiple violations in one report ───────────────────────────────────
 #[test]
 fn t19_multiple_violations() {
-    let r1 = rec("r1", DataTier::Noise, "",       500); // missing owner + expired
+    let r1 = rec("r1", DataTier::Noise, "", 500); // missing owner + expired
     let r2 = rec("r2", DataTier::Noise, "owner1", 500); // expired
     let policy = RetentionPolicy::new(0, 0, 100);
     let report = generate_report(&[&r1, &r2], &[], &policy, NOW, 0);
@@ -241,17 +257,13 @@ fn t20_full_compliance_pipeline() {
     // Build a compliant dataset
     let r1 = rec("r1", DataTier::Critical, "alice", 10);
     let r2 = rec("r2", DataTier::Personal, "alice", 20);
-    let r3 = rec("r3", DataTier::Noise,    "bob",   5);
+    let r3 = rec("r3", DataTier::Noise, "bob", 5);
     let entries = vec![
         audit(990, AuditAction::Write, "alice"),
         audit(995, AuditAction::Write, "bob"),
-        audit(999, AuditAction::ReadGranted,  "alice"),
+        audit(999, AuditAction::ReadGranted, "alice"),
     ];
-    let policy = RetentionPolicy::new(
-        7 * 365 * 86400,
-        3 * 365 * 86400,
-        90 * 86400,
-    );
+    let policy = RetentionPolicy::new(7 * 365 * 86400, 3 * 365 * 86400, 90 * 86400);
     let report = generate_report(&[&r1, &r2, &r3], &entries, &policy, NOW, 3600);
 
     // Compliance checks

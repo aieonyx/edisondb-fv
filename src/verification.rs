@@ -22,10 +22,7 @@ pub fn invariant_record_owner_nonempty(record: &Record) -> bool {
 
 /// Check that all records in a store satisfy the owner invariant.
 pub fn invariant_store_owners_nonempty(store: &Store) -> bool {
-    store
-        .records
-        .values()
-        .all(invariant_record_owner_nonempty)
+    store.records.values().all(invariant_record_owner_nonempty)
 }
 
 // ── Invariant 2: Tier gate — Critical/Personal only readable by owner ─────────
@@ -53,13 +50,31 @@ pub fn invariant_audit_monotonic(entries: &[AuditEntry]) -> bool {
     entries.windows(2).all(|w| w[0].timestamp <= w[1].timestamp)
 }
 
-/// Check that audit log hash chain is well-formed (no entry references itself).
+pub(crate) fn audit_link_integrity_valid(
+    previous_hash_matches: bool,
+    entry_hash_valid: bool,
+) -> bool {
+    previous_hash_matches && entry_hash_valid
+}
+
+/// Check that every audit entry is sealed and linked to its predecessor.
+pub fn invariant_audit_chain_integrity(entries: &[AuditEntry]) -> bool {
+    let mut expected_prev = [0u8; 32];
+
+    for entry in entries {
+        if !audit_link_integrity_valid(entry.prev_hash == expected_prev, entry.verify_hash()) {
+            return false;
+        }
+
+        expected_prev = entry.entry_hash;
+    }
+
+    true
+}
+
+/// Compatibility wrapper for the original verification API.
 pub fn invariant_audit_chain_noself(entries: &[AuditEntry]) -> bool {
-    // Each entry's prev_hash should not equal its own hash
-    // (simplified: check no two consecutive entries share prev_hash)
-    entries
-        .windows(2)
-        .all(|w| w[0].prev_hash != w[1].prev_hash || w[0].prev_hash == [0u8; 32])
+    invariant_audit_chain_integrity(entries)
 }
 
 // ── Invariant 4: Policy engine — owner always gets Permit ────────────────────
@@ -198,11 +213,8 @@ pub fn witness_write_read_consistency(
 #[allow(unexpected_cfgs)]
 mod kani_harnesses {
     use super::*;
-    use crate::{
-        ensure_new_record_id,
-        persisted_record_metadata_valid,
-    };
     use crate::policy::tier_ceiling_allows;
+    use crate::{ensure_new_record_id, persisted_record_metadata_valid};
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     enum SymbolicIdentity {
@@ -270,8 +282,7 @@ mod kani_harnesses {
     #[kani::proof]
     fn kani_policy_tier_ceiling() {
         let requester_is_owner: bool = kani::any();
-        let allowed =
-            tier_ceiling_allows(requester_is_owner, &DataTier::Critical);
+        let allowed = tier_ceiling_allows(requester_is_owner, &DataTier::Critical);
 
         assert_eq!(allowed, requester_is_owner);
     }
@@ -290,19 +301,24 @@ mod kani_harnesses {
             created_at: 0,
         };
 
-        assert_eq!(
-            record.validate().is_ok(),
-            !id_empty && !owner_empty
-        );
+        assert_eq!(record.validate().is_ok(), !id_empty && !owner_empty);
     }
 
     #[kani::proof]
     fn kani_storage_id_immutability() {
         let id_exists: bool = kani::any();
 
+        assert_eq!(ensure_new_record_id(id_exists).is_ok(), !id_exists);
+    }
+
+    #[kani::proof]
+    fn kani_audit_link_integrity() {
+        let previous_hash_matches: bool = kani::any();
+        let entry_hash_valid: bool = kani::any();
+
         assert_eq!(
-            ensure_new_record_id(id_exists).is_ok(),
-            !id_exists
+            audit_link_integrity_valid(previous_hash_matches, entry_hash_valid,),
+            previous_hash_matches && entry_hash_valid
         );
     }
 
@@ -313,11 +329,7 @@ mod kani_harnesses {
         let id_is_unique: bool = kani::any();
 
         assert_eq!(
-            persisted_record_metadata_valid(
-                key_matches,
-                tier_matches,
-                id_is_unique,
-            ),
+            persisted_record_metadata_valid(key_matches, tier_matches, id_is_unique,),
             key_matches && tier_matches && id_is_unique
         );
     }
