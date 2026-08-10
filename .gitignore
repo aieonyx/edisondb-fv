@@ -8,3 +8,18 @@ edisondb-ts/node_modules/
 edisondb-ts/dist/
 *.redb
 *.redb.vectors
+
+# Local runtime and accidental root artifacts
+/edison.redb
+/build.log
+/test-run.log
+/FETCH_HEAD
+/DataTier::Critical,
+/DataTier::Personal,
+/DataTier::Noise,
+/{
+edison.redb
+build.log
+test-run.log
+*.redb
+FETCH_HEAD
