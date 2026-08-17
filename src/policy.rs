@@ -6,8 +6,8 @@
 // Roles delegate subsets of that authority to other identities.
 // Policies are evaluated after tier gates (DataTier still gates first).
 
-use std::collections::HashMap;
 use crate::DataTier;
+use std::collections::HashMap;
 
 // ── Action ────────────────────────────────────────────────────────────────────
 
@@ -16,31 +16,31 @@ pub enum Action {
     Read,
     Write,
     Delete,
-    Audit,   // read audit log
-    Grant,   // delegate roles
-    Admin,   // full control (owner-only by default)
+    Audit, // read audit log
+    Grant, // delegate roles
+    Admin, // full control (owner-only by default)
 }
 
 impl Action {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "read"   => Some(Self::Read),
-            "write"  => Some(Self::Write),
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
             "delete" => Some(Self::Delete),
-            "audit"  => Some(Self::Audit),
-            "grant"  => Some(Self::Grant),
-            "admin"  => Some(Self::Admin),
-            _        => None,
+            "audit" => Some(Self::Audit),
+            "grant" => Some(Self::Grant),
+            "admin" => Some(Self::Admin),
+            _ => None,
         }
     }
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Read   => "read",
-            Self::Write  => "write",
+            Self::Read => "read",
+            Self::Write => "write",
             Self::Delete => "delete",
-            Self::Audit  => "audit",
-            Self::Grant  => "grant",
-            Self::Admin  => "admin",
+            Self::Audit => "audit",
+            Self::Grant => "grant",
+            Self::Admin => "admin",
         }
     }
 }
@@ -49,11 +49,11 @@ impl Action {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Role {
-    Owner,    // full control — all actions on all tiers
-    Reader,   // read Noise + Personal (not Critical unless owner)
-    Auditor,  // read audit log only
-    Writer,   // read + write Noise + Personal
-    Admin,    // all actions except Grant (cannot create new owners)
+    Owner,   // full control — all actions on all tiers
+    Reader,  // read Noise + Personal (not Critical unless owner)
+    Auditor, // read audit log only
+    Writer,  // read + write Noise + Personal
+    Admin,   // all actions except Grant (cannot create new owners)
 }
 
 impl Role {
@@ -61,52 +61,54 @@ impl Role {
     pub fn permitted_actions(&self, tier: &DataTier) -> Vec<Action> {
         match self {
             Self::Owner => vec![
-                Action::Read, Action::Write, Action::Delete,
-                Action::Audit, Action::Grant, Action::Admin,
+                Action::Read,
+                Action::Write,
+                Action::Delete,
+                Action::Audit,
+                Action::Grant,
+                Action::Admin,
             ],
             Self::Reader => match tier {
                 DataTier::Critical => vec![],
                 DataTier::Personal => vec![Action::Read],
-                DataTier::Noise    => vec![Action::Read],
+                DataTier::Noise => vec![Action::Read],
             },
             Self::Auditor => vec![Action::Audit],
             Self::Writer => match tier {
                 DataTier::Critical => vec![],
                 DataTier::Personal => vec![Action::Read, Action::Write],
-                DataTier::Noise    => vec![Action::Read, Action::Write],
+                DataTier::Noise => vec![Action::Read, Action::Write],
             },
             Self::Admin => match tier {
-                DataTier::Critical => vec![
-                    Action::Read, Action::Write, Action::Delete, Action::Audit,
-                ],
-                DataTier::Personal => vec![
-                    Action::Read, Action::Write, Action::Delete, Action::Audit,
-                ],
-                DataTier::Noise => vec![
-                    Action::Read, Action::Write, Action::Delete, Action::Audit,
-                ],
+                DataTier::Critical => {
+                    vec![Action::Read, Action::Write, Action::Delete, Action::Audit]
+                }
+                DataTier::Personal => {
+                    vec![Action::Read, Action::Write, Action::Delete, Action::Audit]
+                }
+                DataTier::Noise => vec![Action::Read, Action::Write, Action::Delete, Action::Audit],
             },
         }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "owner"   => Some(Self::Owner),
-            "reader"  => Some(Self::Reader),
+            "owner" => Some(Self::Owner),
+            "reader" => Some(Self::Reader),
             "auditor" => Some(Self::Auditor),
-            "writer"  => Some(Self::Writer),
-            "admin"   => Some(Self::Admin),
-            _         => None,
+            "writer" => Some(Self::Writer),
+            "admin" => Some(Self::Admin),
+            _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Owner   => "owner",
-            Self::Reader  => "reader",
+            Self::Owner => "owner",
+            Self::Reader => "reader",
             Self::Auditor => "auditor",
-            Self::Writer  => "writer",
-            Self::Admin   => "admin",
+            Self::Writer => "writer",
+            Self::Admin => "admin",
         }
     }
 }
@@ -168,12 +170,20 @@ pub struct PolicyRule {
 
 impl PolicyRule {
     pub fn allow(subject: &str, resource: &str, action: Action) -> Self {
-        Self { subject: subject.into(), resource: resource.into(),
-               action, effect: RuleEffect::Allow }
+        Self {
+            subject: subject.into(),
+            resource: resource.into(),
+            action,
+            effect: RuleEffect::Allow,
+        }
     }
     pub fn deny(subject: &str, resource: &str, action: Action) -> Self {
-        Self { subject: subject.into(), resource: resource.into(),
-               action, effect: RuleEffect::Deny }
+        Self {
+            subject: subject.into(),
+            resource: resource.into(),
+            action,
+            effect: RuleEffect::Deny,
+        }
     }
 
     /// Does this rule match the given request?
@@ -197,10 +207,16 @@ pub enum AccessDecision {
 }
 
 impl AccessDecision {
-    pub fn is_permit(&self) -> bool { matches!(self, Self::Permit(_)) }
-    pub fn is_deny(&self)   -> bool { matches!(self, Self::Deny(_)) }
+    pub fn is_permit(&self) -> bool {
+        matches!(self, Self::Permit(_))
+    }
+    pub fn is_deny(&self) -> bool {
+        matches!(self, Self::Deny(_))
+    }
     pub fn reason(&self) -> &str {
-        match self { Self::Permit(r)|Self::Deny(r)|Self::NotApplicable(r) => r }
+        match self {
+            Self::Permit(r) | Self::Deny(r) | Self::NotApplicable(r) => r,
+        }
     }
 }
 
@@ -208,6 +224,23 @@ impl AccessDecision {
 
 pub fn tier_ceiling_allows(is_owner: bool, tier: &DataTier) -> bool {
     !matches!(tier, DataTier::Critical) || is_owner
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PolicyPrecheck {
+    PermitOwner,
+    DenyCritical,
+    Continue,
+}
+
+pub(crate) fn policy_precheck(is_owner: bool, tier: &DataTier) -> PolicyPrecheck {
+    if is_owner {
+        PolicyPrecheck::PermitOwner
+    } else if matches!(tier, DataTier::Critical) {
+        PolicyPrecheck::DenyCritical
+    } else {
+        PolicyPrecheck::Continue
+    }
 }
 
 /// Sovereign policy engine — Inverted Admin Model extended with RBAC + rules.
@@ -226,12 +259,16 @@ pub struct PolicyEngine {
 
 impl PolicyEngine {
     pub fn new() -> Self {
-        Self { delegations: HashMap::new(), rules: vec![] }
+        Self {
+            delegations: HashMap::new(),
+            rules: vec![],
+        }
     }
 
     /// Register a delegation (owner grants role to subject).
     pub fn delegate(&mut self, owner_id: &str, delegation: Delegation) {
-        self.delegations.entry(owner_id.to_string())
+        self.delegations
+            .entry(owner_id.to_string())
             .or_default()
             .push(delegation);
     }
@@ -251,37 +288,48 @@ impl PolicyEngine {
         tier: &DataTier,
         now: u64,
     ) -> AccessDecision {
-        // 1. Owner bypass
-        if subject == owner_id {
-            return AccessDecision::Permit("owner bypass".into());
-        }
-
-        if !tier_ceiling_allows(subject == owner_id, tier) {
-            return AccessDecision::Deny("critical tier requires owner".into());
+        // 1. Owner / Critical precheck
+        match policy_precheck(subject == owner_id, tier) {
+            PolicyPrecheck::PermitOwner => {
+                return AccessDecision::Permit("owner bypass".into());
+            }
+            PolicyPrecheck::DenyCritical => {
+                return AccessDecision::Deny("critical tier requires owner".into());
+            }
+            PolicyPrecheck::Continue => {}
         }
 
         // 2. Explicit Deny rules (highest priority after owner)
         for rule in &self.rules {
             if rule.matches(subject, resource, action) {
                 if matches!(rule.effect, RuleEffect::Deny) {
-                    return AccessDecision::Deny(
-                        format!("explicit deny rule: {}/{}", rule.subject, rule.resource)
-                    );
+                    return AccessDecision::Deny(format!(
+                        "explicit deny rule: {}/{}",
+                        rule.subject, rule.resource
+                    ));
                 }
             }
         }
 
         // 3. Delegation roles
         for (del_owner, delegations) in &self.delegations {
-            if del_owner != owner_id { continue; }
+            if del_owner != owner_id {
+                continue;
+            }
             for del in delegations {
-                if del.subject != subject { continue; }
-                if del.is_expired(now) { continue; }
+                if del.subject != subject {
+                    continue;
+                }
+                if del.is_expired(now) {
+                    continue;
+                }
                 let permitted = del.role.permitted_actions(tier);
                 if permitted.contains(action) {
-                    return AccessDecision::Permit(
-                        format!("role:{} from:{}", del.role.as_str(), del.granted_by)
-                    );
+                    return AccessDecision::Permit(format!(
+                        "role:{} from:{}",
+                        del.role.as_str(),
+                        del.granted_by
+                    ));
                 }
             }
         }
@@ -290,9 +338,10 @@ impl PolicyEngine {
         for rule in &self.rules {
             if rule.matches(subject, resource, action) {
                 if matches!(rule.effect, RuleEffect::Allow) {
-                    return AccessDecision::Permit(
-                        format!("allow rule: {}/{}", rule.subject, rule.resource)
-                    );
+                    return AccessDecision::Permit(format!(
+                        "allow rule: {}/{}",
+                        rule.subject, rule.resource
+                    ));
                 }
             }
         }
@@ -300,7 +349,10 @@ impl PolicyEngine {
         // 5. Default Deny
         AccessDecision::Deny(format!(
             "default deny: {}@{} -> {} on {}",
-            subject, resource, action.as_str(), tier.as_str()
+            subject,
+            resource,
+            action.as_str(),
+            tier.as_str()
         ))
     }
 
@@ -308,7 +360,13 @@ impl PolicyEngine {
         self.delegations.get(owner_id).map(|v| v.len()).unwrap_or(0)
     }
 
-    pub fn rule_count(&self) -> usize { self.rules.len() }
+    pub fn rule_count(&self) -> usize {
+        self.rules.len()
+    }
 }
 
-impl Default for PolicyEngine { fn default() -> Self { Self::new() } }
+impl Default for PolicyEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}

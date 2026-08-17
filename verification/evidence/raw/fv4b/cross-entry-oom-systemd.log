@@ -1,0 +1,31 @@
+Aug 10 16:52:32 pop-os systemd[2287]: app-code-550210.scope: Consumed 2h 14min 24.343s CPU time.
+Aug 10 16:52:33 pop-os chrome[691391]: [691391:691423:0810/165233.732981:INFO:chrome/browser/extensions/extension_garbage_collector.cc:188] Garbage collection for extensions on file thread is complete.
+Aug 10 16:54:36 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:54:40 pop-os systemd[2287]: app-cosmic-com.system76.CosmicAppList-691391.scope: Consumed 4min 52.381s CPU time.
+Aug 10 16:54:40 pop-os systemd[2287]: app-com.google.Chrome-691391.scope: Consumed 42.052s CPU time.
+Aug 10 16:54:42 pop-os systemd[2287]: Started run-ra94a715f18f645bb856ed52247a7730f.scope - /usr/bin/bash -lc "\n    cd ~/Documents/AIEONYX/edisondb-fv\n    set -o pipefail\n\n    /usr/bin/time -v \\\n    timeout 10m \\\n    cargo kani \\\n      --harness kani_audit_digest_distinct_identity_separates_entries \\\n      2>&1 | tee /tmp/fv4b-kani-cross-entry.log\n  ".
+Aug 10 16:55:16 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:55:18 pop-os systemd[2287]: Started app-cosmic-deepin-screen-recorder-692773.scope - Application launched by COSMIC.
+Aug 10 16:55:31 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:55:31 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:55:33 pop-os systemd[2287]: Started app-cosmic-deepin-screen-recorder-692828.scope - Application launched by COSMIC.
+Aug 10 16:55:35 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:55:36 pop-os systemd[2287]: Started app-cosmic-deepin-screen-recorder-692856.scope - Application launched by COSMIC.
+Aug 10 16:55:37 pop-os systemd[2287]: app-cosmic-deepin-screen-recorder-692773.scope: Consumed 1.726s CPU time.
+--
+Aug 10 16:57:36 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:57:37 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:57:37 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:57:51 pop-os cosmic-comp[2432]: Failed to force redraw for corner radius change.
+Aug 10 16:57:51 pop-os cosmic-comp[2432]: Failed to force redraw for corner radius change.
+Aug 10 16:58:10 pop-os systemd[2287]: run-ra94a715f18f645bb856ed52247a7730f.scope: A process of this unit has been killed by the OOM killer.
+Aug 10 16:58:13 pop-os systemd[2287]: run-ra94a715f18f645bb856ed52247a7730f.scope: Failed with result 'oom-kill'.
+Aug 10 16:58:13 pop-os systemd[2287]: run-ra94a715f18f645bb856ed52247a7730f.scope: Consumed 2min 59.276s CPU time.
+Aug 10 16:59:15 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:15 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:44 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:44 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:44 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:45 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:45 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 16:59:45 pop-os systemd[2287]: Started app-cosmic-com.system76.CosmicAppList-693087.scope - Application launched by COSMIC.

@@ -1,0 +1,26 @@
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.69s
+     Running tests/fv4_audit_integrity_tests.rs (target/debug/deps/fv4_audit_integrity_tests-4aea2039b9b18873)
+
+running 18 tests
+test audit_hash_known_answer_v1 ... ok
+test fjall_open_rejects_malformed_audit_entry ... ok
+test fjall_open_rejects_audit_sequence_gap ... ok
+test fjall_open_rejects_tampered_final_audit_entry ... ok
+test fjall_open_rejects_noncanonical_audit_key ... ok
+test fjall_open_rejects_broken_audit_chain ... ok
+test redb_load_rejects_malformed_audit_entry ... ok
+test redb_load_rejects_broken_audit_chain ... ok
+test redb_load_rejects_noncanonical_audit_key ... ok
+test audit_sha256_timestamp_single_bit_tamper_changes_digest ... ok
+test audit_sha256_prev_hash_single_bit_tamper_changes_digest ... ok
+test redb_save_uses_canonical_audit_keys ... ok
+test audit_sha256_distinct_record_identity_separates_entries ... ok
+test redb_save_rejects_unrelated_history_replacement ... ok
+test redb_load_rejects_persisted_content_tamper ... ok
+test redb_save_allows_same_lineage_resave_and_extension ... ok
+test redb_save_rejects_divergent_stale_writer ... ok
+test redb_save_rejects_stale_snapshot_after_history_extension ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+

@@ -213,50 +213,33 @@ pub fn witness_write_read_consistency(
 #[allow(unexpected_cfgs)]
 mod kani_harnesses {
     use super::*;
-    use crate::policy::tier_ceiling_allows;
-    use crate::{ensure_new_record_id, persisted_record_metadata_valid};
-
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    enum SymbolicIdentity {
-        OwnerA,
-        OwnerB,
-        RequesterA,
-        RequesterB,
-    }
-
-    fn symbolic_identity() -> SymbolicIdentity {
-        match kani::any::<u8>() % 4 {
-            0 => SymbolicIdentity::OwnerA,
-            1 => SymbolicIdentity::OwnerB,
-            2 => SymbolicIdentity::RequesterA,
-            _ => SymbolicIdentity::RequesterB,
-        }
-    }
-
-    fn identity_str(identity: SymbolicIdentity) -> &'static str {
-        match identity {
-            SymbolicIdentity::OwnerA => "owner-a",
-            SymbolicIdentity::OwnerB => "owner-b",
-            SymbolicIdentity::RequesterA => "requester-a",
-            SymbolicIdentity::RequesterB => "requester-b",
-        }
-    }
+    use crate::policy::{PolicyPrecheck, policy_precheck};
+    use crate::{
+        AuditAction, AuditEntry, EdisonError, ensure_new_record_id,
+        validate_persisted_record_metadata, verify_audit_entries,
+    };
 
     #[kani::proof]
+    #[kani::unwind(16)]
     fn kani_owner_nonempty_invariant() {
-        let owner = symbolic_identity();
-        let owner_string = identity_str(owner).to_owned();
+        let owner_empty: bool = kani::any();
 
         let record = Record {
             id: "rec:1".into(),
             tier: DataTier::Noise,
-            owner_id: owner_string,
+            owner_id: if owner_empty { "" } else { "owner" }.into(),
             payload: vec![],
             salt: [0u8; 32],
             created_at: 0,
         };
 
-        assert!(invariant_record_owner_nonempty(&record));
+        let result = record.validate();
+
+        if owner_empty {
+            assert_eq!(result, Err(EdisonError::NoOwner));
+        } else {
+            assert!(result.is_ok());
+        }
     }
 
     #[kani::proof]
@@ -282,9 +265,49 @@ mod kani_harnesses {
     #[kani::proof]
     fn kani_policy_tier_ceiling() {
         let requester_is_owner: bool = kani::any();
-        let allowed = tier_ceiling_allows(requester_is_owner, &DataTier::Critical);
+        let tier_selector: u8 = kani::any();
+        let role_selector: u8 = kani::any();
+        let action_selector: u8 = kani::any();
+        let delegation_expired: bool = kani::any();
+        let add_allow_rule: bool = kani::any();
+        let add_deny_rule: bool = kani::any();
 
-        assert_eq!(allowed, requester_is_owner);
+        kani::assume(tier_selector < 3);
+        kani::assume(role_selector < 6);
+        kani::assume(action_selector < 6);
+
+        let tier = match tier_selector {
+            0 => DataTier::Critical,
+            1 => DataTier::Personal,
+            _ => DataTier::Noise,
+        };
+
+        let _downstream_configuration = (
+            role_selector,
+            action_selector,
+            delegation_expired,
+            add_allow_rule,
+            add_deny_rule,
+        );
+
+        let decision = policy_precheck(requester_is_owner, &tier);
+
+        match tier {
+            DataTier::Critical => {
+                if requester_is_owner {
+                    assert_eq!(decision, PolicyPrecheck::PermitOwner);
+                } else {
+                    assert_eq!(decision, PolicyPrecheck::DenyCritical);
+                }
+            }
+            DataTier::Personal | DataTier::Noise => {
+                if requester_is_owner {
+                    assert_eq!(decision, PolicyPrecheck::PermitOwner);
+                } else {
+                    assert_eq!(decision, PolicyPrecheck::Continue);
+                }
+            }
+        }
     }
 
     #[kani::proof]
@@ -311,26 +334,377 @@ mod kani_harnesses {
         assert_eq!(ensure_new_record_id(id_exists).is_ok(), !id_exists);
     }
 
-    #[kani::proof]
-    fn kani_audit_link_integrity() {
-        let previous_hash_matches: bool = kani::any();
-        let entry_hash_valid: bool = kani::any();
+    fn sealed_three_entry_audit_entries() -> Vec<AuditEntry> {
+        let first = AuditEntry::new("rec:0", "owner", AuditAction::Write, 1, [0u8; 32]);
 
-        assert_eq!(
-            audit_link_integrity_valid(previous_hash_matches, entry_hash_valid,),
-            previous_hash_matches && entry_hash_valid
+        let second = AuditEntry::new(
+            "rec:1",
+            "owner",
+            AuditAction::ReadGranted,
+            2,
+            first.entry_hash,
+        );
+
+        let third = AuditEntry::new("rec:2", "owner", AuditAction::Delete, 3, second.entry_hash);
+
+        vec![first, second, third]
+    }
+
+    fn bounded_audit_model_input(entry_seed: u8, mutation_seed: u8, bit_seed: u16) -> [u8; 84] {
+        let first = AuditEntry::new("rec:0", "owner", AuditAction::Write, 1, [0u8; 32]);
+
+        let second = AuditEntry::new(
+            "rec:1",
+            "owner",
+            AuditAction::ReadGranted,
+            2,
+            first.entry_hash,
+        );
+
+        let third = AuditEntry::new("rec:2", "owner", AuditAction::Delete, 3, second.entry_hash);
+
+        let mut entry = match entry_seed % 3 {
+            0 => first,
+            1 => second,
+            _ => third,
+        };
+
+        match mutation_seed % 3 {
+            0 => {}
+            1 => {
+                let bit = (bit_seed % 64) as u32;
+                entry.timestamp ^= 1u64 << bit;
+            }
+            _ => {
+                let bit = (bit_seed % 256) as usize;
+                entry.prev_hash[bit / 8] ^= 1u8 << (bit % 8);
+            }
+        }
+
+        // Production serialization is the single source of truth.
+        let serialized = entry.audit_hash_input();
+        assert_eq!(serialized.len(), 84);
+
+        let mut bytes = [0u8; 84];
+        for index in 0..84 {
+            bytes[index] = serialized[index];
+        }
+
+        bytes
+    }
+
+    #[kani::proof]
+    #[kani::unwind(85)]
+    fn kani_audit_digest_model_single_bit_tamper_changes_digest() {
+        // FV-4b proves the forward property consumed by audit tamper
+        // detection. For mutable bit p:
+        //
+        // T(x XOR e_p) = T(x) XOR code(p), where code(p) = p + 1.
+        //
+        // code(p) is nonzero, so a supported single-bit mutation must
+        // change the bounded verification digest.
+        let entry_seed: u8 = kani::any();
+        let mutation_class: u8 = kani::any();
+        let bit_seed: u16 = kani::any();
+
+        kani::assume(entry_seed < 3);
+        kani::assume(mutation_class == 1 || mutation_class == 2);
+
+        let original = bounded_audit_model_input(entry_seed, 0, 0);
+        let tampered = bounded_audit_model_input(entry_seed, mutation_class, bit_seed);
+
+        if mutation_class == 1 {
+            let bit = (bit_seed % 64) as usize;
+            let byte = 51 - (bit / 8);
+
+            // timestamp is serialized big-endian at bytes 44..52.
+            assert!(original[byte] != tampered[byte]);
+        } else {
+            let bit = (bit_seed % 256) as usize;
+            let byte = 52 + (bit / 8);
+
+            // prev_hash is serialized directly at bytes 52..84.
+            assert!(original[byte] != tampered[byte]);
+        }
+
+        let original_digest = crate::audit_digest(&original);
+        let tampered_digest = crate::audit_digest(&tampered);
+
+        // Bytes 14..16 carry the nine-bit linear syndrome. Showing
+        // either syndrome byte changed establishes digest inequality
+        // without invoking whole-array equality.
+        assert!(
+            original_digest[14] != tampered_digest[14]
+                || original_digest[15] != tampered_digest[15]
         );
     }
 
     #[kani::proof]
-    fn kani_persisted_record_metadata() {
-        let key_matches: bool = kani::any();
-        let tier_matches: bool = kani::any();
-        let id_is_unique: bool = kani::any();
+    #[kani::unwind(85)]
+    fn kani_audit_digest_distinct_identity_separates_entries() {
+        let left_entry: u8 = kani::any();
+        let right_entry: u8 = kani::any();
+
+        kani::assume(left_entry < 3);
+        kani::assume(right_entry < 3);
+        kani::assume(left_entry != right_entry);
+
+        let left = bounded_audit_model_input(left_entry, kani::any(), kani::any());
+        let right = bounded_audit_model_input(right_entry, kani::any(), kani::any());
+
+        // rec:0, rec:1, rec:2 have pairwise-distinct identity bytes.
+        // Identity is carried directly by the verification digest, while
+        // the syndrome is scoped to single-bit timestamp/prev_hash tamper.
+        assert!(left[29] != right[29]);
+
+        let left_digest = crate::audit_digest(&left);
+        let right_digest = crate::audit_digest(&right);
+
+        // In the FV-4b 84-byte model, input[29] is carried directly
+        // to digest[12]. The bounded mutation classes do not modify
+        // record identity, so distinct entries remain separated.
+        assert!(left_digest[12] != right_digest[12]);
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_entry_model_hash_calibration() {
+        // This live harness exercises the verification-only digest.
+        // The earlier real-SHA calibration remains historical evidence.
+        let entry = AuditEntry::new("rec:calibration", "owner", AuditAction::Write, 1, [0u8; 32]);
+
+        assert!(entry.verify_hash());
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_valid_sealed_chain() {
+        let audit_log = sealed_three_entry_audit_entries();
+
+        assert!(verify_audit_entries(&audit_log).is_ok());
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_content_tamper_rejected() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let entry_index: u8 = kani::any();
+        let byte_index: u8 = kani::any();
+        let bit_index: u8 = kani::any();
+
+        kani::assume(entry_index < 3);
+        kani::assume(byte_index < 8);
+        kani::assume(bit_index < 8);
+
+        let mut timestamp = match entry_index {
+            0 => audit_log[0].timestamp.to_be_bytes(),
+            1 => audit_log[1].timestamp.to_be_bytes(),
+            _ => audit_log[2].timestamp.to_be_bytes(),
+        };
+
+        // A one-bit XOR mask is nonzero, so the selected byte must change.
+        timestamp[byte_index as usize] ^= 1u8 << bit_index;
+        let tampered = u64::from_be_bytes(timestamp);
+
+        match entry_index {
+            0 => audit_log[0].timestamp = tampered,
+            1 => audit_log[1].timestamp = tampered,
+            _ => audit_log[2].timestamp = tampered,
+        }
 
         assert_eq!(
-            persisted_record_metadata_valid(key_matches, tier_matches, id_is_unique,),
-            key_matches && tier_matches && id_is_unique
+            verify_audit_entries(&audit_log),
+            Err(EdisonError::AuditChainBroken)
         );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_prev_hash_tamper_rejected() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let entry_index: u8 = kani::any();
+        let byte_index: u8 = kani::any();
+        let bit_index: u8 = kani::any();
+
+        kani::assume(entry_index < 3);
+        kani::assume(byte_index < 32);
+        kani::assume(bit_index < 8);
+
+        let mask = 1u8 << bit_index;
+
+        // A one-bit XOR mask is nonzero, so the selected byte must change.
+        match entry_index {
+            0 => audit_log[0].prev_hash[byte_index as usize] ^= mask,
+            1 => audit_log[1].prev_hash[byte_index as usize] ^= mask,
+            _ => audit_log[2].prev_hash[byte_index as usize] ^= mask,
+        }
+
+        assert_eq!(
+            verify_audit_entries(&audit_log),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_entry_hash_tamper_rejected() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let entry_index: u8 = kani::any();
+        let byte_index: u8 = kani::any();
+        let bit_index: u8 = kani::any();
+
+        kani::assume(entry_index < 3);
+        kani::assume(byte_index < 32);
+        kani::assume(bit_index < 8);
+
+        let mask = 1u8 << bit_index;
+
+        // A one-bit XOR mask is nonzero, so the selected byte must change.
+        match entry_index {
+            0 => audit_log[0].entry_hash[byte_index as usize] ^= mask,
+            1 => audit_log[1].entry_hash[byte_index as usize] ^= mask,
+            _ => audit_log[2].entry_hash[byte_index as usize] ^= mask,
+        }
+
+        assert_eq!(
+            verify_audit_entries(&audit_log),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_reorder_rejected() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let first_index: u8 = kani::any();
+        let second_index: u8 = kani::any();
+
+        kani::assume(first_index < 3);
+        kani::assume(second_index < 3);
+        kani::assume(first_index != second_index);
+
+        audit_log.swap(first_index as usize, second_index as usize);
+
+        assert_eq!(
+            verify_audit_entries(&audit_log),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_interior_drop_rejected() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let drop_index: u8 = kani::any();
+
+        // Only first/interior deletion is claimed here.
+        // Tail deletion is intentionally covered by LIMIT-001 below.
+        kani::assume(drop_index < 2);
+
+        audit_log.remove(drop_index as usize);
+
+        assert_eq!(
+            verify_audit_entries(&audit_log),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn kani_audit_chain_tail_drop_limitation() {
+        let mut audit_log = sealed_three_entry_audit_entries();
+
+        let removed = audit_log.pop();
+        assert!(removed.is_some());
+
+        // LIMIT-001:
+        // Before AuditCheckpoint exists, removal of the final entry leaves
+        // an internally valid chain prefix. This harness witnesses the
+        // limitation rather than claiming rejection.
+        assert!(verify_audit_entries(&audit_log).is_ok());
+    }
+
+    #[kani::proof]
+    fn kani_audit_chain_tail_drop_checkpoint_rejected() {
+        let expected_count: u64 = kani::any();
+        let expected_head: [u8; 32] = kani::any();
+
+        kani::assume(expected_count > 0);
+
+        let checkpoint = crate::AuditCheckpoint {
+            expected_count,
+            expected_head,
+        };
+
+        let actual_count = expected_count - 1;
+
+        assert_eq!(
+            crate::validate_audit_checkpoint(&checkpoint, actual_count, expected_head,),
+            Err(crate::EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[kani::proof]
+    #[kani::unwind(16)]
+    fn kani_persisted_record_metadata() {
+        let use_matching_key: bool = kani::any();
+        let tier_selector: u8 = kani::any();
+        let id_is_unique: bool = kani::any();
+
+        kani::assume(tier_selector < 3);
+
+        let record = Record {
+            id: "rec:fv3".to_string(),
+            tier: match tier_selector {
+                0 => DataTier::Critical,
+                1 => DataTier::Personal,
+                _ => DataTier::Noise,
+            },
+            owner_id: "owner".to_string(),
+            payload: Vec::new(),
+            salt: [0u8; 32],
+            created_at: 0,
+        };
+
+        let expected_tier = DataTier::Personal;
+        let persisted_key: &[u8] = if use_matching_key {
+            b"rec:fv3"
+        } else {
+            b"rec:other"
+        };
+
+        let result = validate_persisted_record_metadata(
+            persisted_key,
+            &record,
+            &expected_tier,
+            id_is_unique,
+        );
+
+        if result.is_ok() {
+            assert_eq!(persisted_key, record.id.as_bytes());
+            assert_eq!(&record.tier, &expected_tier);
+            assert!(id_is_unique);
+        }
+
+        if persisted_key != record.id.as_bytes() {
+            assert_eq!(result, Err(EdisonError::LoadFailed));
+        }
+
+        if record.tier != expected_tier {
+            assert_eq!(result, Err(EdisonError::LoadFailed));
+        }
+
+        if !id_is_unique {
+            assert_eq!(result, Err(EdisonError::LoadFailed));
+        }
+
+        if persisted_key == record.id.as_bytes() && record.tier == expected_tier && id_is_unique {
+            assert!(result.is_ok());
+        }
     }
 }

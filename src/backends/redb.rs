@@ -1,11 +1,11 @@
 use super::StorageBackend;
-use crate::{Store, Record, AuditEntry, EdisonError};
+use crate::{AuditEntry, EdisonError, Record, Store};
 
 // ── RedbBackend ───────────────────────────────────────────────────────────────
 // Phase 1 backend — wraps Store (redb key-value engine).
 pub struct RedbBackend {
     store: Store,
-    path:  String,
+    path: String,
 }
 
 impl RedbBackend {
@@ -13,9 +13,14 @@ impl RedbBackend {
         let store = if std::path::Path::new(path).exists() {
             Store::load(path)?
         } else {
-            Store::new()
+            let store = Store::new();
+            store.save(path)?;
+            store
         };
-        Ok(Self { store, path: path.to_string() })
+        Ok(Self {
+            store,
+            path: path.to_string(),
+        })
     }
 }
 
@@ -29,7 +34,8 @@ impl StorageBackend for RedbBackend {
     }
 
     fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
-        self.store.list_by_owner(owner_id)
+        self.store
+            .list_by_owner(owner_id)
             .into_iter()
             .cloned()
             .collect()

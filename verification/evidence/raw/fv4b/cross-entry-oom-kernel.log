@@ -1,0 +1,41 @@
+Aug 10 16:55:29 pop-os kernel: deepin-screen-r[692773]: segfault at 8 ip 00007bd5d422a538 sp 00007ffca083eed0 error 4 in libQt5DBus.so.5.15.13[39538,7bd5d4206000+65000] likely on CPU 3 (core 1, socket 0)
+Aug 10 16:55:29 pop-os kernel: Code: c3 90 f3 0f 1e fa 48 8b 47 08 8b 80 a0 00 00 00 c3 90 f3 0f 1e fa 55 48 89 e5 41 57 41 56 41 55 41 54 49 89 fc 53 48 83 ec 58 <48> 8b 5e 08 64 48 8b 04 25 28 00 00 00 48 89 45 c8 31 c0 80 bb a4
+Aug 10 16:56:28 pop-os kernel: deepin-screen-r[692886]: segfault at 8 ip 0000783a43da6538 sp 00007ffe9b119e90 error 4 in libQt5DBus.so.5.15.13[39538,783a43d82000+65000] likely on CPU 13 (core 6, socket 0)
+Aug 10 16:56:28 pop-os kernel: Code: c3 90 f3 0f 1e fa 48 8b 47 08 8b 80 a0 00 00 00 c3 90 f3 0f 1e fa 55 48 89 e5 41 57 41 56 41 55 41 54 49 89 fc 53 48 83 ec 58 <48> 8b 5e 08 64 48 8b 04 25 28 00 00 00 48 89 45 c8 31 c0 80 bb a4
+Aug 10 16:58:10 pop-os kernel: cbmc invoked oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0
+Aug 10 16:58:10 pop-os kernel: CPU: 8 UID: 1000 PID: 692742 Comm: cbmc Tainted: G        W  OE       6.17.9-76061709-generic #202511241048~1764607909~24.04~df6b2b6 PREEMPT(voluntary) 
+Aug 10 16:58:10 pop-os kernel: Tainted: [W]=WARN, [O]=OOT_MODULE, [E]=UNSIGNED_MODULE
+Aug 10 16:58:10 pop-os kernel: Hardware name: HP HP EliteBook 855 G7 Notebook PC/8760, BIOS S77 Ver. 01.23.00 11/10/2025
+Aug 10 16:58:10 pop-os kernel: Call Trace:
+Aug 10 16:58:10 pop-os kernel:  <TASK>
+Aug 10 16:58:10 pop-os kernel:  dump_stack_lvl+0x76/0xa0
+Aug 10 16:58:10 pop-os kernel:  dump_stack+0x10/0x20
+Aug 10 16:58:10 pop-os kernel:  dump_header+0x48/0x210
+Aug 10 16:58:10 pop-os kernel:  oom_kill_process+0x118/0x290
+Aug 10 16:58:10 pop-os kernel:  out_of_memory+0x101/0x340
+Aug 10 16:58:10 pop-os kernel:  mem_cgroup_out_of_memory+0xcb/0xe0
+Aug 10 16:58:10 pop-os kernel:  try_charge_memcg+0x44f/0x690
+Aug 10 16:58:10 pop-os kernel:  charge_memcg+0x34/0x80
+Aug 10 16:58:10 pop-os kernel:  __mem_cgroup_charge+0x2d/0xa0
+Aug 10 16:58:10 pop-os kernel:  filemap_add_folio+0x46/0xf0
+Aug 10 16:58:10 pop-os kernel:  __filemap_get_folio+0x1c4/0x340
+Aug 10 16:58:10 pop-os kernel:  filemap_fault+0x10c/0xd50
+Aug 10 16:58:10 pop-os kernel:  ? folio_add_anon_rmap_ptes+0x51/0x210
+Aug 10 16:58:10 pop-os kernel:  ? set_ptes.isra.0+0x3b/0x90
+Aug 10 16:58:10 pop-os kernel:  __do_fault+0x3d/0x190
+Aug 10 16:58:10 pop-os kernel:  do_read_fault+0x12e/0x230
+Aug 10 16:58:10 pop-os kernel:  do_fault+0x167/0x280
+Aug 10 16:58:10 pop-os kernel:  handle_pte_fault+0x15e/0x200
+Aug 10 16:58:10 pop-os kernel:  __handle_mm_fault+0x5ba/0x740
+Aug 10 16:58:10 pop-os kernel:  handle_mm_fault+0x10d/0x2e0
+Aug 10 16:58:10 pop-os kernel:  do_user_addr_fault+0x1d2/0x8d0
+--
+Aug 10 16:58:10 pop-os kernel: [ 692431]  1000 692431      676      350        0      350         0    45056        0             0 time
+Aug 10 16:58:10 pop-os kernel: [ 692432]  1000 692432     4533      468        0      468         0    61440        0             0 tee
+Aug 10 16:58:10 pop-os kernel: [ 692433]  1000 692433     4532      500        0      500         0    61440        0             0 timeout
+Aug 10 16:58:10 pop-os kernel: [ 692434]  1000 692434      860      431        0      431         0    49152       32             0 cargo-kani
+Aug 10 16:58:10 pop-os kernel: [ 692443]  1000 692443    20323      388        0      388         0    77824     1312             0 kani-driver
+Aug 10 16:58:10 pop-os kernel: [ 692742]  1000 692742  5847126  4699022  4698023      999         0 46182400  1043904             0 cbmc
+Aug 10 16:58:10 pop-os kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=/,mems_allowed=0,oom_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-ra94a715f18f645bb856ed52247a7730f.scope,task_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-ra94a715f18f645bb856ed52247a7730f.scope,task=cbmc,pid=692742,uid=1000
+Aug 10 16:58:10 pop-os kernel: Memory cgroup out of memory: Killed process 692742 (cbmc) total-vm:23388504kB, anon-rss:18792092kB, file-rss:3996kB, shmem-rss:0kB, UID:1000 pgtables:45100kB oom_score_adj:0
+Aug 10 16:58:13 pop-os kernel: oom_reaper: reaped process 692742 (cbmc), now anon-rss:0kB, file-rss:404kB, shmem-rss:0kB

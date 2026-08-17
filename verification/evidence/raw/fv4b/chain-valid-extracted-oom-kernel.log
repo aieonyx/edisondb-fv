@@ -1,0 +1,5 @@
+Aug 10 18:45:17 pop-os kernel: CPU: 8 UID: 1000 PID: 709913 Comm: cbmc Tainted: G        W  OE       6.17.9-76061709-generic #202511241048~1764607909~24.04~df6b2b6 PREEMPT(voluntary) 
+Aug 10 18:45:18 pop-os kernel: [ 709913]  1000 709913  5187010  3675984  3673021     2963         0 38002688  1046464             0 cbmc
+Aug 10 18:45:18 pop-os kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=/,mems_allowed=0,oom_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-r470fc45583fb42d690a779d29eb899cb.scope,task_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/run-r470fc45583fb42d690a779d29eb899cb.scope,task=cbmc,pid=709913,uid=1000
+Aug 10 18:45:18 pop-os kernel: Memory cgroup out of memory: Killed process 709913 (cbmc) total-vm:20748040kB, anon-rss:14692084kB, file-rss:11852kB, shmem-rss:0kB, UID:1000 pgtables:37112kB oom_score_adj:0
+Aug 10 18:45:20 pop-os kernel: oom_reaper: reaped process 709913 (cbmc), now anon-rss:0kB, file-rss:8kB, shmem-rss:0kB

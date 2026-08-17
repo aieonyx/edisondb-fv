@@ -57,13 +57,42 @@ The open boundary rejects:
 
 ## Formal Verification
 
-Kani result:
+Original recorded Kani result:
 
 - Harnesses: 6
 - Checks: 194
 - Failures: 0
 - Unreachable checks: 4
 - Result: successful
+
+FV-4b evidence-integrity re-audit established that the `194 checks /
+4 unreachable` values belonged only to the final
+`kani_owner_nonempty_invariant` harness. They were not an aggregate count for
+all six harnesses.
+
+Independent historical reproduction at commit
+`412977e7abb6e6647ce9c819ef89c21a825ebc74` with Kani 0.67.0 and CBMC 6.8.0
+verified all 6 harnesses with 0 failures.
+
+Per-harness summaries:
+
+- `kani_owner_nonempty_invariant`: 194 checks, 4 unreachable
+- `kani_tier_gate_critical`: 237 checks, 5 unreachable
+- `kani_policy_tier_ceiling`: 7 checks, 0 unreachable
+- `kani_record_identity_validation`: 198 checks, 4 unreachable
+- `kani_storage_id_immutability`: 8 checks, 0 unreachable
+- `kani_persisted_record_metadata`: 1 check, 0 unreachable
+
+Arithmetic sum: 645 checks, 0 failures, 13 unreachable. This arithmetic sum
+is not a Kani-emitted aggregate count.
+
+Combined raw evidence:
+
+`verification/evidence/raw/fv3-historical-all-harnesses.log`
+
+SHA-256:
+
+`787fe78d31bd53afea95edb49ca537bbf300ed3c63188635a58b6a2cea1e104f`
 
 FV-3 harnesses cover:
 

@@ -1,10 +1,10 @@
 # FV-2 Sovereignty Kernel Evidence
 
-Copyright (c) 2026 Edison Lepiten / AIEONYX  
+Copyright (c) 2026 Edison Lepiten / AIEONYX
 License: Apache-2.0
 
-**Status:** Verification complete; phase closure pending commit and push  
-**Branch:** `fv/sovereignty-kernel`  
+**Status:** Verification complete; phase closure pending commit and push
+**Branch:** `fv/sovereignty-kernel`
 **Date:** 2026-08-04
 
 ## Verified Claim
@@ -50,15 +50,41 @@ Location:
 
     src/verification.rs
 
-Result:
+Original recorded result:
 
     194 checks
     0 failures
     4 unreachable checks
     3 harnesses successfully verified
 
-The harness symbolically evaluates both ownership states and proves that
-Critical-tier access equals the requester ownership state.
+FV-4b evidence-integrity re-audit established that the `194 checks /
+4 unreachable` values belonged only to the final
+`kani_owner_nonempty_invariant` harness. They were not an aggregate count for
+all three harnesses.
+
+Independent historical reproduction at commit
+`feea60da7e70982945cf16e178d55f91c6f5e9f0` with Kani 0.67.0 and CBMC 6.8.0
+verified all 3 harnesses with 0 failures.
+
+Per-harness summaries:
+
+- `kani_owner_nonempty_invariant`: 194 checks, 4 unreachable
+- `kani_tier_gate_critical`: 237 checks, 5 unreachable
+- `kani_policy_tier_ceiling`: 7 checks, 0 unreachable
+
+Arithmetic sum: 438 checks, 0 failures, 9 unreachable. This arithmetic sum is
+not a Kani-emitted aggregate count.
+
+Combined raw evidence:
+
+`verification/evidence/raw/fv2-historical-all-harnesses.log`
+
+SHA-256:
+
+`a1029daac86d6131e0a259c0ff9cc883fd7cab9bad3a754b00ada2f7574c8366`
+
+The policy harness symbolically evaluates both ownership states and proves
+that Critical-tier access equals the requester ownership state.
 
 ## Deterministic Verification
 

@@ -1,0 +1,57 @@
+Aug 09 07:10:22 pop-os kernel: [ 543510]  1000 543510   308700     5956     2987      921      2048   667648     4160             0 deepin-screen-r
+Aug 09 07:10:22 pop-os kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/app-code-540800.scope,task=cbmc,pid=543386,uid=1000
+Aug 09 07:10:22 pop-os kernel: Out of memory: Killed process 543386 (cbmc) total-vm:45165080kB, anon-rss:25515232kB, file-rss:2372kB, shmem-rss:0kB, UID:1000 pgtables:83604kB oom_score_adj:0
+Aug 09 07:10:26 pop-os kernel: oom_reaper: reaped process 543386 (cbmc), now anon-rss:140kB, file-rss:216kB, shmem-rss:0kB
+Aug 09 07:28:01 pop-os kernel: cbmc invoked oom-killer: gfp_mask=0x140dca(GFP_HIGHUSER_MOVABLE|__GFP_ZERO|__GFP_COMP), order=0, oom_score_adj=0
+Aug 09 07:28:01 pop-os kernel: CPU: 13 UID: 1000 PID: 548296 Comm: cbmc Tainted: G        W  OE       6.17.9-76061709-generic #202511241048~1764607909~24.04~df6b2b6 PREEMPT(voluntary) 
+Aug 09 07:28:01 pop-os kernel: Tainted: [W]=WARN, [O]=OOT_MODULE, [E]=UNSIGNED_MODULE
+Aug 09 07:28:01 pop-os kernel: Hardware name: HP HP EliteBook 855 G7 Notebook PC/8760, BIOS S77 Ver. 01.23.00 11/10/2025
+Aug 09 07:28:01 pop-os kernel: Call Trace:
+Aug 09 07:28:01 pop-os kernel:  <TASK>
+Aug 09 07:28:01 pop-os kernel:  dump_stack_lvl+0x76/0xa0
+Aug 09 07:28:01 pop-os kernel:  dump_stack+0x10/0x20
+Aug 09 07:28:01 pop-os kernel:  dump_header+0x48/0x210
+Aug 09 07:28:01 pop-os kernel:  oom_kill_process+0x118/0x290
+Aug 09 07:28:01 pop-os kernel:  ? srso_return_thunk+0x5/0x5f
+Aug 09 07:28:01 pop-os kernel:  ? oom_evaluate_task+0x15c/0x210
+Aug 09 07:28:01 pop-os kernel:  out_of_memory+0x101/0x340
+Aug 09 07:28:01 pop-os kernel:  __alloc_pages_may_oom+0x109/0x1d0
+Aug 09 07:28:01 pop-os kernel:  __alloc_pages_slowpath.constprop.0+0x615/0x9d0
+Aug 09 07:28:01 pop-os kernel:  ? get_page_from_freelist+0x2fb/0x680
+Aug 09 07:28:01 pop-os kernel:  __alloc_frozen_pages_noprof+0x347/0x360
+Aug 09 07:28:01 pop-os kernel:  alloc_pages_mpol+0x7e/0x1a0
+Aug 09 07:28:01 pop-os kernel:  vma_alloc_folio_noprof+0x6d/0xf0
+Aug 09 07:28:01 pop-os kernel:  alloc_anon_folio+0x1ed/0x4a0
+Aug 09 07:28:01 pop-os kernel:  do_anonymous_page+0x173/0x4f0
+Aug 09 07:28:01 pop-os kernel:  handle_pte_fault+0x1df/0x200
+--
+Aug 09 07:28:01 pop-os kernel: [ 547376]  1000 547376      676      350        0      350         0    45056        0             0 time
+Aug 09 07:28:01 pop-os kernel: [ 547377]  1000 547377     4533      428        0      428         0    57344        0             0 tee
+Aug 09 07:28:01 pop-os kernel: [ 547378]  1000 547378     4532      427        0      427         0    57344        0             0 timeout
+Aug 09 07:28:01 pop-os kernel: [ 547379]  1000 547379      860      441        0      441         0    45056       32             0 cargo-kani
+Aug 09 07:28:01 pop-os kernel: [ 547388]  1000 547388    20314      349        0      349         0    77824     1280             0 kani-driver
+Aug 09 07:28:01 pop-os kernel: [ 548296]  1000 548296 11297334  6375727  6375086      641         0 85827584  4304189             0 cbmc
+Aug 09 07:28:01 pop-os kernel: [ 548754]     0 548754     7564      594      245      349         0    57344      573             0 (udev-worker)
+Aug 09 07:28:01 pop-os kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/user.slice/user-1000.slice/user@1000.service/app.slice/app-code-544081.scope,task=cbmc,pid=548296,uid=1000
+Aug 09 07:28:01 pop-os kernel: Out of memory: Killed process 548296 (cbmc) total-vm:45189336kB, anon-rss:25500344kB, file-rss:2564kB, shmem-rss:0kB, UID:1000 pgtables:83816kB oom_score_adj:0
+Aug 09 07:28:05 pop-os kernel: oom_reaper: reaped process 548296 (cbmc), now anon-rss:92kB, file-rss:384kB, shmem-rss:0kB
+Aug 09 07:29:29 pop-os kernel: wlp1s0: deauthenticating from 8a:cf:ba:9d:d0:62 by local choice (Reason: 3=DEAUTH_LEAVING)
+Aug 09 07:29:30 pop-os kernel: PM: suspend entry (deep)
+Aug 09 07:29:30 pop-os kernel: PM: suspend exit
+Aug 09 07:29:30 pop-os kernel: PM: suspend entry (s2idle)
+Aug 09 07:29:30 pop-os kernel: Filesystems sync: 0.026 seconds
+Aug 09 14:50:33 pop-os kernel: Freezing user space processes
+Aug 09 14:50:33 pop-os kernel: Freezing user space processes completed (elapsed 0.004 seconds)
+Aug 09 14:50:33 pop-os kernel: OOM killer disabled.
+Aug 09 14:50:33 pop-os kernel: Freezing remaining freezable tasks
+Aug 09 14:50:33 pop-os kernel: Freezing remaining freezable tasks completed (elapsed 0.002 seconds)
+Aug 09 14:50:33 pop-os kernel: printk: Suspending console(s) (use no_console_suspend to debug)
+Aug 09 14:50:33 pop-os kernel: ACPI: EC: interrupt blocked
+Aug 09 14:50:33 pop-os kernel: ACPI: EC: interrupt unblocked
+Aug 09 14:50:33 pop-os kernel: [drm] PCIE GART of 1024M enabled.
+Aug 09 14:50:33 pop-os kernel: [drm] PTB located at 0x000000F41FC00000
+Aug 09 14:50:33 pop-os kernel: amdgpu 0000:03:00.0: amdgpu: SMU is resuming...
+Aug 09 14:50:33 pop-os kernel: amdgpu 0000:03:00.0: amdgpu: dpm has been disabled
+Aug 09 14:50:33 pop-os kernel: amdgpu 0000:03:00.0: amdgpu: SMU is resumed successfully!
+Aug 09 14:50:33 pop-os kernel: amdgpu 0000:03:00.0: amdgpu: ring gfx uses VM inv eng 0 on hub 0
+Aug 09 14:50:33 pop-os kernel: amdgpu 0000:03:00.0: amdgpu: ring comp_1.0.0 uses VM inv eng 1 on hub 0

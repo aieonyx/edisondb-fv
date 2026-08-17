@@ -1,0 +1,207 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.72s
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.91s
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.99s
+Checking harness verification::kani_harnesses::kani_policy_tier_ceiling...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/edisonbl/Documents/AIEONYX/edisondb-fv/target/kani/x86_64-unknown-linux-gnu/debug/deps/edisondb__RNvNtNtCsh53XPqpdbtl_8edisondb12verification14kani_harnesses24kani_policy_tier_ceiling.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file src/verification.rs line 298 column 15 function verification::kani_harnesses::kani_policy_tier_ceiling thread 0
+Runtime Symex: 0.0281605s
+size of program expression: 844 steps
+slicing removed 430 assignments
+Generated 63 VCC(s), 9 remaining after simplification
+Runtime Postprocess Equation: 0.000219936s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.00145414s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 5.761e-06s
+Solving with CaDiCaL 2.0.0
+788 variables, 1006 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000111061s
+Runtime decision procedure: 0.00164493s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+789 variables, 1007 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 3.2642e-05s
+Runtime decision procedure: 5.7369e-05s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+790 variables, 1008 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 2.9897e-05s
+Runtime decision procedure: 5.0696e-05s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+791 variables, 1009 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 8.1735e-05s
+Runtime decision procedure: 0.000101703s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+792 variables, 1010 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 1.5629e-05s
+Runtime decision procedure: 3.0798e-05s
+
+RESULTS:
+Check 1: verification::kani_harnesses::kani_policy_tier_ceiling.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: src/verification.rs:298:15 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 2: verification::kani_harnesses::kani_policy_tier_ceiling.assertion.1
+	 - Status: SUCCESS
+	 - Description: "assertion failed: decision == PolicyPrecheck::PermitOwner"
+	 - Location: src/verification.rs:314:21 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 3: verification::kani_harnesses::kani_policy_tier_ceiling.assertion.2
+	 - Status: SUCCESS
+	 - Description: "assertion failed: decision == PolicyPrecheck::Continue"
+	 - Location: src/verification.rs:319:21 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 4: verification::kani_harnesses::kani_policy_tier_ceiling.assertion.3
+	 - Status: SUCCESS
+	 - Description: "assertion failed: decision == PolicyPrecheck::PermitOwner"
+	 - Location: src/verification.rs:301:21 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 5: verification::kani_harnesses::kani_policy_tier_ceiling.assertion.4
+	 - Status: SUCCESS
+	 - Description: "assertion failed: decision == PolicyPrecheck::DenyCritical"
+	 - Location: src/verification.rs:306:21 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 6: policy::policy_precheck.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 7: policy::policy_precheck.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 8: policy::policy_precheck.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 9: policy::policy_precheck.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 10: policy::policy_precheck.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 11: policy::policy_precheck.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/policy.rs:226:24 in function policy::policy_precheck
+
+Check 12: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 13: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 14: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 15: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 16: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 17: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 18: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 19: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 20: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 21: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 22: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+Check 23: <policy::PolicyPrecheck as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/policy.rs:213:30 in function <policy::PolicyPrecheck as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 23 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.092333086s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+	Command being timed: "timeout 5m cargo kani --harness kani_policy_tier_ceiling"
+	User time (seconds): 4.09
+	System time (seconds): 1.27
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.34
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 366348
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 249050
+	Voluntary context switches: 1484
+	Involuntary context switches: 556
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 145840
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

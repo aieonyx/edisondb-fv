@@ -1,0 +1,47 @@
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.94s
+     Running tests/fv4_audit_integrity_tests.rs (target/debug/deps/fv4_audit_integrity_tests-4aea2039b9b18873)
+
+running 16 tests
+test audit_hash_known_answer_v1 ... ok
+test fjall_open_rejects_malformed_audit_entry ... ok
+test fjall_open_rejects_audit_sequence_gap ... ok
+test fjall_open_rejects_tampered_final_audit_entry ... ok
+test fjall_open_rejects_noncanonical_audit_key ... ok
+test fjall_open_rejects_broken_audit_chain ... ok
+test redb_load_rejects_malformed_audit_entry ... ok
+test redb_load_rejects_broken_audit_chain ... ok
+test redb_load_rejects_noncanonical_audit_key ... ok
+test redb_save_uses_canonical_audit_keys ... ok
+test audit_sha256_prev_hash_single_bit_tamper_changes_digest ... ok
+test audit_sha256_distinct_record_identity_separates_entries ... ok
+test audit_sha256_timestamp_single_bit_tamper_changes_digest ... ok
+test redb_load_rejects_persisted_content_tamper ... ok
+test redb_save_rejects_unrelated_history_replacement ... ok
+test redb_save_allows_same_lineage_resave_and_extension ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+	Command being timed: "cargo test --locked --test fv4_audit_integrity_tests -- --nocapture"
+	User time (seconds): 15.82
+	System time (seconds): 5.40
+	Percent of CPU this job got: 365%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.81
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 712108
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3193
+	Minor (reclaiming a frame) page faults: 534099
+	Voluntary context switches: 37109
+	Involuntary context switches: 8640
+	Swaps: 0
+	File system inputs: 16
+	File system outputs: 1289448
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

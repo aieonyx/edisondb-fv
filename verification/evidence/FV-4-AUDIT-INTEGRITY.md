@@ -29,7 +29,7 @@ Toolchain:
 - Kani Rust Verifier 0.67.0
 - CBMC 6.8.0
 
-Final result:
+Original recorded result:
 
 - 7 proof harnesses verified
 - 194 verification checks
@@ -37,7 +37,42 @@ Final result:
 - 4 unreachable checks
 - Verification successful
 
-The FV-4 proof establishes that an audit-link decision is valid exactly when:
+FV-4b evidence-integrity re-audit established that the `194 checks /
+4 unreachable` values belonged only to the final
+`kani_owner_nonempty_invariant` harness. They were not an aggregate count for
+all seven harnesses.
+
+Independent historical reproduction at commit
+`5885efbdf1f4b186c68962ccb78c5dc793d78678` with Kani 0.67.0 and CBMC 6.8.0
+verified all 7 harnesses with 0 failures.
+
+Per-harness summaries:
+
+- `kani_owner_nonempty_invariant`: 194 checks, 4 unreachable
+- `kani_tier_gate_critical`: 237 checks, 5 unreachable
+- `kani_policy_tier_ceiling`: 7 checks, 0 unreachable
+- `kani_record_identity_validation`: 198 checks, 4 unreachable
+- `kani_storage_id_immutability`: 8 checks, 0 unreachable
+- `kani_audit_link_integrity`: 1 check, 0 unreachable
+- `kani_persisted_record_metadata`: 1 check, 0 unreachable
+
+Arithmetic sum: 646 checks, 0 failures, 13 unreachable. This arithmetic sum
+is not a Kani-emitted aggregate count.
+
+Combined raw evidence:
+
+`verification/evidence/raw/fv4-historical-all-harnesses.log`
+
+SHA-256:
+
+`b17f6dfa5c195b3eb778c4c25993d132c4f2d20e87b450657a508e75e751bc52`
+
+The historical `kani_audit_link_integrity` harness reproduced successfully,
+but later review established that it proves only its Boolean decision helper
+and does not constitute a production audit-chain proof.
+
+The historical FV-4 proof recorded that an audit-link decision is valid
+exactly when:
 
 - the previous hash matches the expected chain tail; and
 - the current entry seal is valid.
@@ -98,3 +133,83 @@ Those concerns belong to later verification and qualification phases.
 FV-4 demonstrates that EdisonDB-FV detects malformed, reordered, missing, incorrectly keyed, link-tampered, and content-tampered audit records across both Redb and Fjall persistence paths.
 
 The audit-chain tail exported through ARPi now represents the sealed final entry.
+
+## ERRATA — FV-4b
+
+FV-4 claim 5 stated that "tampering with the final audit entry is detected."
+That wording was imprecise.
+
+The FV-4 implementation detects modification of a final audit entry because
+its stored `entry_hash` no longer matches the hash recomputed from the entry
+content and `prev_hash`.
+
+However, the pre-FV-4b `verify_audit_chain()` implementation does not detect
+removal of the final audit entry. A truncated chain prefix can remain
+internally valid because the verifier has no independently persisted expected
+entry count or expected terminal chain hash.
+
+FV-4b records this as a witnessed historical limitation. The local
+remediation now persists an audit checkpoint containing the expected entry
+count and expected terminal chain hash across the Redb and Fjall persistence
+paths.
+
+FV-4b additionally closes public local re-anchoring paths discovered during
+review: `Store` storage collections are no longer publicly mutable, and Redb
+`Store::save()` requires the already-persisted audit history to be an exact
+prefix of the candidate history before rewriting persisted state.
+
+The checkpoint tail-drop rejection harness and current dynamic storage/lineage
+tests pass. Final FV-4b release closure still requires commit-bound evidence and
+the remaining phase-level remediation obligations.
+
+This correction does not change the original FV-4 verification results. It
+narrows the interpretation of the claim to what the implementation actually
+established.
+
+### Security scope
+
+The FV-4 hash chain is tamper-evident but not independently authenticated.
+An attacker capable of rewriting both the audit chain and its checkpoint is
+outside the protection provided by the FV-4b checkpoint alone. Authentication
+of the checkpoint is deferred to the encryption and secret-boundary phase.
+
+### ERRATUM #2 — ARPi audit-tail integration
+
+FV-4 claim 12 stated that ARPi headers commit to the sealed audit-chain tail.
+That statement requires a narrower interpretation.
+
+The ARPi API surface includes an audit-aware header construction path that
+accepts the sealed audit-chain tail, and the FV-4 test suite exercises that
+path.
+
+However, FV-4b architectural review found that this audit-aware construction
+path is not currently wired into a production serving path. The verified
+property therefore applies to the API-level construction path and must not be
+interpreted as evidence that deployed responses currently carry an external
+audit-chain anchor.
+
+FV-4b also records that the mobile deployment uses a separate ARPi-format
+implementation whose provenance data is not the same as the audit-tail field
+used by the server-side ARPi format.
+
+Accordingly, ARPi is not treated as a current external audit anchor in the
+FV-4b threat model. Production integration and interface unification remain
+separate remediation work.
+
+#### Registered limitations
+
+The following limitations were identified during FV-4b architectural review
+and are assigned to later verification phases:
+
+- `LIMIT-002`: the audit-tail-aware ARPi header construction path is verified
+  at API level but is not wired into a production response path.
+- `LIMIT-003`: the mobile database path does not currently route through the
+  same verified storage and policy chokepoint as the core Store path.
+- `LIMIT-004`: mobile provenance/content verification requires fail-closed
+  on-device enforcement on the deployed target.
+- `LIMIT-005`: mobile record persistence and write-counter persistence are
+  not yet demonstrated to be one atomic crash-consistent transition.
+
+These entries are findings, not completed remediations. Their final mappings
+to claims, tests, harnesses, and assigned phases will be maintained in the
+FV-4b claim registry.
