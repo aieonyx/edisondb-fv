@@ -1,0 +1,160 @@
+name: EdisonDB Kani Verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fv4b-kani:
+    name: FV-4b required proofs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.0 --profile minimal
+          rustup default 1.97.0
+          rustc --version
+          cargo --version
+
+      - name: Install pinned Kani
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install --locked kani-verifier --version 0.67.0
+          cargo kani setup
+
+      - name: Verify Kani and CBMC versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p kani-artifacts
+
+          cargo kani --version \
+            | tee kani-artifacts/toolchain.log
+
+          KANI_VERSION="$(cargo kani --version)"
+          if [ "$KANI_VERSION" != "cargo-kani 0.67.0" ]; then
+            echo "Unexpected Kani version: $KANI_VERSION"
+            exit 1
+          fi
+
+          CBMC="$HOME/.kani/kani-0.67.0/bin/cbmc"
+
+          if [ ! -x "$CBMC" ]; then
+            echo "Bundled CBMC binary not found: $CBMC"
+            exit 1
+          fi
+
+          CBMC_VERSION="$("$CBMC" --version)"
+
+          printf 'CBMC: %s\n' "$CBMC_VERSION" \
+            | tee -a kani-artifacts/toolchain.log
+
+          if [ "$CBMC_VERSION" != "6.8.0 (cbmc-6.8.0)" ]; then
+            echo "Unexpected CBMC version: $CBMC_VERSION"
+            exit 1
+          fi
+
+          rustc --version \
+            | tee -a kani-artifacts/toolchain.log
+
+          cargo --version \
+            | tee -a kani-artifacts/toolchain.log
+
+      - name: Verify dependency lock state
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo check --locked
+
+      - name: Prove owner non-empty invariant
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_owner_nonempty_invariant \
+            2>&1 \
+            | tee kani-artifacts/owner-nonempty.log
+
+      - name: Prove Critical policy ceiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_policy_tier_ceiling \
+            2>&1 \
+            | tee kani-artifacts/policy-tier-ceiling.log
+
+      - name: Prove record identity validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_record_identity_validation \
+            2>&1 \
+            | tee kani-artifacts/record-identity.log
+
+      - name: Prove storage ID immutability
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_storage_id_immutability \
+            2>&1 \
+            | tee kani-artifacts/storage-id-immutability.log
+
+      - name: Prove checkpoint tail-drop rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_audit_chain_tail_drop_checkpoint_rejected \
+            2>&1 \
+            | tee kani-artifacts/tail-drop-checkpoint.log
+
+      - name: Prove persisted metadata validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo kani \
+            --harness kani_persisted_record_metadata \
+            2>&1 \
+            | tee kani-artifacts/persisted-record-metadata.log
+
+      - name: Verify Kani did not modify dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- Cargo.lock
+
+      - name: Record workflow provenance
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p kani-artifacts
+          {
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+          } > kani-artifacts/workflow-provenance.txt
+
+      - name: Upload raw Kani evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fv4b-kani-${{ github.run_id }}-${{ github.run_attempt }}
+          path: kani-artifacts/
+          if-no-files-found: error
+          retention-days: 90
