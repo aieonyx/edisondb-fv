@@ -377,7 +377,7 @@ The current-tree regression completed with zero failed test targets.
 
 ### LIMIT-001 status
 
-`LOCAL REMEDIATION COMPLETE / FINAL COMMIT BINDING PENDING`
+`LOCAL REMEDIATION COMPLETE / COMMIT-BOUND EVIDENCE COMPLETE`
 
 The remaining security boundary is different from local tail truncation:
 the checkpoint is not yet authenticated against an attacker who can coherently
@@ -386,8 +386,7 @@ rewrite both the complete audit history and the checkpoint.
 Authenticated checkpoint sealing remains assigned to FV-5.
 
 The archived logs in this section were produced from the current remediation
-working tree. Final FV-4b evidence must cite the reviewed commit on which the
-corresponding verification run was executed.
+working tree. Final FV-4b evidence is now bound to reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534` through successful GitHub Actions run `32210859833`.
 
 ## Assumptions
 
@@ -400,6 +399,53 @@ corresponding verification run was executed.
    itself has been formally verified.
 5. The archived raw logs are identified by their recorded SHA-256 digests.
 
+## Commit-Bound Verification Closure
+
+Reviewed production source:
+
+`5c63ac45289e876eb563f1752eb796a19b553534`
+
+GitHub Actions verification:
+
+- workflow: `EdisonDB Kani Verification`;
+- run ID: `32210859833`;
+- event: `workflow_dispatch`;
+- conclusion: `success`;
+- Kani: `0.67.0`;
+- CBMC: `6.8.0`;
+- Rust: `1.97.0`;
+- mandatory harnesses: `6 / 6` successful;
+- arithmetic Kani total: `938 checks / 0 failed / 13 unreachable`.
+
+The six mandatory harnesses cover the production-path owner validation,
+Critical-tier precheck, record identity validation, storage ID immutability,
+checkpoint-backed tail-drop rejection, and persisted-record metadata
+validation.
+
+The CI artifact includes the six raw harness logs, pinned toolchain evidence,
+and workflow provenance binding run `32210859833` to the reviewed source
+commit. The final evidence package also retains the corresponding local
+commit-bound Kani run, the `cargo test --locked --lib --tests
+-- --test-threads=1` gate, and the benchmark smoke gate.
+
+The local test result is an arithmetic per-target sum of `254 passed /
+0 failed / 0 ignored`. The benchmark smoke gate completed all seven expected
+benchmark cases successfully.
+
+Evidence:
+
+`verification/evidence/raw/fv4b/final-5c63ac45289e/`
+
+Manifest:
+
+`verification/evidence/raw/fv4b/final-5c63ac45289e/SHA256SUMS.txt`
+
+This closure does not broaden the formal claims. The production SHA-256
+bounded-model experiments previously classified as `INCONCLUSIVE` remain so.
+The complete HashMap-backed `PolicyEngine` is not claimed as formally
+verified. Authenticated checkpoint sealing remains deferred to FV-5, and
+complete Edison-owned local-state erasure remains `LIMIT-008`.
+
 ## Explicit Limitations
 
 1. `CLAIM-FV4B-001` is not a formal proof of SHA-256 injectivity or collision
@@ -410,7 +456,7 @@ corresponding verification run was executed.
    runs.
 4. `LIMIT-001` local audit-tail truncation and API re-anchoring remediation is
    implemented and has passed its current formal/dynamic gates. Final
-   commit-bound evidence remains required before FV-4b release closure.
+   commit-bound evidence is now recorded under `verification/evidence/raw/fv4b/final-5c63ac45289e/`.
    Authenticated checkpoint sealing remains outside this local remediation and
    is assigned to FV-5.
 5. Remaining FV-4b remediation obligations are not closed by these property

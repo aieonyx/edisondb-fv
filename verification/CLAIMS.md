@@ -447,8 +447,7 @@ inconclusive. Production SHA-256 behavior for the bounded timestamp,
 `prev_hash`, and distinct-record identity properties is covered by dynamic
 property testing under the standing cryptographic assumptions.
 
-No FV-4b Kani verification check count is published until the successful
-current harness set is established independently.
+The successful commit-bound six-harness FV-4b Kani gate reports an arithmetic total of `938 checks / 0 failed / 13 unreachable` against reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534`.
 
 ### CLAIM-FV4B-002 — Production Critical policy precheck
 
@@ -607,11 +606,60 @@ It does not establish protection against an attacker capable of coherently
 rewriting the entire audit history and checkpoint. Authentication of the
 checkpoint remains deferred to FV-5.
 
-The currently archived local logs precede final FV-4b commit binding and must
-be rerun or otherwise replaced by evidence explicitly bound to the final
-reviewed commit before FV-4b release closure.
+The original intermediate local logs are retained as development evidence. Final commit-bound local and CI evidence is now archived under `verification/evidence/raw/fv4b/final-5c63ac45289e/` and is bound to reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534`.
 
 ## Registered Limitations
+
+#### FV-4b commit-bound closure
+
+**Status:** `SOURCE-BOUND VERIFICATION COMPLETE`
+
+The reviewed FV-4b production source is bound to commit
+`5c63ac45289e876eb563f1752eb796a19b553534`.
+
+Independent GitHub Actions workflow run `32210859833` executed
+`EdisonDB Kani Verification` through `workflow_dispatch` against that exact
+source commit and completed successfully.
+
+Pinned verification toolchain:
+
+- Kani `0.67.0`;
+- CBMC `6.8.0`;
+- Rust `1.97.0`.
+
+The six mandatory commit-bound harnesses completed successfully:
+
+1. `kani_owner_nonempty_invariant`;
+2. `kani_policy_tier_ceiling`;
+3. `kani_record_identity_validation`;
+4. `kani_storage_id_immutability`;
+5. `kani_audit_chain_tail_drop_checkpoint_rejected`;
+6. `kani_persisted_record_metadata`.
+
+The arithmetic sum of their individual Kani reports is:
+
+- `938` checks;
+- `0` failed;
+- `13` unreachable.
+
+This is an arithmetic sum of the six selected harness reports, not a claim that
+every FV-4b experiment or every EdisonDB property is formally verified.
+In particular, the production-SHA bounded proof attempts recorded as
+`INCONCLUSIVE` remain inconclusive, and the formal policy result remains scoped
+to the production `policy_precheck` decision core rather than the complete
+HashMap-backed `PolicyEngine`.
+
+Commit-bound CI and local evidence is archived under:
+
+`verification/evidence/raw/fv4b/final-5c63ac45289e/`
+
+The evidence manifest is:
+
+`verification/evidence/raw/fv4b/final-5c63ac45289e/SHA256SUMS.txt`
+
+`LIMIT-001` local tail-truncation remediation is therefore commit-bound for
+FV-4b. Authenticated checkpoint sealing remains assigned to FV-5, and
+`LIMIT-008` remains an explicit trust boundary.
 
 ### LIMIT-001 — Audit-tail truncation
 

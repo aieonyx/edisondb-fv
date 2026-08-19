@@ -1,0 +1,36 @@
+Commit: 5c63ac45289e876eb563f1752eb796a19b553534
+Kani: cargo-kani 0.67.0
+CBMC: 6.8.0 (cbmc-6.8.0)
+Cargo.lock SHA256: a0fdc98da50a71804566cee4e760c482b5f927a99ef85a3d6762aa3e45631740
+Evidence binding: exact immutable commit
+
+kani_owner_nonempty_invariant
+  exit=0
+  successful=True
+  sha256=18202e3ac78354d2374b02f9c2ede6cd03d56828e0d690da5f19d096987a344e
+  file=01-kani_owner_nonempty_invariant.log
+kani_policy_tier_ceiling
+  exit=0
+  successful=True
+  sha256=f3967d9b8f56382c9f3b214918fa3f1922d26f0f78d7c6043f9970673758ba97
+  file=02-kani_policy_tier_ceiling.log
+kani_record_identity_validation
+  exit=0
+  successful=True
+  sha256=8c4288da254970aa1408115381d289402445f31a68c541457ee02dbf76d975a0
+  file=03-kani_record_identity_validation.log
+kani_storage_id_immutability
+  exit=0
+  successful=True
+  sha256=08978b2c202ba16c08e3ce0d24ec21d640f0b7e80090040d213a468763a98174
+  file=04-kani_storage_id_immutability.log
+kani_audit_chain_tail_drop_checkpoint_rejected
+  exit=0
+  successful=True
+  sha256=35f31391a189cc247a354aedb706fe9d4bb5ca8f2f4dc3874bf2e6e3eccbd4c2
+  file=05-kani_audit_chain_tail_drop_checkpoint_rejected.log
+kani_persisted_record_metadata
+  exit=0
+  successful=True
+  sha256=bff91fc706064239248efc31faae4ef76e224ca761e42519c636bed34f869993
+  file=06-kani_persisted_record_metadata.log

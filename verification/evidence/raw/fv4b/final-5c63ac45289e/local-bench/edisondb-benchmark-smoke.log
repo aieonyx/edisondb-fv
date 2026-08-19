@@ -1,0 +1,28 @@
+FV-4b immutable commit: 5c63ac45289e876eb563f1752eb796a19b553534
+Cargo.lock SHA256: a0fdc98da50a71804566cee4e760c482b5f927a99ef85a3d6762aa3e45631740
+Command: cargo bench --locked --bench edisondb_bench -- --test
+
+    Finished `bench` profile [optimized] target(s) in 0.33s
+     Running benches/edisondb_bench.rs (target/release/deps/edisondb_bench-cc63a14fb320b438)
+Gnuplot not found, using plotters backend
+Testing write_record
+Success
+
+Testing read_granted
+Success
+
+Testing read_denied
+Success
+
+Testing encrypt_payload
+Success
+
+Testing decrypt_payload
+Success
+
+Testing derive_key_argon2
+Success
+
+Testing save_and_load_100_records
+Success
+

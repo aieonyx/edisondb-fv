@@ -159,8 +159,7 @@ review: `Store` storage collections are no longer publicly mutable, and Redb
 prefix of the candidate history before rewriting persisted state.
 
 The checkpoint tail-drop rejection harness and current dynamic storage/lineage
-tests pass. Final FV-4b release closure still requires commit-bound evidence and
-the remaining phase-level remediation obligations.
+tests pass. Final FV-4b commit-bound evidence is now recorded against reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534` through successful GitHub Actions run `32210859833`.
 
 This correction does not change the original FV-4 verification results. It
 narrows the interpretation of the claim to what the implementation actually
