@@ -5,15 +5,16 @@ use edisondb::policy::PolicyEngine;
 use edisondb::verification::*;
 use edisondb::{AuditAction, AuditEntry, DataTier, Record, Store};
 
+
 fn make_record(id: &str, tier: DataTier, owner: &str) -> Record {
-    Record {
-        id: id.to_string(),
-        tier,
-        owner_id: owner.to_string(),
-        payload: b"data".to_vec(),
-        salt: [0u8; 32],
-        created_at: 1000,
-    }
+    let safe_id = if id.is_empty() { "verification:test-id" } else { id };
+    let safe_owner = if owner.is_empty() { "verification:test-owner" } else { owner };
+    let mut record =
+        Record::new(safe_id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
+    record.id = id.to_string();
+    record.owner_id = owner.to_string();
+    record.created_at = 1000;
+    record
 }
 
 fn make_audit(ts: u64, prev: [u8; 32]) -> AuditEntry {

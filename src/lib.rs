@@ -43,8 +43,8 @@ pub struct Record {
     pub id: String,
     pub tier: DataTier,
     pub owner_id: String,
-    pub payload: Vec<u8>,
-    pub salt: [u8; 32],
+    payload: Vec<u8>,
+    salt: [u8; 32],
     pub created_at: u64,
 }
 
@@ -66,6 +66,14 @@ impl Record {
         };
         record.validate()?;
         Ok(record)
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+
+    pub fn salt(&self) -> &[u8; 32] {
+        &self.salt
     }
 
     pub(crate) fn validate(&self) -> Result<(), EdisonError> {

@@ -4,15 +4,14 @@
 use edisondb::compliance::*;
 use edisondb::{AuditAction, AuditEntry, DataTier, Record};
 
+
 fn rec(id: &str, tier: DataTier, owner: &str, age_secs: u64) -> Record {
-    Record {
-        id: id.to_string(),
-        tier,
-        owner_id: owner.to_string(),
-        payload: b"payload".to_vec(),
-        salt: [0u8; 32],
-        created_at: 1000u64.saturating_sub(age_secs),
-    }
+    let safe_owner = if owner.is_empty() { "compliance:test-owner" } else { owner };
+    let mut record =
+        Record::new(id, tier, safe_owner, b"payload".to_vec(), [0u8; 32]).unwrap();
+    record.owner_id = owner.to_string();
+    record.created_at = 1000u64.saturating_sub(age_secs);
+    record
 }
 
 fn audit(ts: u64, action: AuditAction, requester: &str) -> AuditEntry {

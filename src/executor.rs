@@ -150,7 +150,7 @@ impl EqlExecutor {
 
         let (salt, payload, tier) = {
             let record = read_result?;
-            (record.salt, record.payload.clone(), record.tier.clone())
+            (*record.salt(), record.payload().to_vec(), record.tier.clone())
         };
         let key       = derive_key(&self.password, &salt)?;
         // AAD must match — wrong id or tier = decryption failure
@@ -165,7 +165,7 @@ impl EqlExecutor {
         let snapshots: Vec<Snapshot> = self.router
             .list_by_owner(&self.owner_id)
             .into_iter()
-            .map(|r| (r.id.clone(), r.salt, r.payload.clone(), r.tier.clone(), r.created_at))
+            .map(|r| (r.id.clone(), *r.salt(), r.payload().to_vec(), r.tier.clone(), r.created_at))
             .collect();
 
         let mut infos = Vec::new();
@@ -206,8 +206,8 @@ impl EqlExecutor {
     fn exec_auto_embed(&mut self, id: String) -> Result<EqlResult, EdisonError> {
         // Find the record payload to embed
         let record = self.router.read(&id, &self.owner_id)?;
-        let payload_bytes = record.payload.clone();
-        let salt = record.salt;
+        let payload_bytes = record.payload().to_vec();
+        let salt = *record.salt();
         let tier = record.tier.clone();
         // Decrypt to get plaintext
         let key = crate::derive_key(&self.password, &salt)?;

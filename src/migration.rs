@@ -37,8 +37,8 @@ impl EdmRecord {
             id: r.id.clone(),
             tier: r.tier.as_str().to_string(),
             owner_id: r.owner_id.clone(),
-            payload_hex: hex(&r.payload),
-            salt_hex: hex(&r.salt),
+            payload_hex: hex(r.payload()),
+            salt_hex: hex(r.salt()),
             created_at: r.created_at,
         }
     }
@@ -243,7 +243,7 @@ pub fn build_manifest(records: &[Record]) -> MigrationManifest {
 
     for r in records {
         *tier_counts.entry(r.tier.as_str().to_string()).or_insert(0) += 1;
-        total_payload += r.payload.len();
+        total_payload += r.payload().len();
     }
 
     // Hash: SHA-256 of sorted IDs concatenated with null bytes

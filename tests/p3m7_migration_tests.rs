@@ -9,15 +9,11 @@ use edisondb::migration::{
     MigrationError,
 };
 
+
 fn make_record(id: &str, tier: DataTier, owner: &str, payload: &[u8]) -> Record {
-    Record {
-        id: id.to_string(),
-        tier,
-        owner_id: owner.to_string(),
-        payload: payload.to_vec(),
-        salt: [0u8; 32],
-        created_at: 1000,
-    }
+    let mut record = Record::new(id, tier, owner, payload.to_vec(), [0u8; 32]).unwrap();
+    record.created_at = 1000;
+    record
 }
 
 // ── T1: export produces valid .edm ───────────────────────────────────────────
@@ -98,8 +94,8 @@ fn t8_edm_record_roundtrip() {
     assert_eq!(r2.id, r.id);
     assert_eq!(r2.tier, r.tier);
     assert_eq!(r2.owner_id, r.owner_id);
-    assert_eq!(r2.payload, r.payload);
-    assert_eq!(r2.salt, r.salt);
+    assert_eq!(r2.payload(), r.payload());
+    assert_eq!(r2.salt(), r.salt());
 }
 
 // ── T9: import no conflicts ───────────────────────────────────────────────────
