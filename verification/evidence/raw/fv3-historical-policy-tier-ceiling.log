@@ -1,0 +1,108 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.74s
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.57s
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.14s
+Checking harness verification::kani_harnesses::kani_policy_tier_ceiling...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /tmp/edisondb-fv3-count-reaudit/target/kani/x86_64-unknown-linux-gnu/debug/deps/edisondb__RNvNtNtCs8zVKvWqpudH_8edisondb12verification14kani_harnesses24kani_policy_tier_ceiling.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.00226583s
+size of program expression: 168 steps
+slicing removed 77 assignments
+Generated 8 VCC(s), 2 remaining after simplification
+Runtime Postprocess Equation: 3.0348e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.000246296s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 6.261e-06s
+Solving with CaDiCaL 2.0.0
+92 variables, 104 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 5.7308e-05s
+Runtime decision procedure: 0.000356143s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+93 variables, 105 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 1.4067e-05s
+Runtime decision procedure: 2.653e-05s
+
+RESULTS:
+Check 1: verification::kani_harnesses::kani_policy_tier_ceiling.assertion.1
+	 - Status: SUCCESS
+	 - Description: "assertion failed: allowed == requester_is_owner"
+	 - Location: src/verification.rs:276:9 in function verification::kani_harnesses::kani_policy_tier_ceiling
+
+Check 2: policy::tier_ceiling_allows.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+Check 3: policy::tier_ceiling_allows.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+Check 4: policy::tier_ceiling_allows.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+Check 5: policy::tier_ceiling_allows.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+Check 6: policy::tier_ceiling_allows.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+Check 7: policy::tier_ceiling_allows.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/policy.rs:210:15 in function policy::tier_ceiling_allows
+
+
+SUMMARY:
+ ** 0 of 7 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.053925857s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+	Command being timed: "cargo kani --harness kani_policy_tier_ceiling"
+	User time (seconds): 5.66
+	System time (seconds): 1.60
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.27
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 379240
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 248109
+	Voluntary context switches: 1288
+	Involuntary context switches: 720
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 144360
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

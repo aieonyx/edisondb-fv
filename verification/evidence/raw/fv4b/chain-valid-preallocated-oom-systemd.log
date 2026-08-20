@@ -1,0 +1,31 @@
+Aug 11 04:43:14 pop-os cosmic-notifications[2513]: Notification not found... pushing instead
+Aug 11 04:43:14 pop-os cosmic-session[2333]: 2026-08-11T02:43:14.492386Z ERROR cosmic_notifications::app: Notification not found... pushing instead
+Aug 11 04:55:33 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 04:55:33 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:05:52 pop-os cosmic-comp[2432]: surface missing from known popups
+Aug 11 05:07:11 pop-os systemd[2287]: Started run-r39bd07ed12cc4024b6a3356d85a66ccf.scope - /usr/bin/bash -lc "\n    cd ~/Documents/AIEONYX/edisondb-fv\n    set -o pipefail\n\n    /usr/bin/time -v \\\n    timeout 10m \\\n    cargo kani \\\n      --harness kani_audit_chain_valid_sealed_chain \\\n      2>&1 | tee /tmp/fv4b-kani-chain-valid-preallocated.log\n  ".
+Aug 11 05:07:22 pop-os systemd[2287]: app-cosmic-com.system76.CosmicAppList-693087.scope: Consumed 1h 17min 16.138s CPU time.
+Aug 11 05:07:22 pop-os systemd[2287]: app-com.google.Chrome-693087.scope: Consumed 5min 48.979s CPU time.
+Aug 11 05:07:30 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:30 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:33 pop-os systemd[2287]: app-cosmic-com.system76.CosmicAppList-705106.scope: Consumed 49.709s CPU time.
+Aug 11 05:07:41 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:41 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:41 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:42 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:07:43 pop-os systemd[2287]: Started app-cosmic-deepin-screen-recorder-712567.scope - Application launched by COSMIC.
+--
+Aug 11 05:08:04 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:08:04 pop-os systemd[2287]: Started app-cosmic-com.system76.CosmicAppList-712599.scope - Application launched by COSMIC.
+Aug 11 05:08:05 pop-os cosmic-comp[2432]: Toplevel for foreign-toplevel-list not registered for cosmic-toplevel-info.
+Aug 11 05:08:05 pop-os cosmic-comp[2432]: Failed to force redraw for corner radius change.
+Aug 11 05:08:51 pop-os systemd[2287]: app-cosmic-com.system76.CosmicAppList-712599.scope: Consumed 9.447s CPU time.
+Aug 11 05:09:14 pop-os systemd[2287]: run-r39bd07ed12cc4024b6a3356d85a66ccf.scope: A process of this unit has been killed by the OOM killer.
+Aug 11 05:09:16 pop-os systemd[2287]: run-r39bd07ed12cc4024b6a3356d85a66ccf.scope: Failed with result 'oom-kill'.
+Aug 11 05:09:16 pop-os systemd[2287]: run-r39bd07ed12cc4024b6a3356d85a66ccf.scope: Consumed 2min 3.270s CPU time.
+Aug 11 05:10:14 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 11 05:10:15 pop-os systemd[2287]: Started app-cosmic-com.system76.CosmicAppList-712705.scope - Application launched by COSMIC.
+Aug 11 05:10:15 pop-os gnome-keyring-daemon[2317]: asked to register item /org/freedesktop/secrets/collection/login/2, but it's already registered
+Aug 11 05:10:15 pop-os gnome-keyring-d[2317]: asked to register item /org/freedesktop/secrets/collection/login/2, but it's already registered
+Aug 11 05:10:15 pop-os systemd[2287]: Started app-com.google.Chrome-712705.scope.
+Aug 11 05:10:47 pop-os chrome[712705]: [712705:712739:0811/051047.012767:INFO:chrome/browser/extensions/extension_garbage_collector.cc:188] Garbage collection for extensions on file thread is complete.

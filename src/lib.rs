@@ -4,6 +4,7 @@ use argon2::Argon2;
 use rand::RngCore;
 use redb::{Database, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
+#[cfg(not(kani))]
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,6 +17,9 @@ pub mod vector;
 
 const RECORDS_TABLE: TableDefinition<&str, &str> = TableDefinition::new("records");
 const AUDIT_TABLE: TableDefinition<&str, &str> = TableDefinition::new("audit");
+const AUDIT_CHECKPOINT_TABLE: TableDefinition<&str, &str> =
+    TableDefinition::new("audit_checkpoint");
+const AUDIT_CHECKPOINT_KEY: &str = "current";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DataTier {
@@ -119,12 +123,163 @@ pub(crate) fn ensure_new_record_id(id_exists: bool) -> Result<(), EdisonError> {
     }
 }
 
-pub(crate) fn persisted_record_metadata_valid(
-    key_matches: bool,
-    tier_matches: bool,
+pub(crate) fn validate_persisted_record_metadata(
+    persisted_key: &[u8],
+    record: &Record,
+    expected_tier: &DataTier,
     id_is_unique: bool,
-) -> bool {
-    key_matches && tier_matches && id_is_unique
+) -> Result<(), EdisonError> {
+    if persisted_key != record.id.as_bytes() || &record.tier != expected_tier || !id_is_unique {
+        return Err(EdisonError::LoadFailed);
+    }
+
+    Ok(())
+}
+
+#[cfg(not(kani))]
+pub(crate) fn audit_digest(input: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    hasher.finalize().into()
+}
+
+#[cfg(kani)]
+pub(crate) fn audit_digest(input: &[u8]) -> [u8; 32] {
+    fn parity(value: u64) -> u16 {
+        (value.count_ones() as u16) & 1
+    }
+
+    let mut output = [0u8; 32];
+    let length = (input.len() as u64).to_be_bytes();
+
+    output[0] = length[0];
+    output[1] = length[1];
+    output[2] = length[2];
+    output[3] = length[3];
+    output[4] = length[4];
+    output[5] = length[5];
+    output[6] = length[6];
+    output[7] = length[7];
+
+    if input.len() == 84 {
+        // FV-4b bounded domain:
+        // record identity is carried directly for cross-entry separation.
+        output[8] = input[25];
+        output[9] = input[26];
+        output[10] = input[27];
+        output[11] = input[28];
+        output[12] = input[29];
+        output[13] = input[43];
+
+        // The 320 mutable bits are timestamp || prev_hash.
+        // Bit p uses code(p) = p + 1. Each syndrome output bit is the
+        // parity of the input against a fixed mask, producing the
+        // zero-relative GF(2)-linear map required by the FV-4b model.
+        let w0 = u64::from_le_bytes([
+            input[44], input[45], input[46], input[47], input[48], input[49], input[50], input[51],
+        ]);
+        let w1 = u64::from_le_bytes([
+            input[52], input[53], input[54], input[55], input[56], input[57], input[58], input[59],
+        ]);
+        let w2 = u64::from_le_bytes([
+            input[60], input[61], input[62], input[63], input[64], input[65], input[66], input[67],
+        ]);
+        let w3 = u64::from_le_bytes([
+            input[68], input[69], input[70], input[71], input[72], input[73], input[74], input[75],
+        ]);
+        let w4 = u64::from_le_bytes([
+            input[76], input[77], input[78], input[79], input[80], input[81], input[82], input[83],
+        ]);
+
+        let s0 = parity(
+            (w0 & 0x5555_5555_5555_5555)
+                ^ (w1 & 0x5555_5555_5555_5555)
+                ^ (w2 & 0x5555_5555_5555_5555)
+                ^ (w3 & 0x5555_5555_5555_5555)
+                ^ (w4 & 0x5555_5555_5555_5555),
+        );
+
+        let s1 = parity(
+            (w0 & 0x6666_6666_6666_6666)
+                ^ (w1 & 0x6666_6666_6666_6666)
+                ^ (w2 & 0x6666_6666_6666_6666)
+                ^ (w3 & 0x6666_6666_6666_6666)
+                ^ (w4 & 0x6666_6666_6666_6666),
+        );
+
+        let s2 = parity(
+            (w0 & 0x7878_7878_7878_7878)
+                ^ (w1 & 0x7878_7878_7878_7878)
+                ^ (w2 & 0x7878_7878_7878_7878)
+                ^ (w3 & 0x7878_7878_7878_7878)
+                ^ (w4 & 0x7878_7878_7878_7878),
+        );
+
+        let s3 = parity(
+            (w0 & 0x7f80_7f80_7f80_7f80)
+                ^ (w1 & 0x7f80_7f80_7f80_7f80)
+                ^ (w2 & 0x7f80_7f80_7f80_7f80)
+                ^ (w3 & 0x7f80_7f80_7f80_7f80)
+                ^ (w4 & 0x7f80_7f80_7f80_7f80),
+        );
+
+        let s4 = parity(
+            (w0 & 0x7fff_8000_7fff_8000)
+                ^ (w1 & 0x7fff_8000_7fff_8000)
+                ^ (w2 & 0x7fff_8000_7fff_8000)
+                ^ (w3 & 0x7fff_8000_7fff_8000)
+                ^ (w4 & 0x7fff_8000_7fff_8000),
+        );
+
+        let s5 = parity(
+            (w0 & 0x7fff_ffff_8000_0000)
+                ^ (w1 & 0x7fff_ffff_8000_0000)
+                ^ (w2 & 0x7fff_ffff_8000_0000)
+                ^ (w3 & 0x7fff_ffff_8000_0000)
+                ^ (w4 & 0x7fff_ffff_8000_0000),
+        );
+
+        let s6 = parity(
+            (w0 & 0x8000_0000_0000_0000)
+                ^ (w1 & 0x7fff_ffff_ffff_ffff)
+                ^ (w2 & 0x8000_0000_0000_0000)
+                ^ (w3 & 0x7fff_ffff_ffff_ffff)
+                ^ (w4 & 0x8000_0000_0000_0000),
+        );
+
+        let s7 = parity(
+            (w0 & 0x0000_0000_0000_0000)
+                ^ (w1 & 0x8000_0000_0000_0000)
+                ^ (w2 & 0xffff_ffff_ffff_ffff)
+                ^ (w3 & 0x7fff_ffff_ffff_ffff)
+                ^ (w4 & 0x0000_0000_0000_0000),
+        );
+
+        let s8 = parity(
+            (w0 & 0x0000_0000_0000_0000)
+                ^ (w1 & 0x0000_0000_0000_0000)
+                ^ (w2 & 0x0000_0000_0000_0000)
+                ^ (w3 & 0x8000_0000_0000_0000)
+                ^ (w4 & 0xffff_ffff_ffff_ffff),
+        );
+
+        let syndrome = s0
+            | (s1 << 1)
+            | (s2 << 2)
+            | (s3 << 3)
+            | (s4 << 4)
+            | (s5 << 5)
+            | (s6 << 6)
+            | (s7 << 7)
+            | (s8 << 8);
+
+        output[14] = (syndrome >> 8) as u8;
+        output[15] = syndrome as u8;
+    }
+
+    // Outside the declared 84-byte FV-4b domain the model is
+    // deterministic, but no injectivity property is claimed.
+    output
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,26 +336,135 @@ impl AuditEntry {
         self.entry_hash == self.calculate_hash()
     }
 
-    fn calculate_hash(&self) -> [u8; 32] {
-        fn update_text(hasher: &mut Sha256, value: &str) {
-            hasher.update((value.len() as u64).to_be_bytes());
-            hasher.update(value.as_bytes());
+    // Canonical audit serialization invariant:
+    // this is the single preimage construction path consumed by both
+    // production SHA-256 and the verification-only digest.
+    pub(crate) fn audit_hash_input(&self) -> Vec<u8> {
+        fn append_text(input: &mut Vec<u8>, value: &str) {
+            input.extend_from_slice(&(value.len() as u64).to_be_bytes());
+            input.extend_from_slice(value.as_bytes());
         }
 
-        let mut hasher = Sha256::new();
-        hasher.update(b"EDISONDB-AUDIT-V1");
-        update_text(&mut hasher, &self.record_id);
-        update_text(&mut hasher, &self.requester_id);
-        hasher.update([self.action.code()]);
-        hasher.update(self.timestamp.to_be_bytes());
-        hasher.update(self.prev_hash);
-        hasher.finalize().into()
+        let mut input = Vec::new();
+        input.extend_from_slice(b"EDISONDB-AUDIT-V1");
+        append_text(&mut input, &self.record_id);
+        append_text(&mut input, &self.requester_id);
+        input.push(self.action.code());
+        input.extend_from_slice(&self.timestamp.to_be_bytes());
+        input.extend_from_slice(&self.prev_hash);
+        input
+    }
+
+    fn calculate_hash(&self) -> [u8; 32] {
+        audit_digest(&self.audit_hash_input())
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct AuditCheckpoint {
+    pub(crate) expected_count: u64,
+    pub(crate) expected_head: [u8; 32],
+}
+
+pub(crate) fn validate_audit_checkpoint(
+    checkpoint: &AuditCheckpoint,
+    actual_count: u64,
+    actual_head: [u8; 32],
+) -> Result<(), EdisonError> {
+    if checkpoint.expected_count != actual_count || checkpoint.expected_head != actual_head {
+        return Err(EdisonError::AuditChainBroken);
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CheckpointFailureReason {
+    Missing,
+    Malformed,
+    CountMismatch,
+    HeadMismatch,
+    UnanchoredRecords,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CheckpointOpenState {
+    Genesis,
+    Existing,
+}
+
+pub(crate) fn classify_checkpoint_state(
+    checkpoint_bytes: Option<&[u8]>,
+    audit_empty: bool,
+    records_empty: bool,
+    actual_count: u64,
+    actual_head: [u8; 32],
+) -> Result<CheckpointOpenState, CheckpointFailureReason> {
+    match checkpoint_bytes {
+        Some(bytes) => {
+            let checkpoint: AuditCheckpoint =
+                serde_json::from_slice(bytes).map_err(|_| CheckpointFailureReason::Malformed)?;
+
+            if validate_audit_checkpoint(&checkpoint, actual_count, actual_head).is_err() {
+                if checkpoint.expected_count != actual_count {
+                    return Err(CheckpointFailureReason::CountMismatch);
+                }
+
+                return Err(CheckpointFailureReason::HeadMismatch);
+            }
+
+            if audit_empty && !records_empty {
+                return Err(CheckpointFailureReason::UnanchoredRecords);
+            }
+
+            Ok(CheckpointOpenState::Existing)
+        }
+        None => {
+            if audit_empty && records_empty {
+                Ok(CheckpointOpenState::Genesis)
+            } else {
+                Err(CheckpointFailureReason::Missing)
+            }
+        }
+    }
+}
+
+pub(crate) fn checkpoint_error(_reason: CheckpointFailureReason) -> EdisonError {
+    EdisonError::AuditChainBroken
+}
+
+pub(crate) fn verify_audit_entries(entries: &[AuditEntry]) -> Result<(), EdisonError> {
+    let mut expected_prev = [0u8; 32];
+
+    for entry in entries {
+        if entry.prev_hash != expected_prev || !entry.verify_hash() {
+            return Err(EdisonError::AuditChainBroken);
+        }
+
+        expected_prev = entry.entry_hash;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn audit_history_is_prefix(persisted: &[AuditEntry], candidate: &[AuditEntry]) -> bool {
+    if persisted.len() > candidate.len() {
+        return false;
+    }
+
+    persisted.iter().zip(candidate.iter()).all(|(left, right)| {
+        left.record_id == right.record_id
+            && left.requester_id == right.requester_id
+            && left.action.code() == right.action.code()
+            && left.timestamp == right.timestamp
+            && left.prev_hash == right.prev_hash
+            && left.entry_hash == right.entry_hash
+    })
+}
+
 pub struct Store {
-    pub records: HashMap<String, Record>,
-    pub audit_log: Vec<AuditEntry>,
+    records: HashMap<String, Record>,
+    audit_log: Vec<AuditEntry>,
 }
 
 impl Default for Store {
@@ -237,17 +501,7 @@ impl Store {
     }
 
     pub fn verify_audit_chain(&self) -> Result<(), EdisonError> {
-        let mut expected_prev = [0u8; 32];
-
-        for entry in &self.audit_log {
-            if entry.prev_hash != expected_prev || !entry.verify_hash() {
-                return Err(EdisonError::AuditChainBroken);
-            }
-
-            expected_prev = entry.entry_hash;
-        }
-
-        Ok(())
+        verify_audit_entries(&self.audit_log)
     }
 
     pub fn write(&mut self, record: Record) -> Result<(), EdisonError> {
@@ -287,6 +541,10 @@ impl Store {
 
     pub fn audit_count(&self) -> usize {
         self.audit_log.len()
+    }
+
+    pub fn record_count(&self) -> usize {
+        self.records.len()
     }
 
     pub fn list_by_owner(&self, owner_id: &str) -> Vec<&Record> {
@@ -330,6 +588,99 @@ impl Store {
 
         let db = Database::create(path).map_err(|_| EdisonError::SaveFailed)?;
         let write_txn = db.begin_write().map_err(|_| EdisonError::SaveFailed)?;
+
+        let persisted_records_empty = {
+            let table = write_txn
+                .open_table(RECORDS_TABLE)
+                .map_err(|_| EdisonError::SaveFailed)?;
+
+            let mut iter = table.iter().map_err(|_| EdisonError::SaveFailed)?;
+
+            match iter.next() {
+                None => true,
+                Some(entry) => {
+                    entry.map_err(|_| EdisonError::SaveFailed)?;
+                    false
+                }
+            }
+        };
+
+        let persisted_audit = {
+            let table = write_txn
+                .open_table(AUDIT_TABLE)
+                .map_err(|_| EdisonError::SaveFailed)?;
+
+            let iter = table.iter().map_err(|_| EdisonError::AuditChainBroken)?;
+
+            let mut keyed = Vec::new();
+
+            for entry in iter {
+                let (key, value) = entry.map_err(|_| EdisonError::AuditChainBroken)?;
+
+                let key_text = key.value();
+
+                let index = key_text
+                    .parse::<usize>()
+                    .map_err(|_| EdisonError::AuditChainBroken)?;
+
+                if key_text != format!("{index:020}") {
+                    return Err(EdisonError::AuditChainBroken);
+                }
+
+                let audit_entry: AuditEntry = serde_json::from_str(value.value())
+                    .map_err(|_| EdisonError::AuditChainBroken)?;
+
+                keyed.push((index, audit_entry));
+            }
+
+            keyed.sort_by_key(|(index, _)| *index);
+
+            let mut audit = Vec::with_capacity(keyed.len());
+
+            for (expected, (index, entry)) in keyed.into_iter().enumerate() {
+                if index != expected {
+                    return Err(EdisonError::AuditChainBroken);
+                }
+
+                audit.push(entry);
+            }
+
+            verify_audit_entries(&audit)?;
+            audit
+        };
+
+        let persisted_checkpoint = {
+            let table = write_txn
+                .open_table(AUDIT_CHECKPOINT_TABLE)
+                .map_err(|_| EdisonError::SaveFailed)?;
+
+            table
+                .get(AUDIT_CHECKPOINT_KEY)
+                .map_err(|_| EdisonError::SaveFailed)?
+                .map(|value| value.value().to_string())
+        };
+
+        let persisted_count =
+            u64::try_from(persisted_audit.len()).map_err(|_| EdisonError::AuditChainBroken)?;
+
+        let persisted_head = persisted_audit
+            .last()
+            .map(|entry| entry.entry_hash)
+            .unwrap_or([0u8; 32]);
+
+        classify_checkpoint_state(
+            persisted_checkpoint.as_deref().map(str::as_bytes),
+            persisted_audit.is_empty(),
+            persisted_records_empty,
+            persisted_count,
+            persisted_head,
+        )
+        .map_err(checkpoint_error)?;
+
+        if !audit_history_is_prefix(&persisted_audit, &self.audit_log) {
+            return Err(EdisonError::AuditChainBroken);
+        }
+
         {
             let mut table = write_txn
                 .open_table(RECORDS_TABLE)
@@ -379,37 +730,72 @@ impl Store {
                     .map_err(|_| EdisonError::SaveFailed)?;
             }
         }
+        {
+            let checkpoint_count =
+                u64::try_from(self.audit_log.len()).map_err(|_| EdisonError::SaveFailed)?;
+
+            let checkpoint = AuditCheckpoint {
+                expected_count: checkpoint_count,
+                expected_head: self.last_chain_hash(),
+            };
+
+            let checkpoint_json =
+                serde_json::to_string(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+
+            let mut table = write_txn
+                .open_table(AUDIT_CHECKPOINT_TABLE)
+                .map_err(|_| EdisonError::SaveFailed)?;
+
+            table
+                .insert(AUDIT_CHECKPOINT_KEY, checkpoint_json.as_str())
+                .map_err(|_| EdisonError::SaveFailed)?;
+        }
+
         write_txn.commit().map_err(|_| EdisonError::SaveFailed)?;
         Ok(())
     }
 
     pub fn load(path: &str) -> Result<Self, EdisonError> {
         let db = Database::open(path).map_err(|_| EdisonError::LoadFailed)?;
-        let read_txn = db.begin_read().map_err(|_| EdisonError::LoadFailed)?;
+        let write_txn = db.begin_write().map_err(|_| EdisonError::LoadFailed)?;
+
         let mut records = HashMap::new();
-        let table = read_txn
-            .open_table(RECORDS_TABLE)
-            .map_err(|_| EdisonError::LoadFailed)?;
-        for entry in table.iter().map_err(|_| EdisonError::LoadFailed)? {
-            let (key, value) = entry.map_err(|_| EdisonError::LoadFailed)?;
-            let record: Record =
-                serde_json::from_str(value.value()).map_err(|_| EdisonError::LoadFailed)?;
 
-            record.validate()?;
-            if key.value() != record.id {
-                return Err(EdisonError::LoadFailed);
+        {
+            let table = write_txn
+                .open_table(RECORDS_TABLE)
+                .map_err(|_| EdisonError::LoadFailed)?;
+
+            for entry in table.iter().map_err(|_| EdisonError::LoadFailed)? {
+                let (key, value) = entry.map_err(|_| EdisonError::LoadFailed)?;
+
+                let record: Record =
+                    serde_json::from_str(value.value()).map_err(|_| EdisonError::LoadFailed)?;
+
+                record.validate()?;
+
+                if key.value() != record.id {
+                    return Err(EdisonError::LoadFailed);
+                }
+
+                records.insert(record.id.clone(), record);
             }
-
-            records.insert(record.id.clone(), record);
         }
+
         let mut keyed_audit = Vec::new();
 
-        if let Ok(table) = read_txn.open_table(AUDIT_TABLE) {
+        {
+            let table = write_txn
+                .open_table(AUDIT_TABLE)
+                .map_err(|_| EdisonError::AuditChainBroken)?;
+
             let iter = table.iter().map_err(|_| EdisonError::AuditChainBroken)?;
 
             for entry in iter {
                 let (key, value) = entry.map_err(|_| EdisonError::AuditChainBroken)?;
+
                 let key_text = key.value();
+
                 let index = key_text
                     .parse::<usize>()
                     .map_err(|_| EdisonError::AuditChainBroken)?;
@@ -428,6 +814,7 @@ impl Store {
         keyed_audit.sort_by_key(|(index, _)| *index);
 
         let mut audit_log = Vec::with_capacity(keyed_audit.len());
+
         for (expected, (index, entry)) in keyed_audit.into_iter().enumerate() {
             if index != expected {
                 return Err(EdisonError::AuditChainBroken);
@@ -437,7 +824,57 @@ impl Store {
         }
 
         let store = Store { records, audit_log };
+
         store.verify_audit_chain()?;
+
+        let actual_count =
+            u64::try_from(store.audit_log.len()).map_err(|_| EdisonError::AuditChainBroken)?;
+
+        let actual_head = store.last_chain_hash();
+        let records_empty = store.records.is_empty();
+        let audit_empty = store.audit_log.is_empty();
+
+        {
+            let mut table = write_txn
+                .open_table(AUDIT_CHECKPOINT_TABLE)
+                .map_err(|_| EdisonError::AuditChainBroken)?;
+
+            let checkpoint_value = table
+                .get(AUDIT_CHECKPOINT_KEY)
+                .map_err(|_| EdisonError::AuditChainBroken)?;
+
+            let checkpoint_bytes = checkpoint_value
+                .as_ref()
+                .map(|value| value.value().as_bytes());
+
+            let checkpoint_state = classify_checkpoint_state(
+                checkpoint_bytes,
+                audit_empty,
+                records_empty,
+                actual_count,
+                actual_head,
+            )
+            .map_err(checkpoint_error)?;
+
+            drop(checkpoint_value);
+
+            if checkpoint_state == CheckpointOpenState::Genesis {
+                let checkpoint = AuditCheckpoint {
+                    expected_count: 0,
+                    expected_head: [0u8; 32],
+                };
+
+                let checkpoint_json =
+                    serde_json::to_string(&checkpoint).map_err(|_| EdisonError::LoadFailed)?;
+
+                table
+                    .insert(AUDIT_CHECKPOINT_KEY, checkpoint_json.as_str())
+                    .map_err(|_| EdisonError::LoadFailed)?;
+            }
+        }
+
+        write_txn.commit().map_err(|_| EdisonError::LoadFailed)?;
+
         Ok(store)
     }
 }
@@ -823,6 +1260,17 @@ mod tests {
             store.verify_audit_chain(),
             Err(EdisonError::AuditChainBroken)
         );
+
+        let path = format!(
+            "/tmp/edisondb-fv-internal-tampered-save-{}.redb",
+            std::process::id()
+        );
+
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(store.save(&path), Err(EdisonError::AuditChainBroken));
+
+        let _ = std::fs::remove_file(path);
     }
 }
 pub mod arpi;

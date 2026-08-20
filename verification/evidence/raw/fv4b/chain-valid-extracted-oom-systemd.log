@@ -1,0 +1,14 @@
+Aug 10 18:39:04 pop-os gcr-prompter[709234]: Gcr: disposing prompter
+Aug 10 18:39:04 pop-os gcr-prompter[709234]: Gcr: finalizing prompter
+Aug 10 18:39:59 pop-os gpg-agent[28277]: can't connect to the daemon /usr/lib/gnupg/scdaemon: IPC connect call failed
+Aug 10 18:41:46 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 18:41:47 pop-os cosmic-comp[2432]: surface missing from known popups
+Aug 10 18:43:33 pop-os systemd[2287]: Started run-r470fc45583fb42d690a779d29eb899cb.scope - /usr/bin/bash -lc "\n    cd ~/Documents/AIEONYX/edisondb-fv\n    set -o pipefail\n\n    /usr/bin/time -v \\\n    timeout 10m \\\n    cargo kani \\\n      --harness kani_audit_chain_valid_sealed_chain \\\n      2>&1 | tee /tmp/fv4b-kani-chain-valid-extracted.log\n  ".
+Aug 10 18:44:58 pop-os cosmic-comp[2432]: surface missing from known popups
+Aug 10 18:45:18 pop-os systemd[2287]: run-r470fc45583fb42d690a779d29eb899cb.scope: A process of this unit has been killed by the OOM killer.
+Aug 10 18:45:20 pop-os systemd[2287]: run-r470fc45583fb42d690a779d29eb899cb.scope: Failed with result 'oom-kill'.
+Aug 10 18:45:20 pop-os systemd[2287]: run-r470fc45583fb42d690a779d29eb899cb.scope: Consumed 1min 47.215s CPU time.
+Aug 10 18:47:01 pop-os cosmic-comp[2432]: surface missing from known popups
+Aug 10 18:47:42 pop-os cosmic-comp[2432]: surface missing from known popups
+Aug 10 18:49:14 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.
+Aug 10 18:49:14 pop-os cosmic-comp[2432]: Client bug: Unable to re-configure repositioned popup.

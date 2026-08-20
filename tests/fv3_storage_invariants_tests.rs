@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 
 use edisondb::backends::{FjallBackend, StorageBackend};
-use edisondb::{DataTier, EdisonError, Record, Store};
+use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Record, Store};
 use fjall::{Database as FjallDatabase, KeyspaceCreateOptions};
 use redb::{Database as RedbDatabase, TableDefinition};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -47,7 +47,7 @@ fn store_rejects_empty_owner_without_mutation() {
     let record = raw_record("rec:empty-owner", DataTier::Personal, "", vec![1]);
 
     assert_eq!(store.write(record), Err(EdisonError::NoOwner));
-    assert!(store.records.is_empty());
+    assert_eq!(store.record_count(), 0);
     assert_eq!(store.audit_count(), 0);
 }
 
@@ -57,21 +57,27 @@ fn store_rejects_empty_record_id_without_mutation() {
     let record = raw_record("", DataTier::Noise, "alice", vec![1]);
 
     assert!(store.write(record).is_err());
-    assert!(store.records.is_empty());
+    assert_eq!(store.record_count(), 0);
     assert_eq!(store.audit_count(), 0);
 }
 
 #[test]
-fn store_refuses_to_save_invalid_public_state() {
-    let path = temp_path("redb-invalid-save");
+fn store_rejects_invalid_record_before_save() {
+    let path = temp_path("redb-invalid-public-write");
     let mut store = Store::new();
 
-    store.records.insert(
-        "rec:invalid".to_string(),
-        raw_record("rec:invalid", DataTier::Critical, "", vec![1]),
-    );
+    let record = raw_record("rec:invalid", DataTier::Critical, "", vec![1]);
 
-    assert!(store.save(&path).is_err());
+    assert_eq!(store.write(record), Err(EdisonError::NoOwner));
+    assert_eq!(store.record_count(), 0);
+    assert_eq!(store.audit_count(), 0);
+
+    store.save(&path).unwrap();
+
+    let loaded = Store::load(&path).unwrap();
+
+    assert_eq!(loaded.record_count(), 0);
+    assert_eq!(loaded.audit_count(), 0);
 
     let _ = std::fs::remove_file(path);
 }
@@ -151,12 +157,46 @@ fn fjall_enforces_global_id_immutability_across_tiers() {
 
 fn write_raw_fjall(path: &str, keyspace_name: &str, key: &str, record: &Record) {
     let db = FjallDatabase::builder(path).open().unwrap();
+
     let keyspace = db
         .keyspace(keyspace_name, KeyspaceCreateOptions::default)
         .unwrap();
-    let json = serde_json::to_string(record).unwrap();
 
-    keyspace.insert(key.as_bytes(), json.as_bytes()).unwrap();
+    let audit = db
+        .keyspace("audit", KeyspaceCreateOptions::default)
+        .unwrap();
+
+    let checkpoint = db
+        .keyspace("audit_checkpoint", KeyspaceCreateOptions::default)
+        .unwrap();
+
+    let record_json = serde_json::to_vec(record).unwrap();
+
+    let anchor = AuditEntry::new(
+        "fv3:fixture-anchor",
+        "fixture",
+        AuditAction::Write,
+        1,
+        [0u8; 32],
+    );
+
+    let audit_json = serde_json::to_vec(&anchor).unwrap();
+
+    let checkpoint_json = serde_json::to_vec(&serde_json::json!({
+        "expected_count": 1u64,
+        "expected_head": anchor.entry_hash,
+    }))
+    .unwrap();
+
+    let mut batch = db.batch();
+
+    batch.insert(&keyspace, key.as_bytes(), record_json);
+
+    batch.insert(&audit, b"00000000000000000000", audit_json);
+
+    batch.insert(&checkpoint, b"current", checkpoint_json);
+
+    batch.commit().unwrap();
 }
 
 #[test]

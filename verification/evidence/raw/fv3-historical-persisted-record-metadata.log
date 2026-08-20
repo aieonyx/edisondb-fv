@@ -1,0 +1,79 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.59s
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.52s
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-fv3-count-reaudit)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.19s
+Checking harness verification::kani_harnesses::kani_persisted_record_metadata...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /tmp/edisondb-fv3-count-reaudit/target/kani/x86_64-unknown-linux-gnu/debug/deps/edisondb__RNvNtNtCs8zVKvWqpudH_8edisondb12verification14kani_harnesses30kani_persisted_record_metadata.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.00677158s
+size of program expression: 156 steps
+slicing removed 50 assignments
+Generated 2 VCC(s), 2 remaining after simplification
+Runtime Postprocess Equation: 0.000107384s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.000866831s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 1.3425e-05s
+Solving with CaDiCaL 2.0.0
+108 variables, 189 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000133723s
+Runtime decision procedure: 0.00110229s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+109 variables, 190 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.000112443s
+Runtime decision procedure: 0.000160133s
+
+RESULTS:
+Check 1: verification::kani_harnesses::kani_persisted_record_metadata.assertion.1
+	 - Status: SUCCESS
+	 - Description: "assertion failed: persisted_record_metadata_valid(key_matches, tier_matches, id_is_unique,) ==
+key_matches && tier_matches && id_is_unique"
+	 - Location: src/verification.rs:315:9 in function verification::kani_harnesses::kani_persisted_record_metadata
+
+
+SUMMARY:
+ ** 0 of 1 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.053246256s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+	Command being timed: "cargo kani --harness kani_persisted_record_metadata"
+	User time (seconds): 5.58
+	System time (seconds): 1.57
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.13
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 378396
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 248263
+	Voluntary context switches: 1306
+	Involuntary context switches: 165
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 144376
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

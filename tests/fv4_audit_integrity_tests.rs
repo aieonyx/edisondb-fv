@@ -3,6 +3,7 @@
 use edisondb::backends::FjallBackend;
 use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Record, Store};
 use fjall::{Database as FjallDatabase, KeyspaceCreateOptions};
+use proptest::prelude::*;
 use redb::{Database, ReadableTable, TableDefinition};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -92,8 +93,8 @@ fn redb_load_rejects_broken_audit_chain() {
 }
 
 #[test]
-fn redb_save_rejects_tampered_audit_chain() {
-    let path = temp_path("tampered-save");
+fn redb_load_rejects_persisted_content_tamper() {
+    let path = temp_path("persisted-content-tamper");
     let mut store = Store::new();
 
     let record = Record::new(
@@ -106,20 +107,51 @@ fn redb_save_rejects_tampered_audit_chain() {
     .unwrap();
 
     store.write(record).unwrap();
-    store.audit_log[0].record_id = "rec:injected".to_string();
+    store.save(&path).unwrap();
 
-    assert_eq!(store.save(&path), Err(EdisonError::AuditChainBroken));
+    {
+        let db = Database::open(&path).unwrap();
+        let txn = db.begin_write().unwrap();
+
+        {
+            let mut audit = txn.open_table(AUDIT).unwrap();
+
+            let raw = audit
+                .get("00000000000000000000")
+                .unwrap()
+                .expect("audit entry must exist");
+
+            let mut entry: AuditEntry = serde_json::from_str(raw.value()).unwrap();
+
+            drop(raw);
+
+            entry.record_id = "rec:injected".to_string();
+
+            let json = serde_json::to_string(&entry).unwrap();
+
+            audit.insert("00000000000000000000", json.as_str()).unwrap();
+        }
+
+        txn.commit().unwrap();
+    }
+
+    assert!(matches!(
+        Store::load(&path),
+        Err(EdisonError::AuditChainBroken)
+    ));
 
     let _ = std::fs::remove_file(path);
 }
 
 #[test]
-fn redb_save_removes_stale_audit_rows() {
-    let path = temp_path("stale-rows");
-    let mut store = Store::new();
+fn redb_save_rejects_unrelated_history_replacement() {
+    let path = temp_path("history-replacement");
+
+    let mut first = Store::new();
 
     for index in 0..2 {
         let id = format!("rec:{index}");
+
         let record = Record::new(
             &id,
             DataTier::Personal,
@@ -129,15 +161,139 @@ fn redb_save_removes_stale_audit_rows() {
         )
         .unwrap();
 
-        store.write(record).unwrap();
+        first.write(record).unwrap();
     }
 
+    first.save(&path).unwrap();
+
+    let mut replacement = Store::new();
+
+    let record = Record::new(
+        "rec:replacement",
+        DataTier::Personal,
+        "alice",
+        vec![9],
+        [0u8; 32],
+    )
+    .unwrap();
+
+    replacement.write(record).unwrap();
+
+    assert_eq!(replacement.save(&path), Err(EdisonError::AuditChainBroken));
+
+    let loaded = Store::load(&path).unwrap();
+
+    assert_eq!(loaded.audit_count(), 2);
+    assert_eq!(loaded.record_count(), 2);
+    loaded.verify_audit_chain().unwrap();
+
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn redb_save_allows_same_lineage_resave_and_extension() {
+    let path = temp_path("lineage-extension");
+    let mut store = Store::new();
+
+    let first = Record::new("rec:first", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+
+    store.write(first).unwrap();
     store.save(&path).unwrap();
-    store.audit_log.truncate(1);
+
+    store.save(&path).unwrap();
+
+    let second = Record::new(
+        "rec:second",
+        DataTier::Personal,
+        "alice",
+        vec![2],
+        [0u8; 32],
+    )
+    .unwrap();
+
+    store.write(second).unwrap();
     store.save(&path).unwrap();
 
     let loaded = Store::load(&path).unwrap();
-    assert_eq!(loaded.audit_count(), 1);
+
+    assert_eq!(loaded.audit_count(), 2);
+    assert_eq!(loaded.record_count(), 2);
+    loaded.verify_audit_chain().unwrap();
+
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn redb_save_rejects_stale_snapshot_after_history_extension() {
+    let path = temp_path("stale-snapshot");
+
+    let mut seed = Store::new();
+
+    let first = Record::new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+
+    seed.write(first).unwrap();
+    seed.save(&path).unwrap();
+
+    let stale = Store::load(&path).unwrap();
+    let mut current = Store::load(&path).unwrap();
+
+    let second = Record::new(
+        "rec:current",
+        DataTier::Personal,
+        "alice",
+        vec![2],
+        [0u8; 32],
+    )
+    .unwrap();
+
+    current.write(second).unwrap();
+    current.save(&path).unwrap();
+
+    assert_eq!(stale.save(&path), Err(EdisonError::AuditChainBroken));
+
+    let loaded = Store::load(&path).unwrap();
+
+    assert_eq!(loaded.audit_count(), 2);
+    assert_eq!(loaded.record_count(), 2);
+    loaded.verify_audit_chain().unwrap();
+
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn redb_save_rejects_divergent_stale_writer() {
+    let path = temp_path("divergent-writer");
+
+    let mut seed = Store::new();
+
+    let base = Record::new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+
+    seed.write(base).unwrap();
+    seed.save(&path).unwrap();
+
+    let mut first_writer = Store::load(&path).unwrap();
+    let mut second_writer = Store::load(&path).unwrap();
+
+    let left = Record::new("rec:left", DataTier::Personal, "alice", vec![2], [0u8; 32]).unwrap();
+
+    let right = Record::new("rec:right", DataTier::Personal, "alice", vec![3], [0u8; 32]).unwrap();
+
+    first_writer.write(left).unwrap();
+    second_writer.write(right).unwrap();
+
+    first_writer.save(&path).unwrap();
+
+    assert_eq!(
+        second_writer.save(&path),
+        Err(EdisonError::AuditChainBroken)
+    );
+
+    let loaded = Store::load(&path).unwrap();
+
+    assert_eq!(loaded.audit_count(), 2);
+    assert_eq!(loaded.record_count(), 2);
+    assert_eq!(loaded.list_by_owner("alice").len(), 2);
+    loaded.verify_audit_chain().unwrap();
 
     let _ = std::fs::remove_file(path);
 }
@@ -296,4 +452,124 @@ fn redb_load_rejects_noncanonical_audit_key() {
     ));
 
     let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn audit_hash_known_answer_v1() {
+    let entry = AuditEntry::new("rec:calibration", "owner", AuditAction::Write, 1, [0u8; 32]);
+
+    let expected = [
+        0x4d, 0x4f, 0xfe, 0x43, 0x8e, 0x7a, 0xbe, 0x0b, 0x49, 0x59, 0x6f, 0xf8, 0x8f, 0x60, 0x8a,
+        0x39, 0xeb, 0x37, 0x8a, 0x12, 0xaf, 0xed, 0x93, 0xd6, 0xc8, 0xe4, 0x88, 0x93, 0x8b, 0x88,
+        0x3e, 0x65,
+    ];
+
+    assert_eq!(entry.entry_hash, expected);
+    assert!(entry.verify_hash());
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 4096,
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn audit_sha256_timestamp_single_bit_tamper_changes_digest(
+        timestamp in any::<u64>(),
+        prev_hash in prop::array::uniform32(any::<u8>()),
+        bit in 0usize..64,
+    ) {
+        let original = AuditEntry::new(
+            "rec:proptest",
+            "owner",
+            AuditAction::Write,
+            timestamp,
+            prev_hash,
+        );
+
+        let tampered_timestamp = timestamp ^ (1u64 << bit);
+
+        let tampered = AuditEntry::new(
+            "rec:proptest",
+            "owner",
+            AuditAction::Write,
+            tampered_timestamp,
+            prev_hash,
+        );
+
+        prop_assert_ne!(timestamp, tampered_timestamp);
+        prop_assert_ne!(original.entry_hash, tampered.entry_hash);
+        prop_assert!(original.verify_hash());
+        prop_assert!(tampered.verify_hash());
+    }
+
+    #[test]
+    fn audit_sha256_prev_hash_single_bit_tamper_changes_digest(
+        timestamp in any::<u64>(),
+        prev_hash in prop::array::uniform32(any::<u8>()),
+        bit in 0usize..256,
+    ) {
+        let original = AuditEntry::new(
+            "rec:proptest",
+            "owner",
+            AuditAction::Write,
+            timestamp,
+            prev_hash,
+        );
+
+        let mut tampered_prev_hash = prev_hash;
+        tampered_prev_hash[bit / 8] ^= 1u8 << (bit % 8);
+
+        let tampered = AuditEntry::new(
+            "rec:proptest",
+            "owner",
+            AuditAction::Write,
+            timestamp,
+            tampered_prev_hash,
+        );
+
+        prop_assert_ne!(prev_hash, tampered_prev_hash);
+        prop_assert_ne!(original.entry_hash, tampered.entry_hash);
+        prop_assert!(original.verify_hash());
+        prop_assert!(tampered.verify_hash());
+    }
+
+    #[test]
+    fn audit_sha256_distinct_record_identity_separates_entries(
+        left_seed in any::<u64>(),
+        delta in 1u64..=u64::MAX,
+        timestamp in any::<u64>(),
+        prev_hash in prop::array::uniform32(any::<u8>()),
+    ) {
+        let right_seed = left_seed.wrapping_add(delta);
+
+        let left_id = format!("rec:{left_seed:016x}");
+        let right_id = format!("rec:{right_seed:016x}");
+
+        let left = AuditEntry::new(
+            left_id,
+            "owner",
+            AuditAction::Write,
+            timestamp,
+            prev_hash,
+        );
+
+        let right = AuditEntry::new(
+            right_id,
+            "owner",
+            AuditAction::Write,
+            timestamp,
+            prev_hash,
+        );
+
+        prop_assert_ne!(
+            left.record_id.as_str(),
+            right.record_id.as_str()
+        );
+        prop_assert_ne!(left.entry_hash, right.entry_hash);
+        prop_assert!(left.verify_hash());
+        prop_assert!(right.verify_hash());
+    }
 }

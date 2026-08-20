@@ -1,5 +1,8 @@
 use super::StorageBackend;
-use crate::{AuditAction, AuditEntry, DataTier, EdisonError, Record, now_secs};
+use crate::{
+    AuditAction, AuditCheckpoint, AuditEntry, CheckpointOpenState, DataTier, EdisonError, Record,
+    checkpoint_error, classify_checkpoint_state, now_secs,
+};
 use fjall::{Database, KeyspaceCreateOptions};
 use std::collections::HashSet;
 
@@ -7,6 +10,8 @@ const CRITICAL: &str = "records_critical";
 const PERSONAL: &str = "records_personal";
 const NOISE: &str = "records_noise";
 const AUDIT: &str = "audit";
+const AUDIT_CHECKPOINT: &str = "audit_checkpoint";
+const AUDIT_CHECKPOINT_KEY: &[u8] = b"current";
 
 pub struct FjallBackend {
     _db: Database,
@@ -14,6 +19,7 @@ pub struct FjallBackend {
     personal: fjall::Keyspace,
     noise: fjall::Keyspace,
     audit: fjall::Keyspace,
+    audit_checkpoint: fjall::Keyspace,
     audit_len: usize,
     audit_tail: [u8; 32],
 }
@@ -23,6 +29,7 @@ impl FjallBackend {
         let db = Database::builder(path)
             .open()
             .map_err(|_| EdisonError::LoadFailed)?;
+
         let critical = db
             .keyspace(CRITICAL, KeyspaceCreateOptions::default)
             .map_err(|_| EdisonError::LoadFailed)?;
@@ -35,6 +42,9 @@ impl FjallBackend {
         let audit = db
             .keyspace(AUDIT, KeyspaceCreateOptions::default)
             .map_err(|_| EdisonError::LoadFailed)?;
+        let audit_checkpoint = db
+            .keyspace(AUDIT_CHECKPOINT, KeyspaceCreateOptions::default)
+            .map_err(|_| EdisonError::LoadFailed)?;
 
         let audit_entries = Self::validated_audit_entries(&audit)?;
         let audit_len = audit_entries.len();
@@ -43,12 +53,48 @@ impl FjallBackend {
             .map(|entry| entry.entry_hash)
             .unwrap_or([0u8; 32]);
 
+        let records_empty = critical.is_empty().map_err(|_| EdisonError::LoadFailed)?
+            && personal.is_empty().map_err(|_| EdisonError::LoadFailed)?
+            && noise.is_empty().map_err(|_| EdisonError::LoadFailed)?;
+
+        let checkpoint_value = audit_checkpoint
+            .get(AUDIT_CHECKPOINT_KEY)
+            .map_err(|_| EdisonError::LoadFailed)?;
+
+        let checkpoint_bytes = checkpoint_value.as_deref();
+
+        let actual_count = u64::try_from(audit_len).map_err(|_| EdisonError::AuditChainBroken)?;
+
+        let checkpoint_state = classify_checkpoint_state(
+            checkpoint_bytes,
+            audit_entries.is_empty(),
+            records_empty,
+            actual_count,
+            audit_tail,
+        )
+        .map_err(checkpoint_error)?;
+
+        if checkpoint_state == CheckpointOpenState::Genesis {
+            let checkpoint = AuditCheckpoint {
+                expected_count: 0,
+                expected_head: [0u8; 32],
+            };
+
+            let checkpoint_json =
+                serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+
+            let mut batch = db.batch();
+            batch.insert(&audit_checkpoint, AUDIT_CHECKPOINT_KEY, checkpoint_json);
+            batch.commit().map_err(|_| EdisonError::SaveFailed)?;
+        }
+
         let backend = Self {
             _db: db,
             critical,
             personal,
             noise,
             audit,
+            audit_checkpoint,
             audit_len,
             audit_tail,
         };
@@ -72,14 +118,14 @@ impl FjallBackend {
 
                 record.validate()?;
 
-                let key_matches = &*key == record.id.as_bytes();
-                let tier_matches = record.tier == expected_tier;
                 let id_is_unique = record_ids.insert(record.id.clone());
 
-                if !crate::persisted_record_metadata_valid(key_matches, tier_matches, id_is_unique)
-                {
-                    return Err(EdisonError::LoadFailed);
-                }
+                crate::validate_persisted_record_metadata(
+                    &key,
+                    &record,
+                    &expected_tier,
+                    id_is_unique,
+                )?;
             }
         }
 
@@ -136,11 +182,27 @@ impl FjallBackend {
         let entry = AuditEntry::new(record_id, requester_id, action, now_secs(), self.audit_tail);
 
         let json = serde_json::to_string(&entry).map_err(|_| EdisonError::SaveFailed)?;
+
+        let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+
+        let checkpoint = AuditCheckpoint {
+            expected_count: checkpoint_count,
+            expected_head: entry.entry_hash,
+        };
+
+        let checkpoint_json =
+            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+
         let key = format!("{:020}", self.audit_len);
 
-        self.audit
-            .insert(key.as_bytes(), json.as_bytes())
-            .map_err(|_| EdisonError::SaveFailed)?;
+        let mut batch = self._db.batch();
+        batch.insert(&self.audit, key.as_bytes(), json.as_bytes());
+        batch.insert(
+            &self.audit_checkpoint,
+            AUDIT_CHECKPOINT_KEY,
+            checkpoint_json,
+        );
+        batch.commit().map_err(|_| EdisonError::SaveFailed)?;
 
         self.audit_len = next_len;
         self.audit_tail = entry.entry_hash;
@@ -169,15 +231,53 @@ impl StorageBackend for FjallBackend {
             }
         }
         crate::ensure_new_record_id(id_exists)?;
-        self.append_audit(
+
+        let next_len = self
+            .audit_len
+            .checked_add(1)
+            .ok_or(EdisonError::SaveFailed)?;
+
+        let entry = AuditEntry::new(
             record.id.clone(),
             record.owner_id.clone(),
             AuditAction::Write,
-        )?;
-        let json = serde_json::to_string(&record).map_err(|_| EdisonError::SaveFailed)?;
-        self.tier_ks(&record.tier)
-            .insert(record.id.as_bytes(), json.as_bytes())
-            .map_err(|_| EdisonError::SaveFailed)?;
+            now_secs(),
+            self.audit_tail,
+        );
+
+        let audit_json = serde_json::to_string(&entry).map_err(|_| EdisonError::SaveFailed)?;
+        let record_json = serde_json::to_string(&record).map_err(|_| EdisonError::SaveFailed)?;
+
+        let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+
+        let checkpoint = AuditCheckpoint {
+            expected_count: checkpoint_count,
+            expected_head: entry.entry_hash,
+        };
+
+        let checkpoint_json =
+            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+
+        let audit_key = format!("{:020}", self.audit_len);
+        let record_keyspace = self.tier_ks(&record.tier).clone();
+
+        let mut batch = self._db.batch();
+        batch.insert(&self.audit, audit_key.as_bytes(), audit_json.as_bytes());
+        batch.insert(
+            &record_keyspace,
+            record.id.as_bytes(),
+            record_json.as_bytes(),
+        );
+        batch.insert(
+            &self.audit_checkpoint,
+            AUDIT_CHECKPOINT_KEY,
+            checkpoint_json,
+        );
+        batch.commit().map_err(|_| EdisonError::SaveFailed)?;
+
+        self.audit_len = next_len;
+        self.audit_tail = entry.entry_hash;
+
         Ok(())
     }
 
@@ -224,24 +324,65 @@ impl StorageBackend for FjallBackend {
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
         for tier in [DataTier::Critical, DataTier::Personal, DataTier::Noise] {
-            let ks = self.tier_ks(&tier);
-            if let Some(v) = ks.get(id.as_bytes()).map_err(|_| EdisonError::LoadFailed)? {
+            let record_keyspace = self.tier_ks(&tier).clone();
+
+            if let Some(v) = record_keyspace
+                .get(id.as_bytes())
+                .map_err(|_| EdisonError::LoadFailed)?
+            {
                 let record: Record =
                     serde_json::from_slice(&v).map_err(|_| EdisonError::LoadFailed)?;
+
                 if record.owner_id != requester_id {
                     return Err(EdisonError::AccessDenied);
                 }
-                self.append_audit(
+
+                let next_len = self
+                    .audit_len
+                    .checked_add(1)
+                    .ok_or(EdisonError::SaveFailed)?;
+
+                let entry = AuditEntry::new(
                     id.to_string(),
                     requester_id.to_string(),
                     AuditAction::Delete,
-                )?;
-                self.tier_ks(&tier)
-                    .remove(id.as_bytes())
-                    .map_err(|_| EdisonError::SaveFailed)?;
+                    now_secs(),
+                    self.audit_tail,
+                );
+
+                let audit_json =
+                    serde_json::to_string(&entry).map_err(|_| EdisonError::SaveFailed)?;
+
+                let checkpoint_count =
+                    u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+
+                let checkpoint = AuditCheckpoint {
+                    expected_count: checkpoint_count,
+                    expected_head: entry.entry_hash,
+                };
+
+                let checkpoint_json =
+                    serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+
+                let audit_key = format!("{:020}", self.audit_len);
+
+                let mut batch = self._db.batch();
+                batch.insert(&self.audit, audit_key.as_bytes(), audit_json.as_bytes());
+                batch.remove(&record_keyspace, id.as_bytes());
+                batch.insert(
+                    &self.audit_checkpoint,
+                    AUDIT_CHECKPOINT_KEY,
+                    checkpoint_json,
+                );
+                batch.commit().map_err(|_| EdisonError::SaveFailed)?;
+
+                self.audit_len = next_len;
+                self.audit_tail = entry.entry_hash;
+
                 return Ok(());
             }
         }
+
         Err(EdisonError::NotFound)
     }
 
@@ -263,5 +404,67 @@ impl StorageBackend for FjallBackend {
 
     fn backend_name(&self) -> &'static str {
         "fjall"
+    }
+}
+
+#[cfg(test)]
+mod checkpoint_state_tests {
+    use super::*;
+    use crate::CheckpointFailureReason;
+
+    #[test]
+    fn checkpoint_state_reports_unanchored_records() {
+        let checkpoint = AuditCheckpoint {
+            expected_count: 0,
+            expected_head: [0u8; 32],
+        };
+
+        let bytes = serde_json::to_vec(&checkpoint).unwrap();
+
+        let result = classify_checkpoint_state(Some(&bytes), true, false, 0, [0u8; 32]);
+
+        assert_eq!(result, Err(CheckpointFailureReason::UnanchoredRecords));
+    }
+
+    #[test]
+    fn checkpoint_state_reports_missing() {
+        let result = classify_checkpoint_state(None, false, true, 1, [7u8; 32]);
+
+        assert_eq!(result, Err(CheckpointFailureReason::Missing));
+    }
+
+    #[test]
+    fn checkpoint_state_reports_malformed() {
+        let result = classify_checkpoint_state(Some(b"not-json"), true, true, 0, [0u8; 32]);
+
+        assert_eq!(result, Err(CheckpointFailureReason::Malformed));
+    }
+
+    #[test]
+    fn checkpoint_state_reports_count_mismatch() {
+        let checkpoint = AuditCheckpoint {
+            expected_count: 2,
+            expected_head: [9u8; 32],
+        };
+
+        let bytes = serde_json::to_vec(&checkpoint).unwrap();
+
+        let result = classify_checkpoint_state(Some(&bytes), false, true, 1, [9u8; 32]);
+
+        assert_eq!(result, Err(CheckpointFailureReason::CountMismatch));
+    }
+
+    #[test]
+    fn checkpoint_state_reports_head_mismatch() {
+        let checkpoint = AuditCheckpoint {
+            expected_count: 1,
+            expected_head: [9u8; 32],
+        };
+
+        let bytes = serde_json::to_vec(&checkpoint).unwrap();
+
+        let result = classify_checkpoint_state(Some(&bytes), false, true, 1, [8u8; 32]);
+
+        assert_eq!(result, Err(CheckpointFailureReason::HeadMismatch));
     }
 }
