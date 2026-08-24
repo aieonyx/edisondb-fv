@@ -276,14 +276,14 @@ fn fjall_reopen_after_delete_preserves_checkpoint_coherence() {
         .entry_hash;
 
     assert_eq!(cached_count, 2);
-    assert!(backend.list_by_owner("owner").is_empty());
+    assert!(backend.list_by_owner("owner").unwrap().is_empty());
 
     drop(backend);
 
     let reopened = FjallBackend::open(path).unwrap();
 
     assert_eq!(reopened.audit_count(), cached_count);
-    assert!(reopened.list_by_owner("owner").is_empty());
+    assert!(reopened.list_by_owner("owner").unwrap().is_empty());
 
     let reopened_head = reopened
         .audit_entries()
@@ -384,7 +384,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
@@ -476,7 +476,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     assert_eq!(cached_count, 2);
 
-    let records = backend.list_by_owner("owner");
+    let records = backend.list_by_owner("owner").unwrap();
 
     assert!(
         records
@@ -490,7 +490,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let reopened_records = reopened.list_by_owner("owner");
+    let reopened_records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         reopened_records
@@ -756,7 +756,7 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
@@ -852,7 +852,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
         .entry_hash;
 
     assert_eq!(cached_count, 2);
-    assert!(backend.list_by_owner("owner").is_empty());
+    assert!(backend.list_by_owner("owner").unwrap().is_empty());
 
     backend.save().unwrap();
 
@@ -861,7 +861,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
     let reopened = edisondb::backends::RedbBackend::open(path).unwrap();
 
     assert_eq!(reopened.audit_count(), cached_count);
-    assert!(reopened.list_by_owner("owner").is_empty());
+    assert!(reopened.list_by_owner("owner").unwrap().is_empty());
 
     let reopened_entries = reopened.audit_entries();
 
@@ -971,7 +971,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
@@ -1067,7 +1067,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     assert_eq!(cached_count, 2);
 
-    let records = backend.list_by_owner("owner");
+    let records = backend.list_by_owner("owner").unwrap();
 
     assert!(
         records
@@ -1083,7 +1083,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let reopened_records = reopened.list_by_owner("owner");
+    let reopened_records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         reopened_records

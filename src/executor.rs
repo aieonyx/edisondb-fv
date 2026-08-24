@@ -163,7 +163,7 @@ impl EqlExecutor {
         // Collect owned snapshots first to release borrow on self.router
         type Snapshot = (String, [u8; 32], Vec<u8>, DataTier, u64);
         let snapshots: Vec<Snapshot> = self.router
-            .list_by_owner(&self.owner_id)
+            .list_by_owner(&self.owner_id)?
             .into_iter()
             .map(|r| (r.id.clone(), *r.salt(), r.payload().to_vec(), r.tier.clone(), r.created_at))
             .collect();
@@ -257,20 +257,30 @@ pub struct DbStats {
 }
 
 impl EqlExecutor {
-    pub fn stats(&self) -> DbStats {
-        let records: Vec<_> = self.router.list_by_owner(&self.owner_id);
-        let critical_count = records.iter().filter(|r| r.tier == crate::DataTier::Critical).count();
-        let personal_count = records.iter().filter(|r| r.tier == crate::DataTier::Personal).count();
-        let noise_count    = records.iter().filter(|r| r.tier == crate::DataTier::Noise).count();
-        let chain_valid    = self.router.verify_audit_chain().is_ok();
-        DbStats {
+    pub fn stats(&self) -> Result<DbStats, EdisonError> {
+        let records = self.router.list_by_owner(&self.owner_id)?;
+        let critical_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Critical)
+            .count();
+        let personal_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Personal)
+            .count();
+        let noise_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Noise)
+            .count();
+        let chain_valid = self.router.verify_audit_chain().is_ok();
+
+        Ok(DbStats {
             record_count: records.len(),
-            audit_count:  self.router.audit_count(),
+            audit_count: self.router.audit_count(),
             critical_count,
             personal_count,
             noise_count,
             chain_valid,
-        }
+        })
     }
 
     pub fn verify_chain(&self) -> Result<(), crate::EdisonError> {

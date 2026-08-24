@@ -113,10 +113,9 @@ impl FjallBackend {
         ] {
             for guard in keyspace.iter() {
                 let (key, value) = guard.into_inner().map_err(|_| EdisonError::LoadFailed)?;
-                let record: Record =
+                let persisted: crate::PersistedRecord =
                     serde_json::from_slice(&value).map_err(|_| EdisonError::LoadFailed)?;
-
-                record.validate()?;
+                let record = persisted.into_validated_record()?;
 
                 let id_is_unique = record_ids.insert(record.id.clone());
 
@@ -285,8 +284,9 @@ impl StorageBackend for FjallBackend {
         for tier in [DataTier::Critical, DataTier::Personal, DataTier::Noise] {
             let ks = self.tier_ks(&tier);
             if let Some(v) = ks.get(id.as_bytes()).map_err(|_| EdisonError::LoadFailed)? {
-                let record: Record =
+                let persisted: crate::PersistedRecord =
                     serde_json::from_slice(&v).map_err(|_| EdisonError::LoadFailed)?;
+                let record = persisted.into_validated_record()?;
                 if record.is_readable_by(requester_id) {
                     self.append_audit(
                         id.to_string(),
@@ -307,19 +307,31 @@ impl StorageBackend for FjallBackend {
         Err(EdisonError::NotFound)
     }
 
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
+
+    fn list_by_owner(
+        &self,
+        owner_id: &str,
+    ) -> Result<Vec<Record>, EdisonError> {
         let mut records = Vec::new();
+
         for ks in [&self.critical, &self.personal, &self.noise] {
             for guard in ks.iter() {
-                if let Ok((_, v)) = guard.into_inner()
-                    && let Ok(r) = serde_json::from_slice::<Record>(&v)
-                    && r.owner_id == owner_id
-                {
-                    records.push(r);
+                let (_, value) =
+                    guard.into_inner().map_err(|_| EdisonError::LoadFailed)?;
+
+                let persisted: crate::PersistedRecord =
+                    serde_json::from_slice(&value)
+                        .map_err(|_| EdisonError::LoadFailed)?;
+
+                let record = persisted.into_validated_record()?;
+
+                if record.owner_id == owner_id {
+                    records.push(record);
                 }
             }
         }
-        records
+
+        Ok(records)
     }
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
@@ -330,8 +342,9 @@ impl StorageBackend for FjallBackend {
                 .get(id.as_bytes())
                 .map_err(|_| EdisonError::LoadFailed)?
             {
-                let record: Record =
+                let persisted: crate::PersistedRecord =
                     serde_json::from_slice(&v).map_err(|_| EdisonError::LoadFailed)?;
+                let record = persisted.into_validated_record()?;
 
                 if record.owner_id != requester_id {
                     return Err(EdisonError::AccessDenied);
@@ -466,5 +479,151 @@ mod checkpoint_state_tests {
         let result = classify_checkpoint_state(Some(&bytes), false, true, 1, [8u8; 32]);
 
         assert_eq!(result, Err(CheckpointFailureReason::HeadMismatch));
+    }
+
+
+    fn p1b_temp_path(label: &str) -> String {
+        let path = format!(
+            "/tmp/edisondb-fv5-p1b-{label}-{}-{}",
+            std::process::id(),
+            crate::now_secs(),
+        );
+
+        let _ = std::fs::remove_dir_all(&path);
+        path
+    }
+
+    fn p1b_raw_personal_record(
+        id: &str,
+        owner_id: &str,
+        created_at: u64,
+    ) -> Vec<u8> {
+        serde_json::to_vec(&serde_json::json!({
+            "id": id,
+            "tier": DataTier::Personal,
+            "owner_id": owner_id,
+            "payload": [1],
+            "salt": vec![0u8; 32],
+            "created_at": created_at,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn p1b_list_rejects_malformed_persisted_json() {
+        let path = p1b_temp_path("list-malformed");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        backend
+            .personal
+            .insert(
+                b"rec:p1b-malformed",
+                b"{not-valid-json",
+            )
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::LoadFailed)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1b_list_preserves_no_owner_error() {
+        let path = p1b_temp_path("list-no-owner");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let raw = p1b_raw_personal_record(
+            "rec:p1b-no-owner",
+            "",
+            1,
+        );
+
+        backend
+            .personal
+            .insert(
+                b"rec:p1b-no-owner",
+                raw,
+            )
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::NoOwner)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1b_list_preserves_empty_record_id_error() {
+        let path = p1b_temp_path("list-empty-id");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let raw = p1b_raw_personal_record(
+            "",
+            "alice",
+            1,
+        );
+
+        backend
+            .personal
+            .insert(
+                b"rec:p1b-storage-key",
+                raw,
+            )
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::EmptyRecordId)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1b_list_preserves_invalid_created_at_error() {
+        let path = p1b_temp_path("list-zero-created-at");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let raw = p1b_raw_personal_record(
+            "rec:p1b-zero-created-at",
+            "alice",
+            0,
+        );
+
+        backend
+            .personal
+            .insert(
+                b"rec:p1b-zero-created-at",
+                raw,
+            )
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::InvalidCreatedAt)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
     }
 }

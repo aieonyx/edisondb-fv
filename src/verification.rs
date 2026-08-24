@@ -216,24 +216,16 @@ mod kani_harnesses {
     use crate::policy::{PolicyPrecheck, policy_precheck};
     use crate::{
         AuditAction, AuditEntry, EdisonError, ensure_new_record_id,
-        validate_persisted_record_metadata, verify_audit_entries,
+        validate_persisted_record_metadata, validate_record_identity, verify_audit_entries,
     };
 
     #[kani::proof]
     #[kani::unwind(16)]
     fn kani_owner_nonempty_invariant() {
         let owner_empty: bool = kani::any();
+        let owner_id = if owner_empty { "" } else { "owner" };
 
-        let record = Record {
-            id: "rec:1".into(),
-            tier: DataTier::Noise,
-            owner_id: if owner_empty { "" } else { "owner" }.into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
-
-        let result = record.validate();
+        let result = validate_record_identity("rec:1", owner_id);
 
         if owner_empty {
             assert_eq!(result, Err(EdisonError::NoOwner));
@@ -246,19 +238,14 @@ mod kani_harnesses {
     fn kani_tier_gate_critical() {
         let requester_is_owner: bool = kani::any();
 
-        let record = Record {
-            id: "rec:1".into(),
-            tier: DataTier::Critical,
-            owner_id: "owner".into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
+        // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
+        let record =
+            Record::new_with_created_at("rec:1", DataTier::Critical, "owner", vec![], [0u8; 32], 1)
+                .unwrap();
 
         let requester = if requester_is_owner { "owner" } else { "other" };
 
         let result = invariant_tier_gate(&record, requester);
-
         assert_eq!(result, requester_is_owner);
     }
 
@@ -315,16 +302,18 @@ mod kani_harnesses {
         let id_empty: bool = kani::any();
         let owner_empty: bool = kani::any();
 
-        let record = Record {
-            id: if id_empty { "" } else { "rec:1" }.into(),
-            tier: DataTier::Personal,
-            owner_id: if owner_empty { "" } else { "owner" }.into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
+        let id = if id_empty { "" } else { "rec:1" };
+        let owner_id = if owner_empty { "" } else { "owner" };
 
-        assert_eq!(record.validate().is_ok(), !id_empty && !owner_empty);
+        let result = validate_record_identity(id, owner_id);
+
+        assert_eq!(result.is_ok(), !id_empty && !owner_empty);
+
+        if owner_empty {
+            assert_eq!(result, Err(EdisonError::NoOwner));
+        } else if id_empty {
+            assert_eq!(result, Err(EdisonError::EmptyRecordId));
+        }
     }
 
     #[kani::proof]
@@ -658,18 +647,16 @@ mod kani_harnesses {
 
         kani::assume(tier_selector < 3);
 
-        let record = Record {
-            id: "rec:fv3".to_string(),
-            tier: match tier_selector {
-                0 => DataTier::Critical,
-                1 => DataTier::Personal,
-                _ => DataTier::Noise,
-            },
-            owner_id: "owner".to_string(),
-            payload: Vec::new(),
-            salt: [0u8; 32],
-            created_at: 0,
+        let tier = match tier_selector {
+            0 => DataTier::Critical,
+            1 => DataTier::Personal,
+            _ => DataTier::Noise,
         };
+
+        // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
+        let record =
+            Record::new_with_created_at("rec:fv3", tier, "owner", Vec::new(), [0u8; 32], 1)
+                .unwrap();
 
         let expected_tier = DataTier::Personal;
         let persisted_key: &[u8] = if use_matching_key {
@@ -705,6 +692,33 @@ mod kani_harnesses {
 
         if persisted_key == record.id.as_bytes() && record.tier == expected_tier && id_is_unique {
             assert!(result.is_ok());
+        }
+    }
+
+    /// FV-5 P1b: persisted timestamps are reconstruction data.
+    /// Zero is rejected as invalid persisted state. A concrete nonzero
+    /// timestamp is preserved. Wall-clock semantics are outside this proof.
+    #[kani::proof]
+    fn kani_persisted_created_at_validation() {
+        let persisted_zero: bool = kani::any();
+        let created_at = if persisted_zero { 0 } else { 1 };
+
+        let persisted = crate::PersistedRecord::from_parts(
+            "rec:p1b-created-at".to_string(),
+            crate::DataTier::Personal,
+            "owner".to_string(),
+            Vec::new(),
+            [0u8; 32],
+            created_at,
+        );
+
+        let result = persisted.into_validated_record();
+
+        if persisted_zero {
+            assert!(matches!(result, Err(crate::EdisonError::InvalidCreatedAt)));
+        } else {
+            let record = result.unwrap();
+            assert_eq!(record.created_at, 1);
         }
     }
 }

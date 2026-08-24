@@ -211,7 +211,14 @@ async fn handle_status(
     ))?;
     let state = state.lock().unwrap();
     let db = open_db(&state, &owner, &password)?;
-    let s = db.status();
+    let s = db.status().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                error: e.to_string(),
+            }),
+        )
+    })?;
     Ok(Json(serde_json::json!({
         "record_count":   s.record_count,
         "audit_count":    s.audit_count,

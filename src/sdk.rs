@@ -164,7 +164,9 @@ impl EdisonDB {
     }
 
     /// Return database statistics.
-    pub fn status(&self) -> DbStats {
+    pub fn status(
+        &self,
+    ) -> Result<DbStats, crate::EdisonError> {
         self.executor.stats()
     }
 

@@ -38,7 +38,7 @@ impl DataTier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Record {
     pub id: String,
     pub tier: DataTier,
@@ -46,6 +46,78 @@ pub struct Record {
     payload: Vec<u8>,
     salt: [u8; 32],
     pub created_at: u64,
+}
+
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) struct PersistedRecord {
+    id: String,
+    tier: DataTier,
+    owner_id: String,
+    payload: Vec<u8>,
+    salt: [u8; 32],
+    created_at: u64,
+}
+
+impl PersistedRecord {
+    pub(crate) fn from_parts(
+        id: String,
+        tier: DataTier,
+        owner_id: String,
+        payload: Vec<u8>,
+        salt: [u8; 32],
+        created_at: u64,
+    ) -> Self {
+        Self {
+            id,
+            tier,
+            owner_id,
+            payload,
+            salt,
+            created_at,
+        }
+    }
+
+    pub(crate) fn into_validated_record(
+        self,
+    ) -> Result<Record, EdisonError> {
+        if self.created_at == 0 {
+            return Err(EdisonError::InvalidCreatedAt);
+        }
+
+        let PersistedRecord {
+            id,
+            tier,
+            owner_id,
+            payload,
+            salt,
+            created_at,
+        } = self;
+
+        Record::new_with_created_at(
+            &id,
+            tier,
+            &owner_id,
+            payload,
+            salt,
+            created_at,
+        )
+    }
+}
+
+pub(crate) fn validate_record_identity(
+    id: &str,
+    owner_id: &str,
+) -> Result<(), EdisonError> {
+    if owner_id.is_empty() {
+        return Err(EdisonError::NoOwner);
+    }
+
+    if id.is_empty() {
+        return Err(EdisonError::EmptyRecordId);
+    }
+
+    Ok(())
 }
 
 impl Record {
@@ -56,14 +128,41 @@ impl Record {
         payload: Vec<u8>,
         salt: [u8; 32],
     ) -> Result<Self, EdisonError> {
-        let record = Record {
+        Self::new_with_created_at(
+            id,
+            tier,
+            owner_id,
+            payload,
+            salt,
+            now_secs(),
+        )
+    }
+
+    /// Construct a record with an explicit timestamp.
+    ///
+    /// This is the production-shared construction seam used by `new()` and
+    /// verification paths that cannot model the operating-system clock.
+    ///
+    /// A zero timestamp is permitted during construction because it may
+    /// represent a local clock anomaly. Persisted reconstruction is stricter
+    /// and rejects a stored zero timestamp before reaching this constructor.
+    pub(crate) fn new_with_created_at(
+        id: &str,
+        tier: DataTier,
+        owner_id: &str,
+        payload: Vec<u8>,
+        salt: [u8; 32],
+        created_at: u64,
+    ) -> Result<Self, EdisonError> {
+        let record = Self {
             id: id.to_string(),
             tier,
             owner_id: owner_id.to_string(),
             payload,
             salt,
-            created_at: now_secs(),
+            created_at,
         };
+
         record.validate()?;
         Ok(record)
     }
@@ -76,14 +175,9 @@ impl Record {
         &self.salt
     }
 
+
     pub(crate) fn validate(&self) -> Result<(), EdisonError> {
-        if self.owner_id.is_empty() {
-            return Err(EdisonError::NoOwner);
-        }
-        if self.id.is_empty() {
-            return Err(EdisonError::EmptyRecordId);
-        }
-        Ok(())
+        validate_record_identity(&self.id, &self.owner_id)
     }
 
     fn is_readable_by(&self, requester_id: &str) -> bool {
@@ -117,6 +211,8 @@ pub enum EdisonError {
     KeyDerivationFailed,
     #[error("Record already exists")]
     AlreadyExists,
+    #[error("Persisted record timestamp must be nonzero")]
+    InvalidCreatedAt,
     #[error("Audit chain integrity violation")]
     AuditChainBroken,
     #[error("Embedding service unavailable — is Ollama running?")]
@@ -555,11 +651,16 @@ impl Store {
         self.records.len()
     }
 
-    pub fn list_by_owner(&self, owner_id: &str) -> Vec<&Record> {
-        self.records
+
+    pub fn list_by_owner(
+        &self,
+        owner_id: &str,
+    ) -> Result<Vec<&Record>, EdisonError> {
+        Ok(self
+            .records
             .values()
             .filter(|r| r.owner_id == owner_id)
-            .collect()
+            .collect())
     }
 
     pub fn audit_entries(&self) -> &Vec<AuditEntry> {
@@ -777,10 +878,9 @@ impl Store {
             for entry in table.iter().map_err(|_| EdisonError::LoadFailed)? {
                 let (key, value) = entry.map_err(|_| EdisonError::LoadFailed)?;
 
-                let record: Record =
+                let persisted: PersistedRecord =
                     serde_json::from_str(value.value()).map_err(|_| EdisonError::LoadFailed)?;
-
-                record.validate()?;
+                let record = persisted.into_validated_record()?;
 
                 if key.value() != record.id {
                     return Err(EdisonError::LoadFailed);
@@ -951,6 +1051,15 @@ pub fn derive_key(password: &str, salt: &[u8; 32]) -> Result<[u8; 32], EdisonErr
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn record_identity_both_empty_preserves_no_owner_precedence() {
+        assert_eq!(
+            super::validate_record_identity("", ""),
+            Err(super::EdisonError::NoOwner)
+        );
+    }
+
     use super::*;
 
     #[test]
@@ -1116,7 +1225,7 @@ mod tests {
         let r2 = Record::new("rec:61", DataTier::Noise, "bob", vec![2], [0u8; 32]).unwrap();
         store.write(r1).unwrap();
         store.write(r2).unwrap();
-        let alice_records = store.list_by_owner("alice");
+        let alice_records = store.list_by_owner("alice").unwrap();
         assert_eq!(alice_records.len(), 1);
         assert_eq!(alice_records[0].id, "rec:60");
     }
@@ -1127,7 +1236,7 @@ mod tests {
         let r = Record::new("rec:70", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
         store.write(r).unwrap();
         assert!(store.delete("rec:70", "alice").is_ok());
-        assert_eq!(store.list_by_owner("alice").len(), 0);
+        assert_eq!(store.list_by_owner("alice").unwrap().len(), 0);
     }
 
     #[test]
@@ -1279,6 +1388,66 @@ mod tests {
         assert_eq!(store.save(&path), Err(EdisonError::AuditChainBroken));
 
         let _ = std::fs::remove_file(path);
+    }
+
+
+    // Golden JSON emitted by P1a commit
+    // 81782052fb4ad1c73aeb51df0a72973318f4fa7c. This proves that removing public Record
+    // deserialization did not alter the persisted Record JSON bytes.
+    const P1B_PRE_P1B_RECORD_JSON: &str = r#"{"id":"rec:p1b-compat","tier":"Personal","owner_id":"alice","payload":[1,2,3],"salt":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"created_at":1}"#;
+
+    #[test]
+    fn p1b_pre_p1b_record_json_round_trips_byte_compatibly() {
+        let persisted: super::PersistedRecord =
+            serde_json::from_str(P1B_PRE_P1B_RECORD_JSON).unwrap();
+
+        let record = persisted.into_validated_record().unwrap();
+
+        assert_eq!(record.id, "rec:p1b-compat");
+        assert_eq!(record.tier, super::DataTier::Personal);
+        assert_eq!(record.owner_id, "alice");
+        assert_eq!(record.payload(), &[1, 2, 3]);
+        assert_eq!(record.salt(), &[0u8; 32]);
+        assert_eq!(record.created_at, 1);
+
+        let reserialized = serde_json::to_string(&record).unwrap();
+
+        assert_eq!(
+            reserialized.as_bytes(),
+            P1B_PRE_P1B_RECORD_JSON.as_bytes()
+        );
+    }
+
+    #[test]
+    fn p1b_persisted_zero_timestamp_fails_closed() {
+        let persisted = super::PersistedRecord::from_parts(
+            "rec:p1b-zero-persisted".to_string(),
+            super::DataTier::Personal,
+            "alice".to_string(),
+            vec![1],
+            [0u8; 32],
+            0,
+        );
+
+        assert_eq!(
+            persisted.into_validated_record(),
+            Err(super::EdisonError::InvalidCreatedAt)
+        );
+    }
+
+    #[test]
+    fn p1b_construction_zero_timestamp_remains_allowed() {
+        let record = super::Record::new_with_created_at(
+            "rec:p1b-zero-construction",
+            super::DataTier::Noise,
+            "alice",
+            vec![],
+            [0u8; 32],
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(record.created_at, 0);
     }
 }
 pub mod arpi;

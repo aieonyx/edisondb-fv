@@ -164,7 +164,13 @@ fn cmd_status(path: &str) {
         Ok(e)  => e,
         Err(e) => { eprintln!("Error: {e}"); std::process::exit(1); }
     };
-    let stats = ex.stats();
+    let stats = match ex.stats() {
+        Ok(stats) => stats,
+        Err(e) => {
+            eprintln!("Error: {e}");
+            return;
+        }
+    };
     println!("\n╔══════════════════════════════════════╗");
     println!("║         EdisonDB — Status            ║");
     println!("╚══════════════════════════════════════╝");

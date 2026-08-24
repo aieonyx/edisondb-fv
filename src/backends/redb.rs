@@ -33,12 +33,17 @@ impl StorageBackend for RedbBackend {
         self.store.read(id, requester_id).cloned()
     }
 
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
-        self.store
-            .list_by_owner(owner_id)
+
+    fn list_by_owner(
+        &self,
+        owner_id: &str,
+    ) -> Result<Vec<Record>, EdisonError> {
+        Ok(self
+            .store
+            .list_by_owner(owner_id)?
             .into_iter()
             .cloned()
-            .collect()
+            .collect())
     }
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
@@ -91,7 +96,7 @@ impl Router {
         self.backend.read(id, requester_id)
     }
 
-    pub fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
+    pub fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError> {
         self.backend.list_by_owner(owner_id)
     }
 

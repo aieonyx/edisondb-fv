@@ -43,26 +43,36 @@ impl EdmRecord {
         }
     }
 
+
     pub fn to_record(&self) -> Result<Record, MigrationError> {
         let tier = DataTier::from_str(&self.tier)
             .ok_or_else(|| MigrationError::InvalidTier(self.tier.clone()))?;
+
         let payload = unhex(&self.payload_hex)
             .ok_or_else(|| MigrationError::InvalidHex("payload".into()))?;
+
         let salt_bytes = unhex(&self.salt_hex)
             .ok_or_else(|| MigrationError::InvalidHex("salt".into()))?;
+
         if salt_bytes.len() != 32 {
-            return Err(MigrationError::InvalidHex("salt must be 32 bytes".into()));
+            return Err(MigrationError::InvalidHex(
+                "salt must be 32 bytes".into(),
+            ));
         }
+
         let mut salt = [0u8; 32];
         salt.copy_from_slice(&salt_bytes);
-        Ok(Record {
-            id: self.id.clone(),
+
+        crate::PersistedRecord::from_parts(
+            self.id.clone(),
             tier,
-            owner_id: self.owner_id.clone(),
+            self.owner_id.clone(),
             payload,
             salt,
-            created_at: self.created_at,
-        })
+            self.created_at,
+        )
+        .into_validated_record()
+        .map_err(|e| MigrationError::InvalidRecordData(e.to_string()))
     }
 }
 
@@ -275,6 +285,7 @@ pub enum MigrationError {
     InvalidHeader(String),
     VersionMismatch(u32),
     InvalidRecord(usize, String),
+    InvalidRecordData(String),
     InvalidTier(String),
     InvalidHex(String),
     Conflict(String),
@@ -288,6 +299,7 @@ impl std::fmt::Display for MigrationError {
             Self::InvalidHeader(s)     => write!(f, "invalid header: {}", s),
             Self::VersionMismatch(v)   => write!(f, "unsupported .edm version: {}", v),
             Self::InvalidRecord(i, s)  => write!(f, "invalid record at line {}: {}", i, s),
+            Self::InvalidRecordData(s) => write!(f, "invalid record data: {}", s),
             Self::InvalidTier(s)       => write!(f, "invalid tier: {}", s),
             Self::InvalidHex(s)        => write!(f, "invalid hex: {}", s),
             Self::Conflict(s)          => write!(f, "conflict: {}", s),

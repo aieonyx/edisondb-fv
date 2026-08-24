@@ -65,7 +65,7 @@ fn sdk_status_counts_tiers() {
     db.write("p1", "PERSONAL", "b").unwrap();
     db.write("p2", "PERSONAL", "c").unwrap();
     db.write("n1", "NOISE",    "d").unwrap();
-    let stats = db.status();
+    let stats = db.status().unwrap();
     assert_eq!(stats.critical_count, 1);
     assert_eq!(stats.personal_count, 2);
     assert_eq!(stats.noise_count,    1);

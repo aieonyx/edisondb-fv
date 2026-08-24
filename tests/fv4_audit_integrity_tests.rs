@@ -292,7 +292,7 @@ fn redb_save_rejects_divergent_stale_writer() {
 
     assert_eq!(loaded.audit_count(), 2);
     assert_eq!(loaded.record_count(), 2);
-    assert_eq!(loaded.list_by_owner("alice").len(), 2);
+    assert_eq!(loaded.list_by_owner("alice").unwrap().len(), 2);
     loaded.verify_audit_chain().unwrap();
 
     let _ = std::fs::remove_file(path);
