@@ -608,6 +608,45 @@ checkpoint remains deferred to FV-5.
 
 The original intermediate local logs are retained as development evidence. Final commit-bound local and CI evidence is now archived under `verification/evidence/raw/fv4b/final-5c63ac45289e/` and is bound to reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534`.
 
+## FV-5 — Encryption and Secret Boundaries
+
+### CLAIM-FV5-001 — Persisted reconstruction authority
+
+**Status:** `COMMIT-BOUND VERIFICATION PASS`
+
+FV-5 P1b removes public Serde reconstruction authority from `Record` and
+routes persisted record decoding through a crate-private validated
+reconstruction boundary.
+
+Verified source commit:
+
+`354e1289dda9ff3bc15f41afc0242d7a8c5731a3`
+
+Commit-bound R5 evidence records:
+
+- `263 passed / 0 failed / 0 ignored` dynamic tests;
+- `7` Kani harnesses;
+- `852` Kani checks;
+- `0` failed Kani checks;
+- `10` unreachable Kani checks;
+- passing external `Record` deserialization compile-fail enforcement.
+
+The two persisted-record Kani runs contain retained unsupported-construct
+notices. Their raw logs remain archived and the notices are explicitly
+disclosed; they are not interpreted as proof of unsupported behavior.
+
+Evidence:
+
+`verification/evidence/FV-5-P1B-PERSISTENCE-BOUNDARY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p1b-354e1289dda9-r5/`
+
+`LIMIT-011` is closed for the P1b reconstruction scope. `LIMIT-009`,
+`LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` has source-level
+remediation from P1a but remains part of the wider FV-5 phase accounting.
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
@@ -836,6 +875,82 @@ Closing this limitation would require continuity evidence anchored outside the
 simultaneously erasable Edison-owned local state. FV-4b makes no such claim.
 
 **Status in FV-4b:** retained as an explicit residual trust boundary.
+
+### LIMIT-009 — Persisted metadata confidentiality
+
+Record payload protection does not conceal the existence of a record or
+clear persisted metadata such as owner and tier.
+
+**Status:** `OPEN`.
+
+Payload confidentiality and metadata confidentiality are distinct
+properties. FV-5 must not claim that encrypting payload bytes conceals
+record metadata.
+
+### LIMIT-010 — Public salt mutation boundary
+
+The FV-5 audit identified direct public mutation authority over record
+salt state.
+
+P1a source commit
+`81782052fb4ad1c73aeb51df0a72973318f4fa7c` makes the salt field private
+and exposes only read-only access.
+
+**Status:** `SOURCE REMEDIATED / FV-5 PHASE CLOSURE PENDING`.
+
+This status records the source-boundary remediation without treating the
+entire FV-5 encryption phase as complete.
+
+### LIMIT-011 — Persisted reconstruction validation bypass
+
+Before P1b, persisted records could deserialize directly into public
+`Record`, allowing persisted reconstruction to bypass the validated
+construction boundary.
+
+P1b source commit
+`354e1289dda9ff3bc15f41afc0242d7a8c5731a3` removes `Record: Deserialize`, introduces the
+crate-private persisted DTO, routes all five persisted decoding sites and
+migration reconstruction through validation, and makes Fjall listing
+fail closed on malformed or invalid persisted data.
+
+Commit-bound R5 evidence records `263` passing dynamic tests and `852`
+Kani checks with zero failures.
+
+**Status:** `CLOSED FOR P1B SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-P1B-PERSISTENCE-BOUNDARY.md`
+
+### LIMIT-012 — Persisted created_at authenticity
+
+Persisted `created_at` is attacker-controllable when local storage is
+modified and is not yet cryptographically authenticated by the current
+audit/checkpoint integrity boundary.
+
+P1b validates the structural rule that a reconstructed timestamp must be
+nonzero, but that is not evidence of timestamp authenticity.
+
+**Status:** `OPEN`.
+
+**Assigned phase:** FV-5 authenticated metadata/checkpoint work, including
+the P3.5 boundary where applicable.
+
+### LIMIT-013 — Local zero-timestamp clock anomaly
+
+`Record::new()` obtains `created_at` from the local system clock. The
+current clock helper can fall back to zero on a pre-Unix-epoch or clock
+duration anomaly.
+
+P1b intentionally preserves a stricter reconstruction rule: persisted
+`created_at == 0` is rejected. Therefore an in-process record created
+during such a clock anomaly may be persistable but fail reconstruction
+after reopen.
+
+The reconstruction rule must not be weakened merely to hide this
+distinction.
+
+**Status:** `OPEN`.
 
 ## Standing Assumptions
 

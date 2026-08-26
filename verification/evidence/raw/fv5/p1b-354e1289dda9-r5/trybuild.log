@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running tests/p1b_compile_fail.rs (target/debug/deps/p1b_compile_fail-0a008278a7187858)
+
+running 1 test
+    Checking edisondb-tests v0.0.0 (/home/edisonbl/Documents/AIEONYX/edisondb-fv/target/tests/trybuild/edisondb)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s
+
+
+test [0m[1mtests/ui/p1b_record_deserialize.rs[0m ... [0m[32mok
+[0m
+
+test public_record_cannot_be_deserialized ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
