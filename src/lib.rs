@@ -38,6 +38,129 @@ impl DataTier {
     }
 }
 
+
+pub const ENCRYPTED_PAYLOAD_MAGIC: [u8; 4] = *b"EDB1";
+pub const ENCRYPTED_PAYLOAD_VERSION: u8 = 1;
+pub const ENCRYPTED_PAYLOAD_NONCE_LEN: usize = 12;
+pub const ENCRYPTED_PAYLOAD_TAG_LEN: usize = 16;
+
+const ENCRYPTED_PAYLOAD_PREFIX_LEN: usize = 5;
+const ENCRYPTED_PAYLOAD_CIPHERTEXT_OFFSET: usize =
+    ENCRYPTED_PAYLOAD_PREFIX_LEN + ENCRYPTED_PAYLOAD_NONCE_LEN;
+const ENCRYPTED_PAYLOAD_MIN_LEN: usize =
+    ENCRYPTED_PAYLOAD_CIPHERTEXT_OFFSET + ENCRYPTED_PAYLOAD_TAG_LEN;
+
+/// Structurally validated EdisonDB encrypted payload envelope.
+///
+/// Structural validity proves only that the framing is recognized and
+/// internally well-formed. Cryptographic authenticity is established only
+/// when AES-GCM decryption succeeds with the correct key and AAD.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EncryptedPayload {
+    bytes: Vec<u8>,
+}
+
+impl EncryptedPayload {
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bytes.is_empty()
+    }
+
+    pub fn version(&self) -> u8 {
+        self.bytes[4]
+    }
+
+    pub(crate) fn from_persisted(
+        bytes: Vec<u8>,
+    ) -> Result<Self, EdisonError> {
+        Self::validate_bytes(&bytes)?;
+        Ok(Self { bytes })
+    }
+
+    pub(crate) fn from_ciphertext_parts(
+        nonce: [u8; ENCRYPTED_PAYLOAD_NONCE_LEN],
+        ciphertext: Vec<u8>,
+    ) -> Result<Self, EdisonError> {
+        if ciphertext.len() < ENCRYPTED_PAYLOAD_TAG_LEN {
+            return Err(EdisonError::InvalidEncryptedPayload);
+        }
+
+        let mut bytes = Vec::with_capacity(
+            ENCRYPTED_PAYLOAD_PREFIX_LEN
+                + ENCRYPTED_PAYLOAD_NONCE_LEN
+                + ciphertext.len(),
+        );
+
+        bytes.extend_from_slice(&ENCRYPTED_PAYLOAD_MAGIC);
+        bytes.push(ENCRYPTED_PAYLOAD_VERSION);
+        bytes.extend_from_slice(&nonce);
+        bytes.extend_from_slice(&ciphertext);
+
+        Self::from_persisted(bytes)
+    }
+
+    fn validate_bytes(
+        bytes: &[u8],
+    ) -> Result<(), EdisonError> {
+        if bytes.len() < ENCRYPTED_PAYLOAD_MAGIC.len()
+            || !bytes.starts_with(&ENCRYPTED_PAYLOAD_MAGIC)
+        {
+            return Err(EdisonError::LegacyPayloadFormat);
+        }
+
+        if bytes.len() < ENCRYPTED_PAYLOAD_PREFIX_LEN {
+            return Err(EdisonError::InvalidEncryptedPayload);
+        }
+
+        let version = bytes[4];
+
+        if version != ENCRYPTED_PAYLOAD_VERSION {
+            return Err(
+                EdisonError::UnsupportedPayloadVersion(version),
+            );
+        }
+
+        if bytes.len() < ENCRYPTED_PAYLOAD_MIN_LEN {
+            return Err(EdisonError::InvalidEncryptedPayload);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn nonce_and_ciphertext(
+        &self,
+    ) -> (&[u8], &[u8]) {
+        (
+            &self.bytes[
+                ENCRYPTED_PAYLOAD_PREFIX_LEN
+                    ..ENCRYPTED_PAYLOAD_CIPHERTEXT_OFFSET
+            ],
+            &self.bytes[
+                ENCRYPTED_PAYLOAD_CIPHERTEXT_OFFSET..
+            ],
+        )
+    }
+}
+
+impl Serialize for EncryptedPayload {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.bytes.serialize(serializer)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Record {
     pub id: String,
@@ -207,6 +330,12 @@ pub enum EdisonError {
     EncryptionFailed,
     #[error("Decryption failed — wrong key or corrupted data")]
     DecryptionFailed,
+    #[error("legacy payload format")]
+    LegacyPayloadFormat,
+    #[error("unsupported encrypted payload version: {0}")]
+    UnsupportedPayloadVersion(u8),
+    #[error("invalid encrypted payload envelope")]
+    InvalidEncryptedPayload,
     #[error("Key derivation failed")]
     KeyDerivationFailed,
     #[error("Record already exists")]
@@ -1003,19 +1132,26 @@ pub fn encrypt_payload(
     let aad = format!("{}:{}", record_id, tier.as_str());
     let key = Key::<Aes256Gcm>::from_slice(key);
     let cipher = Aes256Gcm::new(key);
-    let mut nonce_bytes = [0u8; 12];
+
+    let mut nonce_bytes = [0u8; ENCRYPTED_PAYLOAD_NONCE_LEN];
     rand::thread_rng().fill_bytes(&mut nonce_bytes);
+
     let nonce = Nonce::from_slice(&nonce_bytes);
     let payload = Payload {
         msg: data,
         aad: aad.as_bytes(),
     };
-    let mut encrypted = cipher
+
+    let encrypted = cipher
         .encrypt(nonce, payload)
         .map_err(|_| EdisonError::EncryptionFailed)?;
-    let mut result = nonce_bytes.to_vec();
-    result.append(&mut encrypted);
-    Ok(result)
+
+    let envelope = EncryptedPayload::from_ciphertext_parts(
+        nonce_bytes,
+        encrypted,
+    )?;
+
+    Ok(envelope.as_bytes().to_vec())
 }
 
 pub fn decrypt_payload(
@@ -1024,18 +1160,22 @@ pub fn decrypt_payload(
     record_id: &str,
     tier: &DataTier,
 ) -> Result<Vec<u8>, EdisonError> {
-    if data.len() < 12 {
-        return Err(EdisonError::DecryptionFailed);
-    }
+    let envelope =
+        EncryptedPayload::from_persisted(data.to_vec())?;
+
+    let (nonce_bytes, encrypted) =
+        envelope.nonce_and_ciphertext();
+
     let aad = format!("{}:{}", record_id, tier.as_str());
-    let (nonce_bytes, encrypted) = data.split_at(12);
     let key = Key::<Aes256Gcm>::from_slice(key);
     let cipher = Aes256Gcm::new(key);
     let nonce = Nonce::from_slice(nonce_bytes);
+
     let payload = Payload {
         msg: encrypted,
         aad: aad.as_bytes(),
     };
+
     cipher
         .decrypt(nonce, payload)
         .map_err(|_| EdisonError::DecryptionFailed)
@@ -1279,6 +1419,124 @@ mod tests {
             encrypt_payload(original, &key, "rec:tier-test", &DataTier::Critical).unwrap();
         let result = decrypt_payload(&encrypted, &key, "rec:tier-test", &DataTier::Personal);
         assert_eq!(result, Err(EdisonError::DecryptionFailed));
+    }
+
+
+    #[test]
+    fn p1c_encryption_emits_versioned_envelope_and_round_trips() {
+        let key = [7u8; 32];
+        let plaintext = b"versioned sovereign payload";
+
+        let encrypted = encrypt_payload(
+            plaintext,
+            &key,
+            "rec:p1c-roundtrip",
+            &DataTier::Personal,
+        )
+        .unwrap();
+
+        assert!(encrypted.starts_with(&ENCRYPTED_PAYLOAD_MAGIC));
+        assert_eq!(
+            encrypted[4],
+            ENCRYPTED_PAYLOAD_VERSION,
+        );
+        assert!(
+            encrypted.len()
+                >= 4
+                    + 1
+                    + ENCRYPTED_PAYLOAD_NONCE_LEN
+                    + ENCRYPTED_PAYLOAD_TAG_LEN
+        );
+
+        let decrypted = decrypt_payload(
+            &encrypted,
+            &key,
+            "rec:p1c-roundtrip",
+            &DataTier::Personal,
+        )
+        .unwrap();
+
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn p1c_unmarked_legacy_payload_fails_closed() {
+        let key = [0u8; 32];
+        let legacy = vec![
+            0u8;
+            ENCRYPTED_PAYLOAD_NONCE_LEN
+                + ENCRYPTED_PAYLOAD_TAG_LEN
+        ];
+
+        assert_eq!(
+            decrypt_payload(
+                &legacy,
+                &key,
+                "rec:p1c-legacy",
+                &DataTier::Personal,
+            ),
+            Err(EdisonError::LegacyPayloadFormat),
+        );
+    }
+
+    #[test]
+    fn p1c_unknown_payload_version_fails_closed() {
+        let key = [0u8; 32];
+
+        let mut envelope = Vec::new();
+        envelope.extend_from_slice(
+            &ENCRYPTED_PAYLOAD_MAGIC,
+        );
+        envelope.push(
+            ENCRYPTED_PAYLOAD_VERSION + 1,
+        );
+        envelope.extend_from_slice(
+            &[0u8; ENCRYPTED_PAYLOAD_NONCE_LEN],
+        );
+        envelope.extend_from_slice(
+            &[0u8; ENCRYPTED_PAYLOAD_TAG_LEN],
+        );
+
+        assert_eq!(
+            decrypt_payload(
+                &envelope,
+                &key,
+                "rec:p1c-version",
+                &DataTier::Personal,
+            ),
+            Err(EdisonError::UnsupportedPayloadVersion(
+                ENCRYPTED_PAYLOAD_VERSION + 1,
+            )),
+        );
+    }
+
+    #[test]
+    fn p1c_truncated_current_envelope_fails_closed() {
+        let key = [0u8; 32];
+
+        let mut envelope = Vec::new();
+        envelope.extend_from_slice(
+            &ENCRYPTED_PAYLOAD_MAGIC,
+        );
+        envelope.push(
+            ENCRYPTED_PAYLOAD_VERSION,
+        );
+        envelope.extend_from_slice(
+            &[0u8; ENCRYPTED_PAYLOAD_NONCE_LEN],
+        );
+        envelope.extend_from_slice(
+            &[0u8; ENCRYPTED_PAYLOAD_TAG_LEN - 1],
+        );
+
+        assert_eq!(
+            decrypt_payload(
+                &envelope,
+                &key,
+                "rec:p1c-truncated",
+                &DataTier::Personal,
+            ),
+            Err(EdisonError::InvalidEncryptedPayload),
+        );
     }
 
     #[test]
