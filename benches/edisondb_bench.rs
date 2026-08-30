@@ -1,12 +1,39 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use edisondb::{Store, Record, DataTier, encrypt_payload, decrypt_payload, derive_key};
 
+
+fn bench_record(
+    id: &str,
+    tier: DataTier,
+    owner: &str,
+    payload: &[u8],
+) -> Record {
+    let key = [0x5au8; 32];
+
+    let encrypted =
+        encrypt_payload(payload, &key, id, &tier).unwrap();
+
+    Record::new(
+        id,
+        tier,
+        owner,
+        encrypted,
+        [0u8; 32],
+    )
+    .unwrap()
+}
+
+
 fn bench_write(c: &mut Criterion) {
     c.bench_function("write_record", |b| {
         b.iter(|| {
             let mut store = Store::new();
-            let r = Record::new("rec:bench", DataTier::Personal,
-                "owner", vec![1,2,3], [0u8; 32]).unwrap();
+            let r = bench_record(
+                "rec:bench",
+                DataTier::Personal,
+                "owner",
+                &[1, 2, 3],
+            );
             store.write(r).unwrap();
         })
     });
@@ -14,8 +41,12 @@ fn bench_write(c: &mut Criterion) {
 
 fn bench_read_granted(c: &mut Criterion) {
     let mut store = Store::new();
-    let r = Record::new("rec:bench", DataTier::Personal,
-        "owner", vec![1,2,3], [0u8; 32]).unwrap();
+    let r = bench_record(
+        "rec:bench",
+        DataTier::Personal,
+        "owner",
+        &[1, 2, 3],
+    );
     store.write(r).unwrap();
 
     c.bench_function("read_granted", |b| {
@@ -27,8 +58,12 @@ fn bench_read_granted(c: &mut Criterion) {
 
 fn bench_read_denied(c: &mut Criterion) {
     let mut store = Store::new();
-    let r = Record::new("rec:bench", DataTier::Critical,
-        "owner", vec![1,2,3], [0u8; 32]).unwrap();
+    let r = bench_record(
+        "rec:bench",
+        DataTier::Critical,
+        "owner",
+        &[1, 2, 3],
+    );
     store.write(r).unwrap();
 
     c.bench_function("read_denied", |b| {
@@ -95,8 +130,12 @@ fn bench_save_load(c: &mut Criterion) {
             let mut store = Store::new();
             for i in 0..100 {
                 let id = format!("rec:{i}");
-                let r = Record::new(&id, DataTier::Personal,
-                    "owner", vec![1,2,3], [0u8; 32]).unwrap();
+                let r = bench_record(
+                    &id,
+                    DataTier::Personal,
+                    "owner",
+                    &[1, 2, 3],
+                );
                 store.write(r).unwrap();
             }
             store.save(path).unwrap();

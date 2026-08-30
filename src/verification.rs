@@ -240,7 +240,7 @@ mod kani_harnesses {
 
         // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
         let record =
-            Record::new_with_created_at("rec:1", DataTier::Critical, "owner", vec![], [0u8; 32], 1)
+            Record::new_with_created_at("rec:1", DataTier::Critical, "owner", crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(), [0u8; 32], 1)
                 .unwrap();
 
         let requester = if requester_is_owner { "owner" } else { "other" };
@@ -655,7 +655,7 @@ mod kani_harnesses {
 
         // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
         let record =
-            Record::new_with_created_at("rec:fv3", tier, "owner", Vec::new(), [0u8; 32], 1)
+            Record::new_with_created_at("rec:fv3", tier, "owner", crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(), [0u8; 32], 1)
                 .unwrap();
 
         let expected_tier = DataTier::Personal;
@@ -707,7 +707,7 @@ mod kani_harnesses {
             "rec:p1b-created-at".to_string(),
             crate::DataTier::Personal,
             "owner".to_string(),
-            Vec::new(),
+            crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(),
             [0u8; 32],
             created_at,
         );

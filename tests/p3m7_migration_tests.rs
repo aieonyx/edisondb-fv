@@ -1,3 +1,6 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M7 — Migration toolkit tests (20 tests)
 
@@ -11,7 +14,7 @@ use edisondb::migration::{
 
 
 fn make_record(id: &str, tier: DataTier, owner: &str, payload: &[u8]) -> Record {
-    let mut record = Record::new(id, tier, owner, payload.to_vec(), [0u8; 32]).unwrap();
+    let mut record = record_new(id, tier, owner, payload.to_vec(), [0u8; 32]).unwrap();
     record.created_at = 1000;
     record
 }
@@ -205,9 +208,14 @@ fn t16_transform_strip_prefix() {
 fn t17_manifest_counts() {
     let r1 = make_record("rec:1", DataTier::Critical, "owner1", b"abc");
     let r2 = make_record("rec:2", DataTier::Noise,    "owner1", b"de");
+
+    // The manifest counts the stored encrypted payload representation, not
+    // the pre-encryption plaintext length.
+    let expected_payload_bytes = r1.payload().len() + r2.payload().len();
+
     let manifest = build_manifest(&[r1, r2]);
     assert_eq!(manifest.record_count, 2);
-    assert_eq!(manifest.total_payload_bytes, 5);
+    assert_eq!(manifest.total_payload_bytes, expected_payload_bytes);
     assert_eq!(manifest.tier_counts["critical"], 1);
     assert_eq!(manifest.tier_counts["noise"],    1);
 }

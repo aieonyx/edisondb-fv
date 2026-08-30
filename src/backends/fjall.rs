@@ -493,20 +493,196 @@ mod checkpoint_state_tests {
         path
     }
 
-    fn p1b_raw_personal_record(
+    fn p1c_raw_personal_record_with_payload(
         id: &str,
         owner_id: &str,
         created_at: u64,
+        payload: &[u8],
     ) -> Vec<u8> {
         serde_json::to_vec(&serde_json::json!({
             "id": id,
             "tier": DataTier::Personal,
             "owner_id": owner_id,
-            "payload": [1],
+            "payload": payload,
             "salt": vec![0u8; 32],
             "created_at": created_at,
         }))
         .unwrap()
+    }
+
+    fn p1b_raw_personal_record(
+        id: &str,
+        owner_id: &str,
+        created_at: u64,
+    ) -> Vec<u8> {
+        let payload =
+            crate::EncryptedPayload::from_ciphertext_parts(
+                [0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+                vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
+            )
+            .unwrap();
+
+        p1c_raw_personal_record_with_payload(
+            id,
+            owner_id,
+            created_at,
+            payload.as_bytes(),
+        )
+    }
+
+    #[test]
+    fn p1c_persisted_unmarked_legacy_payload_fails_closed() {
+        let path = p1b_temp_path("p1c-legacy-payload");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let legacy = vec![
+            0u8;
+            crate::ENCRYPTED_PAYLOAD_NONCE_LEN
+                + crate::ENCRYPTED_PAYLOAD_TAG_LEN
+        ];
+
+        let raw = p1c_raw_personal_record_with_payload(
+            "rec:p1c-legacy",
+            "alice",
+            1,
+            &legacy,
+        );
+
+        backend
+            .personal
+            .insert(b"rec:p1c-legacy", raw)
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::LoadFailed)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1c_persisted_unknown_version_fails_closed() {
+        let path = p1b_temp_path("p1c-unknown-version");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let mut envelope = Vec::new();
+        envelope.extend_from_slice(&crate::ENCRYPTED_PAYLOAD_MAGIC);
+        envelope.push(crate::ENCRYPTED_PAYLOAD_VERSION + 1);
+        envelope.extend_from_slice(
+            &[0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+        );
+        envelope.extend_from_slice(
+            &[0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
+        );
+
+        let raw = p1c_raw_personal_record_with_payload(
+            "rec:p1c-unknown-version",
+            "alice",
+            1,
+            &envelope,
+        );
+
+        backend
+            .personal
+            .insert(b"rec:p1c-unknown-version", raw)
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::LoadFailed)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1c_persisted_truncated_current_envelope_fails_closed() {
+        let path = p1b_temp_path("p1c-truncated-envelope");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let mut envelope = Vec::new();
+        envelope.extend_from_slice(&crate::ENCRYPTED_PAYLOAD_MAGIC);
+        envelope.push(crate::ENCRYPTED_PAYLOAD_VERSION);
+        envelope.extend_from_slice(
+            &[0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+        );
+        envelope.extend_from_slice(
+            &[0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN - 1],
+        );
+
+        let raw = p1c_raw_personal_record_with_payload(
+            "rec:p1c-truncated",
+            "alice",
+            1,
+            &envelope,
+        );
+
+        backend
+            .personal
+            .insert(b"rec:p1c-truncated", raw)
+            .unwrap();
+
+        assert_eq!(
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            ),
+            Err(EdisonError::LoadFailed)
+        );
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p1c_valid_versioned_persisted_payload_reconstructs() {
+        let path = p1b_temp_path("p1c-valid-envelope");
+        let backend = FjallBackend::open(&path).unwrap();
+
+        let payload =
+            crate::EncryptedPayload::from_ciphertext_parts(
+                [0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+                vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
+            )
+            .unwrap();
+
+        let raw = p1c_raw_personal_record_with_payload(
+            "rec:p1c-valid",
+            "alice",
+            1,
+            payload.as_bytes(),
+        );
+
+        backend
+            .personal
+            .insert(b"rec:p1c-valid", raw)
+            .unwrap();
+
+        let records =
+            crate::backends::StorageBackend::list_by_owner(
+                &backend,
+                "alice",
+            )
+            .unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].id, "rec:p1c-valid");
+        assert_eq!(records[0].tier, DataTier::Personal);
+        assert_eq!(records[0].owner_id, "alice");
+        assert_eq!(records[0].created_at, 1);
+        assert_eq!(records[0].payload(), payload.as_bytes());
+
+        drop(backend);
+        let _ = std::fs::remove_dir_all(path);
     }
 
     #[test]

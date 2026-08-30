@@ -161,12 +161,30 @@ impl Serialize for EncryptedPayload {
     }
 }
 
+
+/// Persisted reconstruction accepts only structurally valid versioned
+/// envelopes. This does not establish cryptographic authenticity; that
+/// remains the responsibility of authenticated decryption.
+impl<'de> Deserialize<'de> for EncryptedPayload {
+    fn deserialize<D>(
+        deserializer: D,
+    ) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let bytes = Vec::<u8>::deserialize(deserializer)?;
+
+        Self::from_persisted(bytes)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Record {
     pub id: String,
     pub tier: DataTier,
     pub owner_id: String,
-    payload: Vec<u8>,
+    payload: EncryptedPayload,
     salt: [u8; 32],
     pub created_at: u64,
 }
@@ -177,7 +195,7 @@ pub(crate) struct PersistedRecord {
     id: String,
     tier: DataTier,
     owner_id: String,
-    payload: Vec<u8>,
+    payload: EncryptedPayload,
     salt: [u8; 32],
     created_at: u64,
 }
@@ -187,7 +205,7 @@ impl PersistedRecord {
         id: String,
         tier: DataTier,
         owner_id: String,
-        payload: Vec<u8>,
+        payload: EncryptedPayload,
         salt: [u8; 32],
         created_at: u64,
     ) -> Self {
@@ -248,7 +266,7 @@ impl Record {
         id: &str,
         tier: DataTier,
         owner_id: &str,
-        payload: Vec<u8>,
+        payload: EncryptedPayload,
         salt: [u8; 32],
     ) -> Result<Self, EdisonError> {
         Self::new_with_created_at(
@@ -273,7 +291,7 @@ impl Record {
         id: &str,
         tier: DataTier,
         owner_id: &str,
-        payload: Vec<u8>,
+        payload: EncryptedPayload,
         salt: [u8; 32],
         created_at: u64,
     ) -> Result<Self, EdisonError> {
@@ -291,6 +309,12 @@ impl Record {
     }
 
     pub fn payload(&self) -> &[u8] {
+        self.payload.as_bytes()
+    }
+
+    pub(crate) fn encrypted_payload(
+        &self,
+    ) -> &EncryptedPayload {
         &self.payload
     }
 
@@ -1128,7 +1152,7 @@ pub fn encrypt_payload(
     key: &[u8; 32],
     record_id: &str,
     tier: &DataTier,
-) -> Result<Vec<u8>, EdisonError> {
+) -> Result<EncryptedPayload, EdisonError> {
     let aad = format!("{}:{}", record_id, tier.as_str());
     let key = Key::<Aes256Gcm>::from_slice(key);
     let cipher = Aes256Gcm::new(key);
@@ -1146,25 +1170,20 @@ pub fn encrypt_payload(
         .encrypt(nonce, payload)
         .map_err(|_| EdisonError::EncryptionFailed)?;
 
-    let envelope = EncryptedPayload::from_ciphertext_parts(
+    EncryptedPayload::from_ciphertext_parts(
         nonce_bytes,
         encrypted,
-    )?;
-
-    Ok(envelope.as_bytes().to_vec())
+    )
 }
 
 pub fn decrypt_payload(
-    data: &[u8],
+    data: &EncryptedPayload,
     key: &[u8; 32],
     record_id: &str,
     tier: &DataTier,
 ) -> Result<Vec<u8>, EdisonError> {
-    let envelope =
-        EncryptedPayload::from_persisted(data.to_vec())?;
-
     let (nonce_bytes, encrypted) =
-        envelope.nonce_and_ciphertext();
+        data.nonce_and_ciphertext();
 
     let aad = format!("{}:{}", record_id, tier.as_str());
     let key = Key::<Aes256Gcm>::from_slice(key);
@@ -1202,9 +1221,45 @@ mod tests {
 
     use super::*;
 
+    fn test_encrypted_payload(
+        id: &str,
+        tier: &DataTier,
+        payload: &[u8],
+    ) -> EncryptedPayload {
+        let key = [0x5au8; 32];
+
+        encrypt_payload(
+            payload,
+            &key,
+            id,
+            tier,
+        )
+        .unwrap()
+    }
+
+    fn record_new(
+        id: &str,
+        tier: DataTier,
+        owner_id: &str,
+        payload: Vec<u8>,
+        salt: [u8; 32],
+    ) -> Result<Record, EdisonError> {
+        let encrypted =
+            test_encrypted_payload(id, &tier, &payload);
+
+        Record::new(
+            id,
+            tier,
+            owner_id,
+            encrypted,
+            salt,
+        )
+    }
+
+
     #[test]
     fn owner_can_read_critical() {
-        let r = Record::new(
+        let r = record_new(
             "rec:1",
             DataTier::Critical,
             "owner_abc",
@@ -1217,7 +1272,7 @@ mod tests {
 
     #[test]
     fn non_owner_cannot_read_critical() {
-        let r = Record::new(
+        let r = record_new(
             "rec:2",
             DataTier::Critical,
             "owner_abc",
@@ -1230,7 +1285,7 @@ mod tests {
 
     #[test]
     fn admin_cannot_read_critical() {
-        let r = Record::new(
+        let r = record_new(
             "rec:3",
             DataTier::Critical,
             "owner_abc",
@@ -1244,7 +1299,7 @@ mod tests {
 
     #[test]
     fn noise_readable_by_anyone() {
-        let r = Record::new(
+        let r = record_new(
             "rec:4",
             DataTier::Noise,
             "owner_abc",
@@ -1257,20 +1312,20 @@ mod tests {
 
     #[test]
     fn record_without_owner_rejected() {
-        let result = Record::new("rec:5", DataTier::Personal, "", vec![1], [0u8; 32]);
+        let result = record_new("rec:5", DataTier::Personal, "", vec![1], [0u8; 32]);
         assert_eq!(result, Err(EdisonError::NoOwner));
     }
 
     #[test]
     fn record_has_timestamp() {
-        let r = Record::new("rec:6", DataTier::Personal, "owner_abc", vec![], [0u8; 32]).unwrap();
+        let r = record_new("rec:6", DataTier::Personal, "owner_abc", vec![], [0u8; 32]).unwrap();
         assert!(r.created_at > 0);
     }
 
     #[test]
     fn owner_can_read_stored_record() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:10",
             DataTier::Personal,
             "owner_abc",
@@ -1285,7 +1340,7 @@ mod tests {
     #[test]
     fn attacker_cannot_read_stored_record() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:11",
             DataTier::Critical,
             "owner_abc",
@@ -1303,7 +1358,7 @@ mod tests {
     #[test]
     fn write_creates_audit_entry() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:20",
             DataTier::Personal,
             "owner_abc",
@@ -1320,7 +1375,7 @@ mod tests {
         let mut store = Store::new();
         for i in 0..5 {
             let id = format!("rec:{}", i);
-            let r = Record::new(&id, DataTier::Noise, "owner_abc", vec![], [0u8; 32]).unwrap();
+            let r = record_new(&id, DataTier::Noise, "owner_abc", vec![], [0u8; 32]).unwrap();
             store.write(r).unwrap();
         }
         assert_eq!(store.audit_count(), 5);
@@ -1329,7 +1384,7 @@ mod tests {
     #[test]
     fn granted_read_is_audited() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:30",
             DataTier::Personal,
             "owner_abc",
@@ -1345,7 +1400,7 @@ mod tests {
     #[test]
     fn denied_read_is_audited() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:31",
             DataTier::Critical,
             "owner_abc",
@@ -1361,8 +1416,8 @@ mod tests {
     #[test]
     fn list_returns_owner_records_only() {
         let mut store = Store::new();
-        let r1 = Record::new("rec:60", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
-        let r2 = Record::new("rec:61", DataTier::Noise, "bob", vec![2], [0u8; 32]).unwrap();
+        let r1 = record_new("rec:60", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+        let r2 = record_new("rec:61", DataTier::Noise, "bob", vec![2], [0u8; 32]).unwrap();
         store.write(r1).unwrap();
         store.write(r2).unwrap();
         let alice_records = store.list_by_owner("alice").unwrap();
@@ -1373,7 +1428,7 @@ mod tests {
     #[test]
     fn owner_can_delete_own_record() {
         let mut store = Store::new();
-        let r = Record::new("rec:70", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+        let r = record_new("rec:70", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
         store.write(r).unwrap();
         assert!(store.delete("rec:70", "alice").is_ok());
         assert_eq!(store.list_by_owner("alice").unwrap().len(), 0);
@@ -1382,7 +1437,7 @@ mod tests {
     #[test]
     fn non_owner_cannot_delete_record() {
         let mut store = Store::new();
-        let r = Record::new("rec:71", DataTier::Critical, "alice", vec![1], [0u8; 32]).unwrap();
+        let r = record_new("rec:71", DataTier::Critical, "alice", vec![1], [0u8; 32]).unwrap();
         store.write(r).unwrap();
         assert_eq!(
             store.delete("rec:71", "attacker"),
@@ -1395,7 +1450,7 @@ mod tests {
         let key = [0u8; 32];
         let original = b"sovereign data";
         let encrypted = encrypt_payload(original, &key, "rec:crypto", &DataTier::Personal).unwrap();
-        assert_ne!(encrypted, original.to_vec());
+        assert_ne!(encrypted.as_bytes(), &original[..]);
         let decrypted =
             decrypt_payload(&encrypted, &key, "rec:crypto", &DataTier::Personal).unwrap();
         assert_eq!(decrypted, original);
@@ -1435,9 +1490,9 @@ mod tests {
         )
         .unwrap();
 
-        assert!(encrypted.starts_with(&ENCRYPTED_PAYLOAD_MAGIC));
+        assert!(encrypted.as_bytes().starts_with(&ENCRYPTED_PAYLOAD_MAGIC));
         assert_eq!(
-            encrypted[4],
+            encrypted.version(),
             ENCRYPTED_PAYLOAD_VERSION,
         );
         assert!(
@@ -1461,82 +1516,69 @@ mod tests {
 
     #[test]
     fn p1c_unmarked_legacy_payload_fails_closed() {
-        let key = [0u8; 32];
         let legacy = vec![
             0u8;
             ENCRYPTED_PAYLOAD_NONCE_LEN
                 + ENCRYPTED_PAYLOAD_TAG_LEN
         ];
 
-        assert_eq!(
-            decrypt_payload(
-                &legacy,
-                &key,
-                "rec:p1c-legacy",
-                &DataTier::Personal,
-            ),
-            Err(EdisonError::LegacyPayloadFormat),
-        );
+        assert!(matches!(
+            EncryptedPayload::from_persisted(legacy),
+            Err(EdisonError::LegacyPayloadFormat)
+        ));
     }
 
     #[test]
     fn p1c_unknown_payload_version_fails_closed() {
-        let key = [0u8; 32];
-
         let mut envelope = Vec::new();
+
         envelope.extend_from_slice(
             &ENCRYPTED_PAYLOAD_MAGIC,
         );
+
         envelope.push(
             ENCRYPTED_PAYLOAD_VERSION + 1,
         );
+
         envelope.extend_from_slice(
             &[0u8; ENCRYPTED_PAYLOAD_NONCE_LEN],
         );
+
         envelope.extend_from_slice(
             &[0u8; ENCRYPTED_PAYLOAD_TAG_LEN],
         );
 
-        assert_eq!(
-            decrypt_payload(
-                &envelope,
-                &key,
-                "rec:p1c-version",
-                &DataTier::Personal,
-            ),
-            Err(EdisonError::UnsupportedPayloadVersion(
-                ENCRYPTED_PAYLOAD_VERSION + 1,
-            )),
-        );
+        assert!(matches!(
+            EncryptedPayload::from_persisted(envelope),
+            Err(EdisonError::UnsupportedPayloadVersion(version))
+                if version == ENCRYPTED_PAYLOAD_VERSION + 1
+        ));
     }
 
     #[test]
     fn p1c_truncated_current_envelope_fails_closed() {
-        let key = [0u8; 32];
-
         let mut envelope = Vec::new();
+
         envelope.extend_from_slice(
             &ENCRYPTED_PAYLOAD_MAGIC,
         );
+
         envelope.push(
             ENCRYPTED_PAYLOAD_VERSION,
         );
+
         envelope.extend_from_slice(
             &[0u8; ENCRYPTED_PAYLOAD_NONCE_LEN],
         );
+
         envelope.extend_from_slice(
             &[0u8; ENCRYPTED_PAYLOAD_TAG_LEN - 1],
         );
 
-        assert_eq!(
-            decrypt_payload(
-                &envelope,
-                &key,
-                "rec:p1c-truncated",
-                &DataTier::Personal,
-            ),
-            Err(EdisonError::InvalidEncryptedPayload),
-        );
+        assert!(matches!(
+            EncryptedPayload::from_persisted(envelope),
+            Err(EdisonError::InvalidEncryptedPayload)
+        ));
     }
 
     #[test]
@@ -1544,7 +1586,7 @@ mod tests {
         let path = "/tmp/test_edison_m2.redb";
         let _ = std::fs::remove_file(path);
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:40",
             DataTier::Personal,
             "owner_abc",
@@ -1564,7 +1606,7 @@ mod tests {
         let path = "/tmp/test_audit_m2.redb";
         let _ = std::fs::remove_file(path);
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:50",
             DataTier::Personal,
             "owner_abc",
@@ -1598,8 +1640,8 @@ mod tests {
     #[test]
     fn duplicate_id_rejected() {
         let mut store = Store::new();
-        let r1 = Record::new("rec:100", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
-        let r2 = Record::new("rec:100", DataTier::Personal, "alice", vec![2], [0u8; 32]).unwrap();
+        let r1 = record_new("rec:100", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+        let r2 = record_new("rec:100", DataTier::Personal, "alice", vec![2], [0u8; 32]).unwrap();
         store.write(r1).unwrap();
         assert_eq!(store.write(r2), Err(EdisonError::AlreadyExists));
     }
@@ -1609,7 +1651,7 @@ mod tests {
         let mut store = Store::new();
         for i in 0..5 {
             let id = format!("rec:{}", i);
-            let r = Record::new(&id, DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+            let r = record_new(&id, DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
             store.write(r).unwrap();
             let _ = store.read(&id, "alice");
         }
@@ -1619,7 +1661,7 @@ mod tests {
     #[test]
     fn audit_chain_detects_tampering() {
         let mut store = Store::new();
-        let r = Record::new(
+        let r = record_new(
             "rec:tamper",
             DataTier::Critical,
             "alice",
@@ -1655,25 +1697,13 @@ mod tests {
     const P1B_PRE_P1B_RECORD_JSON: &str = r#"{"id":"rec:p1b-compat","tier":"Personal","owner_id":"alice","payload":[1,2,3],"salt":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"created_at":1}"#;
 
     #[test]
-    fn p1b_pre_p1b_record_json_round_trips_byte_compatibly() {
-        let persisted: super::PersistedRecord =
-            serde_json::from_str(P1B_PRE_P1B_RECORD_JSON).unwrap();
+    fn p1c_pre_p1b_record_json_fails_closed_as_legacy() {
+        let result =
+            serde_json::from_str::<super::PersistedRecord>(
+                P1B_PRE_P1B_RECORD_JSON,
+            );
 
-        let record = persisted.into_validated_record().unwrap();
-
-        assert_eq!(record.id, "rec:p1b-compat");
-        assert_eq!(record.tier, super::DataTier::Personal);
-        assert_eq!(record.owner_id, "alice");
-        assert_eq!(record.payload(), &[1, 2, 3]);
-        assert_eq!(record.salt(), &[0u8; 32]);
-        assert_eq!(record.created_at, 1);
-
-        let reserialized = serde_json::to_string(&record).unwrap();
-
-        assert_eq!(
-            reserialized.as_bytes(),
-            P1B_PRE_P1B_RECORD_JSON.as_bytes()
-        );
+        assert!(result.is_err());
     }
 
     #[test]
@@ -1682,7 +1712,11 @@ mod tests {
             "rec:p1b-zero-persisted".to_string(),
             super::DataTier::Personal,
             "alice".to_string(),
-            vec![1],
+            test_encrypted_payload(
+                "rec:p1b-zero-persisted",
+                &super::DataTier::Personal,
+                &[1],
+            ),
             [0u8; 32],
             0,
         );
@@ -1699,7 +1733,11 @@ mod tests {
             "rec:p1b-zero-construction",
             super::DataTier::Noise,
             "alice",
-            vec![],
+            test_encrypted_payload(
+                "rec:p1b-zero-construction",
+                &super::DataTier::Noise,
+                &[],
+            ),
             [0u8; 32],
             0,
         )

@@ -1,6 +1,9 @@
 use rand::RngCore;
 
-use crate::{DataTier, EdisonError, Record, decrypt_payload, derive_key, encrypt_payload};
+use crate::{
+    DataTier, EdisonError, EncryptedPayload, Record,
+    decrypt_payload, derive_key, encrypt_payload,
+};
 use crate::backends::{RedbBackend, FjallBackend, Router};
 use crate::eql::{Statement, Tier};
 
@@ -150,7 +153,11 @@ impl EqlExecutor {
 
         let (salt, payload, tier) = {
             let record = read_result?;
-            (*record.salt(), record.payload().to_vec(), record.tier.clone())
+            (
+                *record.salt(),
+                record.encrypted_payload().clone(),
+                record.tier.clone(),
+            )
         };
         let key       = derive_key(&self.password, &salt)?;
         // AAD must match — wrong id or tier = decryption failure
@@ -161,11 +168,25 @@ impl EqlExecutor {
 
     fn exec_list(&mut self, tier_filter: Option<Tier>) -> Result<EqlResult, EdisonError> {
         // Collect owned snapshots first to release borrow on self.router
-        type Snapshot = (String, [u8; 32], Vec<u8>, DataTier, u64);
+        type Snapshot = (
+            String,
+            [u8; 32],
+            EncryptedPayload,
+            DataTier,
+            u64,
+        );
         let snapshots: Vec<Snapshot> = self.router
             .list_by_owner(&self.owner_id)?
             .into_iter()
-            .map(|r| (r.id.clone(), *r.salt(), r.payload().to_vec(), r.tier.clone(), r.created_at))
+            .map(|r| {
+                (
+                    r.id.clone(),
+                    *r.salt(),
+                    r.encrypted_payload().clone(),
+                    r.tier.clone(),
+                    r.created_at,
+                )
+            })
             .collect();
 
         let mut infos = Vec::new();
@@ -206,12 +227,14 @@ impl EqlExecutor {
     fn exec_auto_embed(&mut self, id: String) -> Result<EqlResult, EdisonError> {
         // Find the record payload to embed
         let record = self.router.read(&id, &self.owner_id)?;
-        let payload_bytes = record.payload().to_vec();
+        let encrypted_payload =
+            record.encrypted_payload().clone();
         let salt = *record.salt();
         let tier = record.tier.clone();
         // Decrypt to get plaintext
         let key = crate::derive_key(&self.password, &salt)?;
-        let decrypted = crate::decrypt_payload(&payload_bytes, &key, &id, &tier)?;
+        let decrypted =
+            crate::decrypt_payload(&encrypted_payload, &key, &id, &tier)?;
         let text = String::from_utf8(decrypted).map_err(|_| EdisonError::DecryptionFailed)?;
         // Generate embedding
         let client = crate::embedding::EmbeddingClient::default_ollama();

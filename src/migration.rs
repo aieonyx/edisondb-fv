@@ -5,7 +5,9 @@
 // Line 0: header  {"edm":1,"exported_at":N,"record_count":N,"owner_filter":"..|null"}
 // Line 1+: record {"id":"..","tier":"..","owner_id":"..","payload_hex":"..","salt_hex":"..","created_at":N}
 
-use crate::{Record, DataTier, now_secs};
+use crate::{
+    DataTier, EncryptedPayload, Record, now_secs,
+};
 use serde::{Deserialize, Serialize};
 
 // ── .edm format ───────────────────────────────────────────────────────────────
@@ -50,6 +52,9 @@ impl EdmRecord {
 
         let payload = unhex(&self.payload_hex)
             .ok_or_else(|| MigrationError::InvalidHex("payload".into()))?;
+
+        let payload = EncryptedPayload::from_persisted(payload)
+            .map_err(|e| MigrationError::InvalidRecordData(e.to_string()))?;
 
         let salt_bytes = unhex(&self.salt_hex)
             .ok_or_else(|| MigrationError::InvalidHex("salt".into()))?;

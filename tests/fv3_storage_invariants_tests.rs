@@ -1,3 +1,6 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 
 use edisondb::backends::{FjallBackend, StorageBackend};
@@ -10,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 fn raw_record(id: &str, tier: DataTier, owner_id: &str, payload: Vec<u8>) -> Record {
     let safe_id = if id.is_empty() { "fv3:test-id" } else { id };
     let safe_owner = if owner_id.is_empty() { "fv3:test-owner" } else { owner_id };
-    let mut record = Record::new(safe_id, tier, safe_owner, payload, [0u8; 32]).unwrap();
+    let mut record = record_new(safe_id, tier, safe_owner, payload, [0u8; 32]).unwrap();
     record.id = id.to_string();
     record.owner_id = owner_id.to_string();
     record.created_at = 1;
@@ -142,6 +145,10 @@ fn fjall_enforces_global_id_immutability_across_tiers() {
     let original = raw_record("rec:global", DataTier::Critical, "alice", vec![1]);
     let replacement = raw_record("rec:global", DataTier::Noise, "alice", vec![2]);
 
+    // Snapshot the immutable encrypted representation before ownership moves
+    // into storage. Avoid a pre-rejection read because reads are auditable.
+    let original_payload = original.payload().to_vec();
+
     backend.write(original).unwrap();
 
     assert_eq!(backend.write(replacement), Err(EdisonError::AlreadyExists));
@@ -149,7 +156,7 @@ fn fjall_enforces_global_id_immutability_across_tiers() {
 
     let stored = backend.read("rec:global", "alice").unwrap();
     assert_eq!(stored.tier, DataTier::Critical);
-    assert_eq!(stored.payload(), &[1]);
+    assert_eq!(stored.payload(), original_payload.as_slice());
 
     drop(backend);
     let _ = std::fs::remove_dir_all(path);

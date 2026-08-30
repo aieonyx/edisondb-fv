@@ -1,5 +1,8 @@
+mod common;
+use common::record_new;
+
 use edisondb::{
-    DataTier, EdisonError, Record,
+    DataTier, EdisonError,
     backends::{FjallBackend, StorageBackend},
 };
 use fjall::{Database, KeyspaceCreateOptions};
@@ -71,7 +74,7 @@ fn fjall_open_rejects_existing_records_without_checkpoint() {
         .keyspace("records_personal", KeyspaceCreateOptions::default)
         .unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:unanchored",
         DataTier::Personal,
         "owner",
@@ -120,7 +123,7 @@ fn fjall_open_rejects_unanchored_records_with_valid_checkpoint() {
         .keyspace("audit_checkpoint", KeyspaceCreateOptions::default)
         .unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:unanchored-present-checkpoint",
         DataTier::Personal,
         "owner",
@@ -171,7 +174,7 @@ fn fjall_reopen_after_write_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-write",
         DataTier::Personal,
         "owner",
@@ -256,7 +259,7 @@ fn fjall_reopen_after_delete_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-delete",
         DataTier::Personal,
         "owner",
@@ -352,7 +355,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-read-granted",
         DataTier::Personal,
         "owner",
@@ -452,7 +455,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-read-denied",
         DataTier::Personal,
         "owner",
@@ -610,7 +613,7 @@ fn redb_open_rejects_existing_records_without_checkpoint() {
 
     let path = db_path.to_str().unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-missing-checkpoint",
         DataTier::Personal,
         "owner",
@@ -659,7 +662,7 @@ fn redb_open_rejects_unanchored_records_with_valid_checkpoint() {
 
     let path = db_path.to_str().unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-unanchored",
         DataTier::Personal,
         "owner",
@@ -726,7 +729,7 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-write",
         DataTier::Personal,
         "owner",
@@ -828,7 +831,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-delete",
         DataTier::Personal,
         "owner",
@@ -936,7 +939,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-read-granted",
         DataTier::Personal,
         "owner",
@@ -1042,7 +1045,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-read-denied",
         DataTier::Personal,
         "owner",
@@ -1154,7 +1157,7 @@ fn redb_open_rejects_final_audit_row_deletion_against_checkpoint() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let first = Record::new(
+    let first = record_new(
         "rec:redb-tail-drop-1",
         DataTier::Personal,
         "owner",
@@ -1163,7 +1166,7 @@ fn redb_open_rejects_final_audit_row_deletion_against_checkpoint() {
     )
     .unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:redb-tail-drop-2",
         DataTier::Personal,
         "owner",
@@ -1226,7 +1229,7 @@ fn fjall_open_rejects_final_audit_row_deletion_against_checkpoint() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let first = Record::new(
+    let first = record_new(
         "rec:fjall-tail-drop-1",
         DataTier::Personal,
         "owner",
@@ -1235,7 +1238,7 @@ fn fjall_open_rejects_final_audit_row_deletion_against_checkpoint() {
     )
     .unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:fjall-tail-drop-2",
         DataTier::Personal,
         "owner",
@@ -1359,7 +1362,7 @@ fn redb_open_rejects_checkpoint_count_mismatch() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-count-mismatch",
         DataTier::Personal,
         "owner",
@@ -1429,7 +1432,7 @@ fn redb_open_rejects_checkpoint_head_mismatch() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-head-mismatch",
         DataTier::Personal,
         "owner",
@@ -1551,7 +1554,7 @@ fn fjall_open_rejects_checkpoint_count_mismatch() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:fjall-count-mismatch",
         DataTier::Personal,
         "owner",
@@ -1621,7 +1624,7 @@ fn fjall_open_rejects_checkpoint_head_mismatch() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:fjall-head-mismatch",
         DataTier::Personal,
         "owner",

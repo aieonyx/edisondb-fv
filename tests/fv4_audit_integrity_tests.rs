@@ -1,7 +1,10 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 
 use edisondb::backends::FjallBackend;
-use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Record, Store};
+use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Store};
 use fjall::{Database as FjallDatabase, KeyspaceCreateOptions};
 use proptest::prelude::*;
 use redb::{Database, ReadableTable, TableDefinition};
@@ -97,7 +100,7 @@ fn redb_load_rejects_persisted_content_tamper() {
     let path = temp_path("persisted-content-tamper");
     let mut store = Store::new();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:tampered",
         DataTier::Personal,
         "alice",
@@ -152,7 +155,7 @@ fn redb_save_rejects_unrelated_history_replacement() {
     for index in 0..2 {
         let id = format!("rec:{index}");
 
-        let record = Record::new(
+        let record = record_new(
             &id,
             DataTier::Personal,
             "alice",
@@ -168,7 +171,7 @@ fn redb_save_rejects_unrelated_history_replacement() {
 
     let mut replacement = Store::new();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:replacement",
         DataTier::Personal,
         "alice",
@@ -195,14 +198,14 @@ fn redb_save_allows_same_lineage_resave_and_extension() {
     let path = temp_path("lineage-extension");
     let mut store = Store::new();
 
-    let first = Record::new("rec:first", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+    let first = record_new("rec:first", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
 
     store.write(first).unwrap();
     store.save(&path).unwrap();
 
     store.save(&path).unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:second",
         DataTier::Personal,
         "alice",
@@ -229,7 +232,7 @@ fn redb_save_rejects_stale_snapshot_after_history_extension() {
 
     let mut seed = Store::new();
 
-    let first = Record::new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+    let first = record_new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
 
     seed.write(first).unwrap();
     seed.save(&path).unwrap();
@@ -237,7 +240,7 @@ fn redb_save_rejects_stale_snapshot_after_history_extension() {
     let stale = Store::load(&path).unwrap();
     let mut current = Store::load(&path).unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:current",
         DataTier::Personal,
         "alice",
@@ -266,7 +269,7 @@ fn redb_save_rejects_divergent_stale_writer() {
 
     let mut seed = Store::new();
 
-    let base = Record::new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
+    let base = record_new("rec:base", DataTier::Personal, "alice", vec![1], [0u8; 32]).unwrap();
 
     seed.write(base).unwrap();
     seed.save(&path).unwrap();
@@ -274,9 +277,9 @@ fn redb_save_rejects_divergent_stale_writer() {
     let mut first_writer = Store::load(&path).unwrap();
     let mut second_writer = Store::load(&path).unwrap();
 
-    let left = Record::new("rec:left", DataTier::Personal, "alice", vec![2], [0u8; 32]).unwrap();
+    let left = record_new("rec:left", DataTier::Personal, "alice", vec![2], [0u8; 32]).unwrap();
 
-    let right = Record::new("rec:right", DataTier::Personal, "alice", vec![3], [0u8; 32]).unwrap();
+    let right = record_new("rec:right", DataTier::Personal, "alice", vec![3], [0u8; 32]).unwrap();
 
     first_writer.write(left).unwrap();
     second_writer.write(right).unwrap();
@@ -305,7 +308,7 @@ fn redb_save_uses_canonical_audit_keys() {
 
     for index in 0..12 {
         let id = format!("rec:{index}");
-        let record = Record::new(&id, DataTier::Noise, "alice", vec![], [0u8; 32]).unwrap();
+        let record = record_new(&id, DataTier::Noise, "alice", vec![], [0u8; 32]).unwrap();
 
         store.write(record).unwrap();
     }

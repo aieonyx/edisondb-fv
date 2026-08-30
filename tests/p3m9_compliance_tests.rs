@@ -1,3 +1,6 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M9 — Compliance tooling tests (20 tests)
 
@@ -8,7 +11,7 @@ use edisondb::{AuditAction, AuditEntry, DataTier, Record};
 fn rec(id: &str, tier: DataTier, owner: &str, age_secs: u64) -> Record {
     let safe_owner = if owner.is_empty() { "compliance:test-owner" } else { owner };
     let mut record =
-        Record::new(id, tier, safe_owner, b"payload".to_vec(), [0u8; 32]).unwrap();
+        record_new(id, tier, safe_owner, b"payload".to_vec(), [0u8; 32]).unwrap();
     record.owner_id = owner.to_string();
     record.created_at = 1000u64.saturating_sub(age_secs);
     record
@@ -71,8 +74,13 @@ fn t5_tier_summary() {
 fn t6_tier_summary_payload() {
     let r1 = rec("r1", DataTier::Noise, "o1", 0);
     let r2 = rec("r2", DataTier::Noise, "o1", 0);
+
+    // TierSummary counts the stored encrypted payload representation, not
+    // the pre-encryption plaintext length.
+    let expected_payload_bytes = r1.payload().len() + r2.payload().len();
+
     let s = TierSummary::from_records(&[&r1, &r2]);
-    assert_eq!(s.total_payload_bytes, 14); // "payload" * 2 = 7 * 2
+    assert_eq!(s.total_payload_bytes, expected_payload_bytes);
 }
 
 // ── T7: AuditSummary from entries ────────────────────────────────────────────

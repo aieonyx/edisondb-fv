@@ -1,3 +1,6 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M8 — Formal verification hooks tests (20 tests)
 
@@ -10,7 +13,7 @@ fn make_record(id: &str, tier: DataTier, owner: &str) -> Record {
     let safe_id = if id.is_empty() { "verification:test-id" } else { id };
     let safe_owner = if owner.is_empty() { "verification:test-owner" } else { owner };
     let mut record =
-        Record::new(safe_id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
+        record_new(safe_id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
     record.id = id.to_string();
     record.owner_id = owner.to_string();
     record.created_at = 1000;
