@@ -647,6 +647,62 @@ Raw evidence:
 `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` has source-level
 remediation from P1a but remains part of the wider FV-5 phase accounting.
 
+
+### CLAIM-FV5-002 — Versioned encrypted payload persistence boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `BASELINE-CONSTRAINED / RESOURCE EXHAUSTION / NOT GREEN`
+
+FV-5 P1c-B completes the production persistence migration to the
+versioned `EncryptedPayload` boundary introduced in P1c-A.
+
+Verified source commit:
+
+`eace7cc86c354481c100ccf88b8f5d4bda33d898`
+
+Commit-bound evidence records:
+
+- `271 passed / 0 failed / 0 ignored` dynamic tests across `15` targets;
+- baseline-aware Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- `3` targeted Kani harnesses;
+- `1514` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `21` unreachable targeted Kani checks;
+- persisted fail-closed rejection of unmarked legacy payloads;
+- persisted fail-closed rejection of unknown payload versions;
+- persisted fail-closed rejection of truncated current envelopes;
+- successful reconstruction of a structurally valid current-version
+  persisted envelope.
+
+The complete Kani suite is not represented as green. Audit-related
+harnesses encounter a reproduced P1c-A baseline CBMC resource ceiling.
+The archived baseline attempt contains an explicit out-of-memory
+diagnostic and no observed assertion `Status: FAILURE`.
+
+The named audit verification/digest/hash boundary diff between P1c-A and
+P1c-B is empty.
+
+Kani unsupported-construct notices are retained and disclosed.
+
+This claim does not formally verify AES-GCM. Structural encrypted-envelope
+validity is not equivalent to cryptographic authenticity.
+
+Unmarked legacy payloads are not silently adopted or automatically
+migrated.
+
+Evidence:
+
+`verification/evidence/FV-5-P1C-B-PAYLOAD-ENVELOPE.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p1c-b-eace7cc86c35-r1/`
+
+`LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010`
+remains source-remediated with wider FV-5 phase closure pending.
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure

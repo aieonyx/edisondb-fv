@@ -1,0 +1,10 @@
+{
+  "baseline_commit": "dba00ea58cd160a69c9a4fc6bb041e361fa40e47",
+  "classification": "baseline verifier resource exhaustion; not an assertion failure",
+  "harnesses_reached": 5,
+  "successful_verification_summaries": 3,
+  "failed_verification_summaries": 1,
+  "oom_diagnostics": 1,
+  "assertion_failure_statuses": 0,
+  "last_harness_reached": "verification::kani_harnesses::kani_audit_chain_interior_drop_rejected"
+}
