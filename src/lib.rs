@@ -181,8 +181,8 @@ impl<'de> Deserialize<'de> for EncryptedPayload {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Record {
-    pub id: String,
-    pub tier: DataTier,
+    id: String,
+    tier: DataTier,
     pub owner_id: String,
     payload: EncryptedPayload,
     salt: [u8; 32],
@@ -262,13 +262,21 @@ pub(crate) fn validate_record_identity(
 }
 
 impl Record {
+    /// Construct a record from plaintext using the supplied encryption key.
+    ///
+    /// Encryption is performed inside this constructor so the ciphertext's
+    /// AES-GCM associated data is necessarily bound to this record's immutable
+    /// identifier and tier.
     pub fn new(
         id: &str,
         tier: DataTier,
         owner_id: &str,
-        payload: EncryptedPayload,
+        data: &[u8],
+        key: &[u8; 32],
         salt: [u8; 32],
     ) -> Result<Self, EdisonError> {
+        let payload = encrypt_payload(data, key, id, &tier)?;
+
         Self::new_with_created_at(
             id,
             tier,
@@ -306,6 +314,22 @@ impl Record {
 
         record.validate()?;
         Ok(record)
+    }
+
+    /// Immutable record identifier.
+    ///
+    /// The identifier is part of the AES-GCM associated-data boundary and
+    /// cannot be changed independently of the encrypted payload.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Immutable data tier.
+    ///
+    /// The tier is part of the AES-GCM associated-data boundary and cannot be
+    /// changed independently of the encrypted payload.
+    pub fn tier(&self) -> &DataTier {
+        &self.tier
     }
 
     pub fn payload(&self) -> &[u8] {
@@ -1244,14 +1268,14 @@ mod tests {
         payload: Vec<u8>,
         salt: [u8; 32],
     ) -> Result<Record, EdisonError> {
-        let encrypted =
-            test_encrypted_payload(id, &tier, &payload);
+        let key = [0x5au8; 32];
 
         Record::new(
             id,
             tier,
             owner_id,
-            encrypted,
+            &payload,
+            &key,
             salt,
         )
     }
@@ -1454,6 +1478,56 @@ mod tests {
         let decrypted =
             decrypt_payload(&encrypted, &key, "rec:crypto", &DataTier::Personal).unwrap();
         assert_eq!(decrypted, original);
+    }
+
+    #[test]
+    fn p2_record_constructor_binds_payload_to_immutable_id_and_tier() {
+        let key = [0x33u8; 32];
+        let salt = [0x44u8; 32];
+        let plaintext = b"p2 constructor-bound payload";
+
+        let record = Record::new(
+            "rec:p2-bound",
+            DataTier::Critical,
+            "alice",
+            plaintext,
+            &key,
+            salt,
+        )
+        .unwrap();
+
+        assert_eq!(record.id(), "rec:p2-bound");
+        assert_eq!(record.tier(), &DataTier::Critical);
+
+        let decrypted = decrypt_payload(
+            record.encrypted_payload(),
+            &key,
+            record.id(),
+            record.tier(),
+        )
+        .unwrap();
+
+        assert_eq!(decrypted, plaintext);
+
+        assert_eq!(
+            decrypt_payload(
+                record.encrypted_payload(),
+                &key,
+                "rec:p2-transplanted",
+                record.tier(),
+            ),
+            Err(EdisonError::DecryptionFailed)
+        );
+
+        assert_eq!(
+            decrypt_payload(
+                record.encrypted_payload(),
+                &key,
+                record.id(),
+                &DataTier::Personal,
+            ),
+            Err(EdisonError::DecryptionFailed)
+        );
     }
 
     #[test]

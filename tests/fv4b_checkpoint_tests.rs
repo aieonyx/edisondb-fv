@@ -85,7 +85,7 @@ fn fjall_open_rejects_existing_records_without_checkpoint() {
 
     let json = serde_json::to_vec(&record).unwrap();
 
-    personal.insert(record.id.as_bytes(), json).unwrap();
+    personal.insert(record.id().as_bytes(), json).unwrap();
 
     drop(personal);
     drop(db);
@@ -134,7 +134,7 @@ fn fjall_open_rejects_unanchored_records_with_valid_checkpoint() {
 
     let record_json = serde_json::to_vec(&record).unwrap();
 
-    personal.insert(record.id.as_bytes(), record_json).unwrap();
+    personal.insert(record.id().as_bytes(), record_json).unwrap();
 
     let genesis_checkpoint = serde_json::json!({
         "expected_count": 0,
@@ -370,7 +370,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
         .read("rec:checkpoint-read-granted", "owner")
         .unwrap();
 
-    assert_eq!(returned.id, "rec:checkpoint-read-granted");
+    assert_eq!(returned.id(), "rec:checkpoint-read-granted");
 
     let cached_count = backend.audit_count();
     let cached_head = backend
@@ -392,7 +392,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-granted")
+            .any(|record| record.id() == "rec:checkpoint-read-granted")
     );
 
     let reopened_head = reopened
@@ -484,7 +484,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-denied")
+            .any(|record| record.id() == "rec:checkpoint-read-denied")
     );
 
     drop(backend);
@@ -498,7 +498,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
     assert!(
         reopened_records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-denied")
+            .any(|record| record.id() == "rec:checkpoint-read-denied")
     );
 
     let reopened_head = reopened
@@ -633,7 +633,7 @@ fn redb_open_rejects_existing_records_without_checkpoint() {
 
             let json = serde_json::to_string(&record).unwrap();
 
-            table.insert(record.id.as_str(), json.as_str()).unwrap();
+            table.insert(record.id(), json.as_str()).unwrap();
         }
 
         txn.commit().unwrap();
@@ -685,7 +685,7 @@ fn redb_open_rejects_unanchored_records_with_valid_checkpoint() {
 
             let json = serde_json::to_string(&record).unwrap();
 
-            table.insert(record.id.as_str(), json.as_str()).unwrap();
+            table.insert(record.id(), json.as_str()).unwrap();
         }
 
         {
@@ -764,7 +764,7 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:redb-checkpoint-write")
+            .any(|record| record.id() == "rec:redb-checkpoint-write")
     );
 
     let reopened_entries = reopened.audit_entries();
@@ -954,7 +954,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
         .read("rec:redb-checkpoint-read-granted", "owner")
         .unwrap();
 
-    assert_eq!(returned.id, "rec:redb-checkpoint-read-granted");
+    assert_eq!(returned.id(), "rec:redb-checkpoint-read-granted");
 
     let cached_count = backend.audit_count();
 
@@ -979,7 +979,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
     assert!(
         records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-granted" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-granted" })
     );
 
     let reopened_head = reopened
@@ -1075,7 +1075,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
     assert!(
         records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
     );
 
     backend.save().unwrap();
@@ -1091,7 +1091,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
     assert!(
         reopened_records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
     );
 
     let reopened_head = reopened

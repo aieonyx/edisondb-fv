@@ -1,0 +1,5 @@
+error[E0616]: field `id` of struct `Record` is private
+ --> tests/ui/p2_record_id_mutation.rs:6:12
+  |
+6 |     record.id = "rec:transplanted".to_string();
+  |            ^^ private field

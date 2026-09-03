@@ -11,10 +11,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 
 fn raw_record(id: &str, tier: DataTier, owner_id: &str, payload: Vec<u8>) -> Record {
-    let safe_id = if id.is_empty() { "fv3:test-id" } else { id };
     let safe_owner = if owner_id.is_empty() { "fv3:test-owner" } else { owner_id };
-    let mut record = record_new(safe_id, tier, safe_owner, payload, [0u8; 32]).unwrap();
-    record.id = id.to_string();
+    let mut record = record_new(id, tier, safe_owner, payload, [0u8; 32]).unwrap();
     record.owner_id = owner_id.to_string();
     record.created_at = 1;
     record
@@ -55,11 +53,18 @@ fn store_rejects_empty_owner_without_mutation() {
 }
 
 #[test]
-fn store_rejects_empty_record_id_without_mutation() {
-    let mut store = Store::new();
-    let record = raw_record("", DataTier::Noise, "alice", vec![1]);
+fn constructor_rejects_empty_record_id_before_store_mutation() {
+    let store = Store::new();
 
-    assert!(store.write(record).is_err());
+    let result = record_new(
+        "",
+        DataTier::Noise,
+        "alice",
+        vec![1],
+        [0u8; 32],
+    );
+
+    assert_eq!(result, Err(EdisonError::EmptyRecordId));
     assert_eq!(store.record_count(), 0);
     assert_eq!(store.audit_count(), 0);
 }
@@ -124,13 +129,19 @@ fn fjall_rejects_empty_owner_without_mutation() {
 }
 
 #[test]
-fn fjall_rejects_empty_record_id_without_mutation() {
+fn constructor_rejects_empty_record_id_before_fjall_mutation() {
     let path = temp_path("fjall-empty-id");
-    let mut backend = FjallBackend::open(&path).unwrap();
+    let backend = FjallBackend::open(&path).unwrap();
 
-    let record = raw_record("", DataTier::Noise, "alice", vec![1]);
+    let result = record_new(
+        "",
+        DataTier::Noise,
+        "alice",
+        vec![1],
+        [0u8; 32],
+    );
 
-    assert!(backend.write(record).is_err());
+    assert_eq!(result, Err(EdisonError::EmptyRecordId));
     assert_eq!(backend.audit_count(), 0);
 
     drop(backend);
@@ -155,7 +166,7 @@ fn fjall_enforces_global_id_immutability_across_tiers() {
     assert_eq!(backend.audit_count(), 1);
 
     let stored = backend.read("rec:global", "alice").unwrap();
-    assert_eq!(stored.tier, DataTier::Critical);
+    assert_eq!(stored.tier(), &DataTier::Critical);
     assert_eq!(stored.payload(), original_payload.as_slice());
 
     drop(backend);

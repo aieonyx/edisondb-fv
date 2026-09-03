@@ -2,7 +2,7 @@ use rand::RngCore;
 
 use crate::{
     DataTier, EdisonError, EncryptedPayload, Record,
-    decrypt_payload, derive_key, encrypt_payload,
+    decrypt_payload, derive_key,
 };
 use crate::backends::{RedbBackend, FjallBackend, Router};
 use crate::eql::{Statement, Tier};
@@ -133,9 +133,16 @@ impl EqlExecutor {
         let mut salt  = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut salt);
         let key       = derive_key(&self.password, &salt)?;
-        // AAD bound to id + tier — transplant attacks impossible
-        let encrypted = encrypt_payload(payload.as_bytes(), &key, &id, &data_tier)?;
-        let record    = Record::new(&id, data_tier, &self.owner_id, encrypted, salt)?;
+        // Record construction owns encryption so AAD and immutable metadata
+        // cannot be supplied independently.
+        let record = Record::new(
+            &id,
+            data_tier,
+            &self.owner_id,
+            payload.as_bytes(),
+            &key,
+            salt,
+        )?;
         self.router.write(record)?;
         self.router.save()?;
         if auto_embed {

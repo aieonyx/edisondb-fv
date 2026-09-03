@@ -9,14 +9,12 @@ pub fn record_new(
 ) -> Result<edisondb::Record, edisondb::EdisonError> {
     let key = [0x5au8; 32];
 
-    let encrypted =
-        edisondb::encrypt_payload(&payload, &key, id, &tier)?;
-
     edisondb::Record::new(
         id,
         tier,
         owner_id,
-        encrypted,
+        &payload,
+        &key,
         salt,
     )
 }

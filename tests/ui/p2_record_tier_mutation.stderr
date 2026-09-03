@@ -1,0 +1,5 @@
+error[E0616]: field `tier` of struct `Record` is private
+ --> tests/ui/p2_record_tier_mutation.rs:6:12
+  |
+6 |     record.tier = DataTier::Noise;
+  |            ^^^^ private field

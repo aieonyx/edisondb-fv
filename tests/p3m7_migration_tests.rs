@@ -94,8 +94,8 @@ fn t8_edm_record_roundtrip() {
     let r = make_record("rec:1", DataTier::Critical, "owner1", b"data");
     let edm = EdmRecord::from_record(&r);
     let r2 = edm.to_record().unwrap();
-    assert_eq!(r2.id, r.id);
-    assert_eq!(r2.tier, r.tier);
+    assert_eq!(r2.id(), r.id());
+    assert_eq!(r2.tier(), r.tier());
     assert_eq!(r2.owner_id, r.owner_id);
     assert_eq!(r2.payload(), r.payload());
     assert_eq!(r2.salt(), r.salt());
@@ -111,7 +111,7 @@ fn t9_import_clean() {
     assert_eq!(result.imported, 1);
     assert_eq!(result.skipped, 0);
     assert!(result.errors.is_empty());
-    assert_eq!(records[0].id, "rec:1");
+    assert_eq!(records[0].id(), "rec:1");
 }
 
 // ── T10: import skip conflict ─────────────────────────────────────────────────
@@ -139,7 +139,7 @@ fn t11_import_overwrite_conflict() {
     let (records, result) = import(&edm_records, &existing, ConflictStrategy::Overwrite);
     assert_eq!(result.imported, 1);
     assert_eq!(result.skipped, 0);
-    assert_eq!(records[0].id, "rec:1");
+    assert_eq!(records[0].id(), "rec:1");
 }
 
 // ── T12: import error conflict ────────────────────────────────────────────────
@@ -270,7 +270,7 @@ fn t20_full_pipeline() {
     // Verify all owners changed
     for r in &records {
         assert_eq!(r.owner_id, "new_owner");
-        assert!(r.id.starts_with("migrated:"));
+        assert!(r.id().starts_with("migrated:"));
     }
 
     // Manifest check: payload bytes preserved

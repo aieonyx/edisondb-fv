@@ -638,6 +638,59 @@ mod kani_harnesses {
         );
     }
 
+    /// FV-5 P2: construction preserves the selected AAD-authority metadata.
+    ///
+    /// This proves the Record construction seam preserves the immutable
+    /// identifier and tier selected by the caller. It does not prove AES-GCM
+    /// or cryptographic authentication behavior.
+    #[kani::proof]
+    #[kani::unwind(16)]
+    fn kani_p2_record_metadata_authority() {
+        let use_first_id: bool = kani::any();
+        let tier_selector: u8 = kani::any();
+
+        kani::assume(tier_selector < 3);
+
+        let id = if use_first_id {
+            "rec:p2-a"
+        } else {
+            "rec:p2-b"
+        };
+
+        let tier = match tier_selector {
+            0 => DataTier::Critical,
+            1 => DataTier::Personal,
+            _ => DataTier::Noise,
+        };
+
+        let expected_tier = tier.clone();
+
+        let payload = crate::EncryptedPayload::from_ciphertext_parts(
+            [0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+            vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
+        )
+        .unwrap();
+
+        let record = Record::new_with_created_at(
+            id,
+            tier,
+            "owner",
+            payload,
+            [0u8; 32],
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(record.id(), id);
+        assert_eq!(record.tier(), &expected_tier);
+
+        if use_first_id {
+            assert_ne!(record.id(), "rec:p2-b");
+        } else {
+            assert_ne!(record.id(), "rec:p2-a");
+        }
+    }
+
     #[kani::proof]
     #[kani::unwind(16)]
     fn kani_persisted_record_metadata() {

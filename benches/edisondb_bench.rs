@@ -10,14 +10,12 @@ fn bench_record(
 ) -> Record {
     let key = [0x5au8; 32];
 
-    let encrypted =
-        encrypt_payload(payload, &key, id, &tier).unwrap();
-
     Record::new(
         id,
         tier,
         owner,
-        encrypted,
+        payload,
+        &key,
         [0u8; 32],
     )
     .unwrap()
