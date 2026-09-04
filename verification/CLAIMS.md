@@ -703,6 +703,62 @@ Raw evidence:
 `LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010`
 remains source-remediated with wider FV-5 phase closure pending.
 
+### CLAIM-FV5-003 — AAD metadata authority boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P2 hardens authority over the existing record ID and tier AES-GCM
+associated-data boundary.
+
+Verified source commit:
+
+`6793c15c77b07c8f8cdbb51934bf4be1eee5e883`
+
+Commit-bound evidence records:
+
+- `273 passed / 0 failed / 0 ignored` dynamic tests across `16` test-result
+  summaries;
+- passing compile-fail enforcement preventing external mutation of
+  `Record.id` and `Record.tier`;
+- baseline-aware Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `500` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `7` unreachable targeted Kani checks;
+- successful preservation of selected record ID and tier through the modeled
+  production construction seam;
+- dynamic authenticated-decryption failure when either ID or tier context is
+  substituted.
+
+The public `Record::new` constructor now owns encryption of plaintext using
+the same ID and tier stored in the record. External callers cannot supply
+ciphertext independently from those metadata values through that public
+construction seam.
+
+Kani unsupported-construct notices are retained and disclosed.
+
+This claim does not formally verify AES-GCM. The targeted Kani proof covers
+metadata preservation through the named construction seam; the cryptographic
+AAD mismatch behavior is supported by dynamic regression tests.
+
+The complete Kani suite was not rerun for P2. The previously documented
+audit-related verifier resource ceiling remains classified as a tool/resource
+constraint rather than a property failure.
+
+Evidence:
+
+`verification/evidence/FV-5-P2-AAD-METADATA-AUTHORITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p2-6793c15c77b0-r1/`
+
+`LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` remains
+source-remediated with wider FV-5 phase closure pending.
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
