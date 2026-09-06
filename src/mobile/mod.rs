@@ -12,6 +12,15 @@ use std::path::Path;
 use blake3::Hasher;
 use fjall::{Database, Keyspace, KeyspaceCreateOptions};
 
+const WRITE_COUNTER_KEY: &[u8] = b"__write_counter__";
+
+/// Return the next monotonic mobile write counter.
+///
+/// `None` represents counter exhaustion. Wrapping to zero is forbidden.
+pub(crate) fn next_write_counter(current: u64) -> Option<u64> {
+    current.checked_add(1)
+}
+
 /// Errors surfaced across the FFI boundary.
 #[derive(Debug)]
 pub enum DbError {
@@ -20,6 +29,8 @@ pub enum DbError {
     KeyExists,
     NotFound,
     InvalidArpi,
+    InvalidCounterState,
+    CounterExhausted,
     Other(String),
 }
 
@@ -113,25 +124,31 @@ impl MobileDb {
                 DbError::Fjall(e)
             })?;
 
-        let counter = match partition.get(b"__write_counter__") {
+        let counter = match partition.get(WRITE_COUNTER_KEY) {
             Ok(Some(v)) => {
-                let arr: [u8; 8] = v.as_ref().try_into().unwrap_or([0u8; 8]);
+                let arr: [u8; 8] = v
+                    .as_ref()
+                    .try_into()
+                    .map_err(|_| DbError::InvalidCounterState)?;
                 u64::from_le_bytes(arr)
             }
-            _ => 0u64,
+            Ok(None) => 0u64,
+            Err(e) => return Err(DbError::Fjall(e)),
         };
 
         Ok(Self { _db: db, partition, write_counter: counter })
     }
 
-    fn next_counter(&mut self) -> u64 {
-        self.write_counter += 1;
-        self.write_counter
+    fn next_counter(&mut self) -> Result<u64, DbError> {
+        let next =
+            next_write_counter(self.write_counter).ok_or(DbError::CounterExhausted)?;
+        self.write_counter = next;
+        Ok(next)
     }
 
     fn persist_counter(&self) -> Result<(), DbError> {
         self.partition
-            .insert(b"__write_counter__", &self.write_counter.to_le_bytes())
+            .insert(WRITE_COUNTER_KEY, &self.write_counter.to_le_bytes())
             .map_err(DbError::Fjall)
     }
 
@@ -152,7 +169,7 @@ impl MobileDb {
             }
         }
 
-        let counter = self.next_counter();
+        let counter = self.next_counter()?;
         let mut final_header = header.clone();
         final_header.write_counter = counter;
         let header_bytes = final_header.to_bytes();
@@ -184,5 +201,140 @@ impl MobileDb {
             .remove(key.as_bytes())
             .map_err(DbError::Fjall)?;
         Ok(existed)
+    }
+}
+
+
+#[cfg(test)]
+mod p3_counter_tests {
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_path(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        std::env::temp_dir().join(format!(
+            "edisondb-fv5-p3-{label}-{}-{nonce}",
+            std::process::id()
+        ))
+    }
+
+    fn valid_arpi(value: &str) -> [u8; ArpiHeader::SIZE] {
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(value.as_bytes());
+        let blake3_hash: [u8; 32] = hasher.finalize().into();
+
+        ArpiHeader {
+            magic: *b"ARPi",
+            write_counter: 0,
+            timestamp_us: 1,
+            tier: 2,
+            reserved: [0u8; 3],
+            blake3_hash,
+            node_id: [0u8; 22],
+        }
+        .to_bytes()
+    }
+
+    fn seed_counter(path: &Path, value: &[u8]) {
+        let db = Database::builder(path).open().unwrap();
+        let partition = db
+            .keyspace("main", KeyspaceCreateOptions::default)
+            .unwrap();
+
+        partition.insert(WRITE_COUNTER_KEY, value).unwrap();
+
+        drop(partition);
+        drop(db);
+    }
+
+    fn stored_counter(db: &MobileDb, key: &str) -> u64 {
+        let raw = db
+            .partition
+            .get(key.as_bytes())
+            .unwrap()
+            .expect("record must exist");
+
+        ArpiHeader::from_bytes(raw.as_ref())
+            .expect("stored ARPi header must decode")
+            .write_counter
+    }
+
+    #[test]
+    fn p3_counter_increments_and_resumes_after_reopen() {
+        let path = temp_path("reopen");
+        let path_str = path.to_str().unwrap();
+
+        let mut db = MobileDb::open(path_str).unwrap();
+
+        db.insert("rec:1", "alpha", &valid_arpi("alpha"))
+            .unwrap();
+        db.insert("rec:2", "beta", &valid_arpi("beta"))
+            .unwrap();
+
+        assert_eq!(stored_counter(&db, "rec:1"), 1);
+        assert_eq!(stored_counter(&db, "rec:2"), 2);
+        assert_eq!(db.write_counter, 2);
+
+        drop(db);
+
+        let mut reopened = MobileDb::open(path_str).unwrap();
+        assert_eq!(reopened.write_counter, 2);
+
+        reopened
+            .insert("rec:3", "gamma", &valid_arpi("gamma"))
+            .unwrap();
+
+        assert_eq!(stored_counter(&reopened, "rec:3"), 3);
+        assert_eq!(reopened.write_counter, 3);
+
+        drop(reopened);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_malformed_persisted_counter_fails_closed() {
+        let path = temp_path("malformed");
+        seed_counter(&path, &[1u8, 2, 3]);
+
+        let result = MobileDb::open(path.to_str().unwrap());
+
+        assert!(matches!(result, Err(DbError::InvalidCounterState)));
+
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_counter_exhaustion_rejects_write_without_wraparound() {
+        let path = temp_path("exhausted");
+        seed_counter(&path, &u64::MAX.to_le_bytes());
+
+        let mut db = MobileDb::open(path.to_str().unwrap()).unwrap();
+        assert_eq!(db.write_counter, u64::MAX);
+
+        let result =
+            db.insert("rec:max", "omega", &valid_arpi("omega"));
+
+        assert!(matches!(result, Err(DbError::CounterExhausted)));
+        assert_eq!(db.write_counter, u64::MAX);
+        assert!(db.partition.get(b"rec:max").unwrap().is_none());
+
+        drop(db);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_counter_transition_never_wraps() {
+        assert_eq!(next_write_counter(0), Some(1));
+        assert_eq!(next_write_counter(41), Some(42));
+        assert_eq!(
+            next_write_counter(u64::MAX - 1),
+            Some(u64::MAX)
+        );
+        assert_eq!(next_write_counter(u64::MAX), None);
     }
 }

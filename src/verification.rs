@@ -691,6 +691,27 @@ mod kani_harnesses {
         }
     }
 
+    /// FV-5 P3: the mobile write-counter transition is strictly monotonic
+    /// until the `u64` domain is exhausted.
+    ///
+    /// This proves only the arithmetic transition used by the mobile counter.
+    /// It does not prove record/counter persistence atomicity, crash
+    /// consistency, replay protection, or deployed mobile provenance behavior.
+    #[cfg(feature = "mobile")]
+    #[kani::proof]
+    fn kani_p3_mobile_counter_monotonic_transition() {
+        let current: u64 = kani::any();
+        let result = crate::mobile::next_write_counter(current);
+
+        if current == u64::MAX {
+            assert_eq!(result, None);
+        } else {
+            let next = result.expect("non-exhausted counter must advance");
+            assert_eq!(next, current + 1);
+            assert!(next > current);
+        }
+    }
+
     #[kani::proof]
     #[kani::unwind(16)]
     fn kani_persisted_record_metadata() {
