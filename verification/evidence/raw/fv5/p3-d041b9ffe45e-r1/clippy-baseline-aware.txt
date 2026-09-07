@@ -1,0 +1,14 @@
+FV-5 P3 commit-bound baseline-aware Clippy
+source_commit=d041b9ffe45e20849d6afbbdcd01b3a4954f9c89
+baseline_commit=916167bd5704f3638624fbbfbabb0dbe31a40ad8
+default_baseline_diagnostics=10
+default_current_diagnostics=10
+default_new_diagnostics=0
+default_removed_diagnostics=0
+default_current_errors=0
+mobile_baseline_diagnostics=21
+mobile_current_diagnostics=21
+mobile_new_diagnostics=0
+mobile_removed_diagnostics=0
+mobile_current_errors=0
+result=PASS

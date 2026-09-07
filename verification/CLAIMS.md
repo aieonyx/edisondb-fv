@@ -759,6 +759,58 @@ Raw evidence:
 `LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` remains
 source-remediated with wider FV-5 phase closure pending.
 
+### CLAIM-FV5-004 — Mobile write-counter monotonicity boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P3 hardens mobile write-counter state validation and the arithmetic
+monotonic transition boundary.
+
+Verified source commit:
+
+`d041b9ffe45e20849d6afbbdcd01b3a4954f9c89`
+
+Commit-bound evidence records:
+
+- `273 passed / 0 failed / 0 ignored` default dynamic tests;
+- `84 passed / 0 failed / 0 ignored` mobile-library dynamic tests;
+- fail-closed rejection of malformed persisted counter state;
+- propagated Fjall counter-read errors rather than silent reset to zero;
+- counter recovery across reopen followed by continued monotonic advance;
+- rejection of `u64::MAX` exhaustion without wraparound or record write;
+- baseline-aware default Clippy with `10` baseline diagnostics, `10` current
+  diagnostics, and `0` new diagnostics;
+- baseline-aware mobile Clippy with `21` baseline diagnostics, `21` current
+  diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `38` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- successful proof that the production counter transition advances by exactly
+  one for every non-exhausted `u64` value and rejects the exhausted value.
+
+The targeted formal result is limited to the arithmetic transition. It does
+not prove persistence atomicity, crash consistency, replay protection,
+anti-rollback behavior, deployed mobile provenance enforcement, or Fjall
+internals.
+
+`LIMIT-005` remains open. P3 records the required FV-5 source-level witness:
+mobile record persistence and write-counter persistence remain separate
+operations. Crash-consistent atomic remediation remains assigned to FV-6.
+
+`LIMIT-004` also remains open and assigned to FV-5; P3 does not claim deployed
+mobile provenance/content enforcement.
+
+Evidence:
+
+`verification/evidence/FV-5-P3-MOBILE-COUNTER-MONOTONICITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p3-d041b9ffe45e-r1/`
+
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure

@@ -1,0 +1,499 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:92:5
+   |
+92 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:53:1
+   |
+53 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+54 | |     mut env: JNIEnv,
+55 | |     _class: JClass,
+56 | |     handle: jlong,
+...  |
+59 | |     arpi: JByteArray,
+60 | | ) -> jint {
+   | |_________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:15
+    |
+112 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:97:1
+    |
+ 97 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+ 98 | |     mut env: JNIEnv,
+ 99 | |     _class: JClass,
+100 | |     handle: jlong,
+101 | |     key: JString,
+102 | | ) -> jstring {
+    | |____________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:116:22
+    |
+116 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:122:5
+    |
+122 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:143:5
+    |
+143 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:128:1
+    |
+128 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+129 | |     mut env: JNIEnv,
+130 | |     _class: JClass,
+131 | |     handle: jlong,
+132 | |     key: JString,
+133 | | ) -> jint {
+    | |_________^
+
+For more information about this error, try `rustc --explain E0133`.
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.17s
+Checking harness verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/edisonbl/Documents/AIEONYX/edisondb-fv/target/kani/x86_64-unknown-linux-gnu/debug/deps/edisondb__RNvNtNtCseb1bWWk0Qiy_8edisondb12verification14kani_harnesses43kani_p3_mobile_counter_monotonic_transition.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 2365 column 15 function <std::option::Option<u64> as std::cmp::PartialEq>::eq thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 969 column 15 function std::option::Option::<u64>::expect thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 2184 column 5 function std::option::expect_failed thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 971 column 21 function std::option::Option::<u64>::expect thread 0
+Runtime Symex: 0.00959736s
+size of program expression: 620 steps
+slicing removed 318 assignments
+Generated 30 VCC(s), 12 remaining after simplification
+Runtime Postprocess Equation: 0.000110714s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.00157611s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 6.132e-06s
+Solving with CaDiCaL 2.0.0
+1417 variables, 3003 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000148357s
+Runtime decision procedure: 0.00179979s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1418 variables, 3004 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000160169s
+Runtime decision procedure: 0.00019122s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+1419 variables, 3005 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.00361218s
+Runtime decision procedure: 0.00364355s
+
+RESULTS:
+Check 1: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+Check 2: verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition.assertion.1
+	 - Status: SUCCESS
+	 - Description: "assertion failed: result == None"
+	 - Location: src/verification.rs:707:13 in function verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition
+
+Check 3: verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to add with overflow"
+	 - Location: src/verification.rs:710:30 in function verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition
+
+Check 4: verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition.assertion.3
+	 - Status: SUCCESS
+	 - Description: "assertion failed: next == current + 1"
+	 - Location: src/verification.rs:710:13 in function verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition
+
+Check 5: verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition.assertion.4
+	 - Status: SUCCESS
+	 - Description: "assertion failed: next > current"
+	 - Location: src/verification.rs:711:13 in function verification::kani_harnesses::kani_p3_mobile_counter_monotonic_transition
+
+Check 6: <std::option::Option<u64> as std::cmp::PartialEq>::eq.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 7: std::option::Option::<u64>::expect.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:969:15 in function std::option::Option::<u64>::expect
+
+Check 8: std::option::expect_failed.assertion.1
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2184:5 in function std::option::expect_failed
+
+Check 9: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 10: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 11: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 12: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 13: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 14: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:54 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 15: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 16: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 17: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 18: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 19: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 20: std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:1865:63 in function std::cmp::impls::<impl std::cmp::PartialEq for u64>::eq
+
+Check 21: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 22: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 23: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 24: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 25: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 26: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 27: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 28: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 29: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 30: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 31: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 32: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 33: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 34: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 35: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 36: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 37: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+Check 38: <std::option::Option<u64> as std::cmp::PartialEq>::eq.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2365:15 in function <std::option::Option<u64> as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 38 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.063033365s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.
