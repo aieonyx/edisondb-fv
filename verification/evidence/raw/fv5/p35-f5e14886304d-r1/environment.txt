@@ -1,0 +1,8 @@
+captured_at_utc=2026-09-08T04:15:58Z
+uname=Linux pop-os 6.17.9-76061709-generic #202511241048~1764607909~24.04~df6b2b6 SMP PREEMPT_DYNAMIC Mon D x86_64 x86_64 x86_64 GNU/Linux
+rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+cargo=cargo 1.97.0 (c980f4866 2026-06-30)
+kani=cargo-kani 0.67.0
+source_commit=f5e14886304dc57895d7f988e56883a9b394e189
+baseline_commit=824182b556b63d18c70f343122a1a200edf6a411
+cargo_lock_sha256=9b33517f58b16900e774e26132fbbb7a48179f121d2795365c9608d45bc19c8b

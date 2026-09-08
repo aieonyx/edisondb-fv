@@ -1,0 +1,11 @@
+ src/backends/fjall.rs | 437 ++++++++++++++++++++++++++++++++++---
+ src/backends/redb.rs  | 132 +++++++++++-
+ src/executor.rs       | 143 ++++++++++++-
+ src/grpc.rs           |  23 +-
+ src/lib.rs            | 581 ++++++++++++++++++++++++++++++++++++++++++++++----
+ src/sdk.rs            |  23 ++
+ src/server.rs         |  35 ++-
+ src/verification.rs   |  47 ++++
+ tests/grpc_tests.rs   |  36 ++++
+ tests/sdk_tests.rs    |  80 +++++++
+ 10 files changed, 1452 insertions(+), 85 deletions(-)

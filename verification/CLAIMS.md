@@ -811,6 +811,90 @@ Raw evidence:
 `verification/evidence/raw/fv5/p3-d041b9ffe45e-r1/`
 
 
+### CLAIM-FV5-005 — Authenticated audit checkpoint sealing boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P3.5 adds a keyed authenticated audit-checkpoint mode over the local
+expected audit-entry count and expected terminal audit hash.
+
+Verified source commit:
+
+`f5e14886304dc57895d7f988e56883a9b394e189`
+
+Commit-bound evidence records:
+
+- `297 passed / 0 failed / 0 ignored`
+  aggregate default dynamic tests;
+- `105 passed / 0 failed / 0 ignored`
+  mobile-library tests;
+- `23` focused P3.5 dynamic passes;
+- authenticated Redb and Fjall open/save persistence;
+- authenticated Fjall write, granted-read, denied-read, and delete checkpoint
+  persistence;
+- strict rejection of authenticated checkpoints by the legacy parser;
+- strict rejection of nonempty legacy checkpoints by authenticated open;
+- fail-closed wrong-store-secret behavior;
+- multi-owner operation with distinct owner passwords and one shared
+  database-global store secret;
+- preserved non-owner Critical access denial;
+- required `EDISONDB_STORE_SECRET` server startup authority;
+- baseline-aware default Clippy with
+  `23` baseline diagnostics,
+  `23` current diagnostics, and
+  `0` new diagnostics;
+- baseline-aware mobile Clippy with
+  `29` baseline diagnostics,
+  `29` current diagnostics, and
+  `0` new diagnostics;
+- `1` targeted Kani harness;
+- `381` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `7` unreachable targeted Kani checks.
+
+The targeted Kani harness proves only the canonical checkpoint MAC-input byte
+layout:
+
+`domain || big-endian expected_count || expected_head`
+
+It does not prove BLAKE3, Argon2, MAC unforgeability, cryptographic strength,
+constant-time execution, OS secret handling, or anti-rollback behavior.
+
+The authenticated checkpoint authority is distinct from the per-owner record
+password. Possession of `store_secret` does not bypass Critical/Personal
+record authorization or provide the owner password required for payload
+decryption.
+
+Authenticated mode does not silently migrate or adopt a nonempty legacy
+checkpoint.
+
+Legacy construction APIs remain available for compatibility and are outside
+this authenticated-checkpoint claim. The P3.5 production server path requires
+the authenticated store-secret authority and does not silently fall back to
+legacy mode.
+
+The checkpoint authenticates local audit continuity against a holder of the
+store secret but does not provide a monotonic external freshness anchor.
+Replay of an older complete, internally valid authenticated state is not
+claimed to be detected.
+
+Total destruction or replacement of all Edison-owned local state remains the
+separate `LIMIT-008` trust boundary.
+
+Evidence:
+
+`verification/evidence/FV-5-P3.5-AUTHENTICATED-AUDIT-CHECKPOINT.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p35-f5e14886304d-r1/`
+
+`LIMIT-004`, `LIMIT-005`, and `LIMIT-012` remain open within their documented
+boundaries.
+
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
@@ -872,7 +956,7 @@ persisted expected entry count or expected terminal hash.
 
 **FV-4b local remediation**
 
-The local persisted-storage model now enforces:
+The local persisted-storage model enforces:
 
 - an audit checkpoint containing expected entry count and terminal hash;
 - checkpoint validation on Redb and Fjall open paths;
@@ -889,18 +973,50 @@ The checkpoint tail-drop count mismatch is covered by a successful production
 checkpoint-validation Kani harness. Storage and lineage composition are also
 covered dynamically.
 
+**FV-5 P3.5 authenticated sealing**
+
+Source commit `f5e14886304dc57895d7f988e56883a9b394e189` adds an authenticated checkpoint mode whose
+expected count and expected terminal hash are sealed under a key derived from
+a distinct database-global `store_secret`.
+
+Authenticated open fails closed on:
+
+- wrong store secret;
+- MAC tampering;
+- count or head tampering;
+- salt tampering;
+- unsupported checkpoint version;
+- nonempty legacy checkpoint state.
+
+Legacy parsing also rejects the authenticated representation rather than
+silently accepting it as the older checkpoint type.
+
+The store checkpoint authority is separate from owner record passwords and
+does not bypass record authorization.
+
 **Local remediation status:** `REMEDIATED / CURRENT`
 
-This status does not claim protection against an attacker capable of rewriting
-the complete audit history and the checkpoint together. The checkpoint is not
-yet independently authenticated.
+For authenticated mode, an attacker who modifies local audit history cannot
+simply recompute a matching checkpoint without the external store authority.
 
-Authenticated checkpoint sealing remains assigned to the encryption and
-secret-boundary phase. Total destruction or replacement of all Edison-owned
-local state remains a separate trust-boundary limitation.
+This status does not claim:
 
-**Assigned phase:** local truncation and re-anchoring remediation completed in
-FV-4b; authenticated checkpoint sealing deferred to FV-5.
+- global anti-rollback protection;
+- freshness against replay of an older complete valid authenticated state;
+- protection after compromise of `store_secret`;
+- protection against total destruction or replacement of all Edison-owned
+  local state;
+- formal verification of BLAKE3 or Argon2.
+
+Legacy compatibility APIs remain outside the P3.5 authenticated-sealing
+claim.
+
+Total Edison-owned local-state destruction/replacement remains recorded
+separately under `LIMIT-008`.
+
+**Assigned phases:** local truncation and re-anchoring remediation completed
+in FV-4b; authenticated checkpoint sealing completed for authenticated mode
+in FV-5 P3.5.
 
 ### LIMIT-002 — ARPi production integration
 

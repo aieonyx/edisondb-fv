@@ -1,0 +1,73 @@
+{
+  "baseline_commit": "824182b556b63d18c70f343122a1a200edf6a411",
+  "cargo_check": {
+    "default_all_targets": "PASS",
+    "mobile_library": "PASS"
+  },
+  "clippy": {
+    "default_baseline_diagnostics": 23,
+    "default_current_diagnostics": 23,
+    "default_new_diagnostics": 0,
+    "mobile_baseline_diagnostics": 29,
+    "mobile_current_diagnostics": 29,
+    "mobile_new_diagnostics": 0,
+    "result": "PASS"
+  },
+  "dynamic_tests": {
+    "default": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 297
+    },
+    "fjall_executor": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1
+    },
+    "fjall_sdk": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1
+    },
+    "focused_p35": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 23
+    },
+    "mobile": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 105
+    }
+  },
+  "explicit_nonclaims": [
+    "formal verification of BLAKE3",
+    "formal verification of Argon2",
+    "MAC unforgeability proof",
+    "constant-time execution",
+    "global anti-rollback protection",
+    "protection against total replacement of all Edison-owned local state"
+  ],
+  "grpc_port": {
+    "post_test_free": true,
+    "pre_test_free": true
+  },
+  "kani": {
+    "checks": 381,
+    "failed": 0,
+    "harness": "kani_p35_checkpoint_mac_input_canonical_layout",
+    "result": "PASS",
+    "total_harnesses": 1,
+    "unreachable": 7,
+    "verified_harnesses": 1
+  },
+  "limitations": {
+    "LIMIT-001": "total destruction or replacement of all Edison-owned local state remains outside the authenticated checkpoint boundary",
+    "LIMIT-004": "OPEN; mobile fail-closed provenance validation remains assigned to FV-5",
+    "LIMIT-005": "OPEN witness; mobile counter crash-consistency remediation remains assigned to FV-6"
+  },
+  "phase": "FV-5 P3.5",
+  "scope": "authenticated audit checkpoint sealing",
+  "source_commit": "f5e14886304dc57895d7f988e56883a9b394e189",
+  "source_signature": "PASS"
+}
