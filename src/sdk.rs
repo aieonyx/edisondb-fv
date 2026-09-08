@@ -86,6 +86,29 @@ impl EdisonDB {
         Ok(Self { executor })
     }
 
+    /// Open or create an EdisonDB database with an authenticated audit
+    /// checkpoint controlled by a database-global store secret.
+    ///
+    /// `password` remains the owner's record-encryption credential.
+    /// `store_secret` is a distinct authority shared by legitimate clients
+    /// of the same authenticated database.
+    ///
+    /// Legacy checkpoints are rejected rather than implicitly migrated.
+    pub fn connect_authenticated(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        let executor = EqlExecutor::open_authenticated(
+            path,
+            owner_id,
+            password,
+            store_secret,
+        )?;
+        Ok(Self { executor })
+    }
+
     /// Write a new record to the database.
     ///
     /// # Arguments

@@ -37,6 +37,9 @@ struct SearchBody {
 
 struct AppState {
     db_path: String,
+    // Database-global checkpoint authority, distinct from request passwords.
+    // FV-5 P4 owns long-lived secret zeroization.
+    store_secret: String,
 }
 
 type SharedState = Arc<Mutex<AppState>>;
@@ -58,7 +61,12 @@ fn extract_auth(headers: &HeaderMap) -> Option<(String, String)> {
 fn open_db(state: &AppState, owner: &str, password: &str)
     -> Result<EdisonDB, (StatusCode, Json<ApiError>)>
 {
-    EdisonDB::connect(&state.db_path, owner, password)
+    EdisonDB::connect_authenticated(
+        &state.db_path,
+        owner,
+        password,
+        &state.store_secret,
+    )
         .map_err(|e| (
             StatusCode::UNAUTHORIZED,
             Json(ApiError { error: e.to_string() })
@@ -286,7 +294,20 @@ async fn main() {
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(7777);
 
-    let state = Arc::new(Mutex::new(AppState { db_path: db_path.clone() }));
+    let store_secret = match std::env::var("EDISONDB_STORE_SECRET") {
+        Ok(secret) if !secret.is_empty() => secret,
+        _ => {
+            eprintln!(
+                "Error: EDISONDB_STORE_SECRET is required and must not be empty."
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let state = Arc::new(Mutex::new(AppState {
+        db_path: db_path.clone(),
+        store_secret: store_secret.clone(),
+    }));
 
     let app = Router::new()
         .route("/health",          get(health))
@@ -311,10 +332,16 @@ async fn main() {
     println!("  Listening: http://{addr}");
     println!("  Press Ctrl-C to stop.\n");
 
-    // Spawn gRPC server on port 50051 alongside REST
+    // Spawn gRPC server with the same database-global checkpoint authority.
     let grpc_db_path = db_path.clone();
+    let grpc_store_secret = store_secret;
     tokio::spawn(async move {
-        grpc::serve_grpc(grpc_db_path, 50051).await;
+        grpc::serve_grpc(
+            grpc_db_path,
+            grpc_store_secret,
+            50051,
+        )
+        .await;
     });
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();

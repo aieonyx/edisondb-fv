@@ -641,10 +641,213 @@ impl AuditEntry {
     }
 }
 
+const AUTHENTICATED_AUDIT_CHECKPOINT_VERSION: u8 = 1;
+const CHECKPOINT_STORE_SALT_LEN: usize = 32;
+const CHECKPOINT_MAC_DOMAIN: &[u8] = b"EDISONDB-AUDIT-CHECKPOINT-V1";
+const CHECKPOINT_MAC_KEY_CONTEXT: &str =
+    "AIEONYX EdisonDB audit checkpoint MAC key v1";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct AuditCheckpoint {
     pub(crate) expected_count: u64,
     pub(crate) expected_head: [u8; 32],
+}
+
+/// Versioned authenticated audit checkpoint.
+///
+/// `store_salt` is a database-level KDF salt, distinct from per-record salts.
+/// `mac` authenticates the canonical `(expected_count, expected_head)`
+/// checkpoint tuple under a domain-separated key derived from the store key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AuthenticatedAuditCheckpoint {
+    pub(crate) version: u8,
+    pub(crate) expected_count: u64,
+    pub(crate) expected_head: [u8; 32],
+    pub(crate) store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
+    pub(crate) mac: [u8; 32],
+}
+
+fn checkpoint_mac_input(
+    expected_count: u64,
+    expected_head: &[u8; 32],
+) -> Vec<u8> {
+    let mut input =
+        Vec::with_capacity(CHECKPOINT_MAC_DOMAIN.len() + 8 + expected_head.len());
+    input.extend_from_slice(CHECKPOINT_MAC_DOMAIN);
+    input.extend_from_slice(&expected_count.to_be_bytes());
+    input.extend_from_slice(expected_head);
+    input
+}
+
+fn derive_checkpoint_mac_key(
+    store_secret: &str,
+    store_salt: &[u8; CHECKPOINT_STORE_SALT_LEN],
+) -> Result<[u8; 32], EdisonError> {
+    let store_key = derive_key(store_secret, store_salt)?;
+    Ok(blake3::derive_key(
+        CHECKPOINT_MAC_KEY_CONTEXT,
+        &store_key,
+    ))
+}
+
+fn checkpoint_mac(
+    mac_key: &[u8; 32],
+    expected_count: u64,
+    expected_head: &[u8; 32],
+) -> [u8; 32] {
+    let input = checkpoint_mac_input(expected_count, expected_head);
+    *blake3::keyed_hash(mac_key, &input).as_bytes()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CheckpointAuthContext {
+    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
+    mac_key: [u8; 32],
+}
+
+fn checkpoint_auth_context(
+    store_secret: &str,
+    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
+) -> Result<CheckpointAuthContext, EdisonError> {
+    let mac_key = derive_checkpoint_mac_key(store_secret, &store_salt)?;
+    Ok(CheckpointAuthContext {
+        store_salt,
+        mac_key,
+    })
+}
+
+pub(crate) fn authenticated_audit_checkpoint_from_context(
+    expected_count: u64,
+    expected_head: [u8; 32],
+    context: &CheckpointAuthContext,
+) -> AuthenticatedAuditCheckpoint {
+    let mac = checkpoint_mac(
+        &context.mac_key,
+        expected_count,
+        &expected_head,
+    );
+
+    AuthenticatedAuditCheckpoint {
+        version: AUTHENTICATED_AUDIT_CHECKPOINT_VERSION,
+        expected_count,
+        expected_head,
+        store_salt: context.store_salt,
+        mac,
+    }
+}
+
+fn verify_authenticated_audit_checkpoint_with_context(
+    checkpoint: &AuthenticatedAuditCheckpoint,
+    context: &CheckpointAuthContext,
+) -> Result<(), EdisonError> {
+    if checkpoint.version != AUTHENTICATED_AUDIT_CHECKPOINT_VERSION
+        || checkpoint.store_salt != context.store_salt
+    {
+        return Err(EdisonError::AuditChainBroken);
+    }
+
+    let expected_mac = checkpoint_mac(
+        &context.mac_key,
+        checkpoint.expected_count,
+        &checkpoint.expected_head,
+    );
+
+    // Equality is accumulated over the complete fixed-size MAC. No
+    // constant-time execution claim is made here.
+    let difference = checkpoint
+        .mac
+        .iter()
+        .zip(expected_mac.iter())
+        .fold(0u8, |acc, (left, right)| acc | (left ^ right));
+
+    if difference != 0 {
+        return Err(EdisonError::AuditChainBroken);
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn authenticate_audit_checkpoint(
+    expected_count: u64,
+    expected_head: [u8; 32],
+    store_secret: &str,
+    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
+) -> Result<AuthenticatedAuditCheckpoint, EdisonError> {
+    let context = checkpoint_auth_context(store_secret, store_salt)?;
+    Ok(authenticated_audit_checkpoint_from_context(
+        expected_count,
+        expected_head,
+        &context,
+    ))
+}
+
+#[cfg(test)]
+pub(crate) fn verify_authenticated_audit_checkpoint_mac(
+    checkpoint: &AuthenticatedAuditCheckpoint,
+    store_secret: &str,
+) -> Result<(), EdisonError> {
+    let context =
+        checkpoint_auth_context(store_secret, checkpoint.store_salt)?;
+    verify_authenticated_audit_checkpoint_with_context(
+        checkpoint,
+        &context,
+    )
+}
+
+pub(crate) fn classify_authenticated_checkpoint_state(
+    checkpoint_bytes: Option<&[u8]>,
+    audit_empty: bool,
+    records_empty: bool,
+    actual_count: u64,
+    actual_head: [u8; 32],
+    store_secret: &str,
+) -> Result<(CheckpointOpenState, CheckpointAuthContext), EdisonError> {
+    match checkpoint_bytes {
+        Some(bytes) => {
+            let checkpoint: AuthenticatedAuditCheckpoint =
+                serde_json::from_slice(bytes)
+                    .map_err(|_| EdisonError::AuditChainBroken)?;
+
+            let context =
+                checkpoint_auth_context(store_secret, checkpoint.store_salt)?;
+
+            verify_authenticated_audit_checkpoint_with_context(
+                &checkpoint,
+                &context,
+            )?;
+
+            validate_audit_checkpoint(
+                &AuditCheckpoint {
+                    expected_count: checkpoint.expected_count,
+                    expected_head: checkpoint.expected_head,
+                },
+                actual_count,
+                actual_head,
+            )?;
+
+            if audit_empty && !records_empty {
+                return Err(EdisonError::AuditChainBroken);
+            }
+
+            Ok((CheckpointOpenState::Existing, context))
+        }
+        None => {
+            if !audit_empty || !records_empty {
+                return Err(EdisonError::AuditChainBroken);
+            }
+
+            let mut store_salt = [0u8; CHECKPOINT_STORE_SALT_LEN];
+            rand::thread_rng().fill_bytes(&mut store_salt);
+
+            let context =
+                checkpoint_auth_context(store_secret, store_salt)?;
+
+            Ok((CheckpointOpenState::Genesis, context))
+        }
+    }
 }
 
 pub(crate) fn validate_audit_checkpoint(
@@ -863,6 +1066,26 @@ impl Store {
     }
 
     pub fn save(&self, path: &str) -> Result<(), EdisonError> {
+        self.save_impl(path, None)
+    }
+
+    /// Persist using an audit checkpoint controlled by `store_secret`.
+    ///
+    /// Existing legacy checkpoints are rejected rather than automatically
+    /// upgraded so authenticated callers cannot silently accept a downgrade.
+    pub fn save_authenticated(
+        &self,
+        path: &str,
+        store_secret: &str,
+    ) -> Result<(), EdisonError> {
+        self.save_impl(path, Some(store_secret))
+    }
+
+    fn save_impl(
+        &self,
+        path: &str,
+        store_secret: Option<&str>,
+    ) -> Result<(), EdisonError> {
         for (id, record) in &self.records {
             record.validate()?;
             if id != &record.id {
@@ -954,14 +1177,27 @@ impl Store {
             .map(|entry| entry.entry_hash)
             .unwrap_or([0u8; 32]);
 
-        classify_checkpoint_state(
-            persisted_checkpoint.as_deref().map(str::as_bytes),
-            persisted_audit.is_empty(),
-            persisted_records_empty,
-            persisted_count,
-            persisted_head,
-        )
-        .map_err(checkpoint_error)?;
+        let checkpoint_auth = if let Some(store_secret) = store_secret {
+            let (_, context) = classify_authenticated_checkpoint_state(
+                persisted_checkpoint.as_deref().map(str::as_bytes),
+                persisted_audit.is_empty(),
+                persisted_records_empty,
+                persisted_count,
+                persisted_head,
+                store_secret,
+            )?;
+            Some(context)
+        } else {
+            classify_checkpoint_state(
+                persisted_checkpoint.as_deref().map(str::as_bytes),
+                persisted_audit.is_empty(),
+                persisted_records_empty,
+                persisted_count,
+                persisted_head,
+            )
+            .map_err(checkpoint_error)?;
+            None
+        };
 
         if !audit_history_is_prefix(&persisted_audit, &self.audit_log) {
             return Err(EdisonError::AuditChainBroken);
@@ -1019,14 +1255,25 @@ impl Store {
         {
             let checkpoint_count =
                 u64::try_from(self.audit_log.len()).map_err(|_| EdisonError::SaveFailed)?;
+            let checkpoint_head = self.last_chain_hash();
 
-            let checkpoint = AuditCheckpoint {
-                expected_count: checkpoint_count,
-                expected_head: self.last_chain_hash(),
+            let checkpoint_json = if let Some(context) = checkpoint_auth.as_ref() {
+                let checkpoint =
+                    authenticated_audit_checkpoint_from_context(
+                        checkpoint_count,
+                        checkpoint_head,
+                        context,
+                    );
+                serde_json::to_string(&checkpoint)
+                    .map_err(|_| EdisonError::SaveFailed)?
+            } else {
+                let checkpoint = AuditCheckpoint {
+                    expected_count: checkpoint_count,
+                    expected_head: checkpoint_head,
+                };
+                serde_json::to_string(&checkpoint)
+                    .map_err(|_| EdisonError::SaveFailed)?
             };
-
-            let checkpoint_json =
-                serde_json::to_string(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
 
             let mut table = write_txn
                 .open_table(AUDIT_CHECKPOINT_TABLE)
@@ -1042,6 +1289,24 @@ impl Store {
     }
 
     pub fn load(path: &str) -> Result<Self, EdisonError> {
+        Self::load_impl(path, None)
+    }
+
+    /// Load a store whose audit checkpoint is controlled by `store_secret`.
+    ///
+    /// A legacy two-field checkpoint is rejected. Migration into the
+    /// authenticated format must be an explicit operation.
+    pub fn load_authenticated(
+        path: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::load_impl(path, Some(store_secret))
+    }
+
+    fn load_impl(
+        path: &str,
+        store_secret: Option<&str>,
+    ) -> Result<Self, EdisonError> {
         let db = Database::open(path).map_err(|_| EdisonError::LoadFailed)?;
         let write_txn = db.begin_write().map_err(|_| EdisonError::LoadFailed)?;
 
@@ -1132,29 +1397,67 @@ impl Store {
                 .as_ref()
                 .map(|value| value.value().as_bytes());
 
-            let checkpoint_state = classify_checkpoint_state(
-                checkpoint_bytes,
-                audit_empty,
-                records_empty,
-                actual_count,
-                actual_head,
-            )
-            .map_err(checkpoint_error)?;
+            if let Some(store_secret) = store_secret {
+                let (checkpoint_state, context) =
+                    classify_authenticated_checkpoint_state(
+                        checkpoint_bytes,
+                        audit_empty,
+                        records_empty,
+                        actual_count,
+                        actual_head,
+                        store_secret,
+                    )?;
 
-            drop(checkpoint_value);
+                drop(checkpoint_value);
 
-            if checkpoint_state == CheckpointOpenState::Genesis {
-                let checkpoint = AuditCheckpoint {
-                    expected_count: 0,
-                    expected_head: [0u8; 32],
-                };
+                if checkpoint_state == CheckpointOpenState::Genesis {
+                    let checkpoint =
+                        authenticated_audit_checkpoint_from_context(
+                            0,
+                            [0u8; 32],
+                            &context,
+                        );
 
-                let checkpoint_json =
-                    serde_json::to_string(&checkpoint).map_err(|_| EdisonError::LoadFailed)?;
+                    let checkpoint_json =
+                        serde_json::to_string(&checkpoint)
+                            .map_err(|_| EdisonError::LoadFailed)?;
 
-                table
-                    .insert(AUDIT_CHECKPOINT_KEY, checkpoint_json.as_str())
-                    .map_err(|_| EdisonError::LoadFailed)?;
+                    table
+                        .insert(
+                            AUDIT_CHECKPOINT_KEY,
+                            checkpoint_json.as_str(),
+                        )
+                        .map_err(|_| EdisonError::LoadFailed)?;
+                }
+            } else {
+                let checkpoint_state = classify_checkpoint_state(
+                    checkpoint_bytes,
+                    audit_empty,
+                    records_empty,
+                    actual_count,
+                    actual_head,
+                )
+                .map_err(checkpoint_error)?;
+
+                drop(checkpoint_value);
+
+                if checkpoint_state == CheckpointOpenState::Genesis {
+                    let checkpoint = AuditCheckpoint {
+                        expected_count: 0,
+                        expected_head: [0u8; 32],
+                    };
+
+                    let checkpoint_json =
+                        serde_json::to_string(&checkpoint)
+                            .map_err(|_| EdisonError::LoadFailed)?;
+
+                    table
+                        .insert(
+                            AUDIT_CHECKPOINT_KEY,
+                            checkpoint_json.as_str(),
+                        )
+                        .map_err(|_| EdisonError::LoadFailed)?;
+                }
             }
         }
 
@@ -1693,6 +1996,208 @@ mod tests {
         store.save(path).unwrap();
         let loaded = Store::load(path).unwrap();
         assert_eq!(loaded.audit_count(), 2);
+    }
+
+    fn p35_store_path(label: &str) -> String {
+        format!(
+            "/tmp/edisondb-p35-{}-{}-{}.redb",
+            label,
+            std::process::id(),
+            rand::random::<u64>(),
+        )
+    }
+
+    #[test]
+    fn p35_store_authenticated_round_trip_and_legacy_load_rejects() {
+        let path = p35_store_path("round-trip");
+        let _ = std::fs::remove_file(&path);
+
+        let store = Store::new();
+        store
+            .save_authenticated(&path, "correct-store-secret")
+            .unwrap();
+
+        let loaded =
+            Store::load_authenticated(&path, "correct-store-secret").unwrap();
+
+        assert_eq!(loaded.record_count(), 0);
+        assert_eq!(loaded.audit_count(), 0);
+        assert!(matches!(
+            Store::load(&path),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_store_authenticated_load_rejects_wrong_store_secret() {
+        let path = p35_store_path("wrong-store-secret");
+        let _ = std::fs::remove_file(&path);
+
+        Store::new()
+            .save_authenticated(&path, "correct-store-secret")
+            .unwrap();
+
+        assert!(matches!(
+            Store::load_authenticated(&path, "wrong-store-secret"),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_store_authenticated_load_rejects_legacy_checkpoint() {
+        let path = p35_store_path("legacy-reject");
+        let _ = std::fs::remove_file(&path);
+
+        Store::new().save(&path).unwrap();
+
+        assert!(matches!(
+            Store::load_authenticated(&path, "checkpoint-store-secret"),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_checkpoint_mac_round_trips() {
+        let salt = [0x35u8; CHECKPOINT_STORE_SALT_LEN];
+        let checkpoint = authenticate_audit_checkpoint(
+            7,
+            [0xA5u8; 32],
+            "checkpoint-store-secret",
+            salt,
+        )
+        .unwrap();
+
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &checkpoint,
+                "checkpoint-store-secret",
+            ),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn p35_checkpoint_mac_rejects_count_head_and_mac_tamper() {
+        let salt = [0x51u8; CHECKPOINT_STORE_SALT_LEN];
+        let checkpoint = authenticate_audit_checkpoint(
+            11,
+            [0xB6u8; 32],
+            "checkpoint-store-secret",
+            salt,
+        )
+        .unwrap();
+
+        let mut count_tampered = checkpoint;
+        count_tampered.expected_count += 1;
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &count_tampered,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+
+        let mut head_tampered = checkpoint;
+        head_tampered.expected_head[0] ^= 1;
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &head_tampered,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+
+        let mut mac_tampered = checkpoint;
+        mac_tampered.mac[31] ^= 1;
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &mac_tampered,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[test]
+    fn p35_checkpoint_mac_rejects_wrong_store_secret_and_salt_tamper() {
+        let salt = [0x62u8; CHECKPOINT_STORE_SALT_LEN];
+        let checkpoint = authenticate_audit_checkpoint(
+            3,
+            [0xC7u8; 32],
+            "correct-store-secret",
+            salt,
+        )
+        .unwrap();
+
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &checkpoint,
+                "wrong-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+
+        let mut salt_tampered = checkpoint;
+        salt_tampered.store_salt[0] ^= 1;
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &salt_tampered,
+                "correct-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[test]
+    fn p35_checkpoint_mac_rejects_unknown_version() {
+        let mut checkpoint = authenticate_audit_checkpoint(
+            1,
+            [0xD8u8; 32],
+            "checkpoint-store-secret",
+            [0x73u8; CHECKPOINT_STORE_SALT_LEN],
+        )
+        .unwrap();
+
+        checkpoint.version =
+            AUTHENTICATED_AUDIT_CHECKPOINT_VERSION.wrapping_add(1);
+
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &checkpoint,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+    }
+
+    #[test]
+    fn p35_authenticated_checkpoint_cannot_parse_as_legacy() {
+        let checkpoint = authenticate_audit_checkpoint(
+            5,
+            [0xE9u8; 32],
+            "checkpoint-store-secret",
+            [0x84u8; CHECKPOINT_STORE_SALT_LEN],
+        )
+        .unwrap();
+
+        let encoded = serde_json::to_vec(&checkpoint).unwrap();
+
+        assert!(
+            serde_json::from_slice::<AuditCheckpoint>(&encoded).is_err(),
+            "authenticated checkpoint must not downgrade to legacy parsing"
+        );
+
+        let decoded =
+            serde_json::from_slice::<AuthenticatedAuditCheckpoint>(&encoded)
+                .unwrap();
+
+        assert_eq!(decoded, checkpoint);
     }
 
     #[test]

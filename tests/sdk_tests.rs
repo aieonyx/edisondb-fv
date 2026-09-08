@@ -84,3 +84,83 @@ fn sdk_duplicate_write_fails() {
     db.write("k1", "NOISE", "first").unwrap();
     assert!(db.write("k1", "NOISE", "second").is_err());
 }
+
+
+#[test]
+fn p35_sdk_authenticated_store_secret_is_independent_of_owner_password() {
+    let path = "/tmp/sdk_p35_authenticated_store.redb";
+    let _ = std::fs::remove_file(path);
+    let _ = std::fs::remove_dir_all(path);
+    let _ = std::fs::remove_file(format!("{}.vectors", path));
+
+    {
+        let mut alice = EdisonDB::connect_authenticated(
+            path,
+            "alice",
+            "alice-password",
+            "shared-store-secret",
+        )
+        .unwrap();
+
+        alice
+            .write(
+                "sdk:p35:alice",
+                "CRITICAL",
+                "alice sovereign data",
+            )
+            .unwrap();
+    }
+
+    {
+        let mut bob = EdisonDB::connect_authenticated(
+            path,
+            "bob",
+            "bob-password",
+            "shared-store-secret",
+        )
+        .unwrap();
+
+        assert!(matches!(
+            bob.read("sdk:p35:alice"),
+            Err(edisondb::EdisonError::AccessDenied)
+        ));
+
+        bob.write(
+            "sdk:p35:bob",
+            "CRITICAL",
+            "bob sovereign data",
+        )
+        .unwrap();
+    }
+
+    {
+        let mut alice = EdisonDB::connect_authenticated(
+            path,
+            "alice",
+            "alice-password",
+            "shared-store-secret",
+        )
+        .unwrap();
+
+        let record = alice
+            .read("sdk:p35:alice")
+            .unwrap()
+            .expect("Alice record must remain readable by Alice");
+
+        assert_eq!(record.payload, "alice sovereign data");
+    }
+
+    assert!(matches!(
+        EdisonDB::connect_authenticated(
+            path,
+            "alice",
+            "alice-password",
+            "wrong-store-secret",
+        ),
+        Err(edisondb::EdisonError::AuditChainBroken)
+    ));
+
+    let _ = std::fs::remove_file(path);
+    let _ = std::fs::remove_dir_all(path);
+    let _ = std::fs::remove_file(format!("{}.vectors", path));
+}

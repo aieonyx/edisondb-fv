@@ -691,6 +691,53 @@ mod kani_harnesses {
         }
     }
 
+    /// FV-5 P3.5: authenticated checkpoint MAC input has one canonical
+    /// byte layout: domain || big-endian count || checkpoint head.
+    ///
+    /// Symbolic indices cover every byte position in each component.
+    /// This proves only structural encoding. It does not prove BLAKE3,
+    /// Argon2, MAC unforgeability, constant-time execution, or anti-rollback.
+    #[kani::proof]
+    fn kani_p35_checkpoint_mac_input_canonical_layout() {
+        let expected_count: u64 = kani::any();
+        let expected_head: [u8; 32] = kani::any();
+
+        let input =
+            crate::checkpoint_mac_input(expected_count, &expected_head);
+        let domain = crate::CHECKPOINT_MAC_DOMAIN;
+        let domain_len = domain.len();
+        let count_bytes = expected_count.to_be_bytes();
+
+        assert_eq!(
+            input.len(),
+            domain_len + count_bytes.len() + expected_head.len()
+        );
+
+        let domain_index: u8 = kani::any();
+        kani::assume((domain_index as usize) < domain_len);
+        let domain_index = domain_index as usize;
+        assert_eq!(
+            input[domain_index],
+            domain[domain_index]
+        );
+
+        let count_index: u8 = kani::any();
+        kani::assume((count_index as usize) < count_bytes.len());
+        let count_index = count_index as usize;
+        assert_eq!(
+            input[domain_len + count_index],
+            count_bytes[count_index]
+        );
+
+        let head_index: u8 = kani::any();
+        kani::assume((head_index as usize) < expected_head.len());
+        let head_index = head_index as usize;
+        assert_eq!(
+            input[domain_len + count_bytes.len() + head_index],
+            expected_head[head_index]
+        );
+    }
+
     /// FV-5 P3: the mobile write-counter transition is strictly monotonic
     /// until the `u64` domain is exhausted.
     ///

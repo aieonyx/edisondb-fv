@@ -22,10 +22,35 @@ pub struct FjallBackend {
     audit_checkpoint: fjall::Keyspace,
     audit_len: usize,
     audit_tail: [u8; 32],
+    // P3.5 authenticated checkpoint authority.
+    //
+    // Authenticated mode retains only the derived checkpoint context rather
+    // than the original store secret. FV-5 P4 owns secret-key zeroization.
+    checkpoint_auth: Option<crate::CheckpointAuthContext>,
 }
 
 impl FjallBackend {
     pub fn open(path: &str) -> Result<Self, EdisonError> {
+        Self::open_impl(path, None)
+    }
+
+    /// Open or create a Fjall backend whose audit checkpoint is controlled
+    /// by `store_secret`.
+    ///
+    /// Legacy checkpoints are rejected rather than implicitly upgraded.
+    /// Conversely, `open()` rejects authenticated checkpoints because strict
+    /// legacy parsing does not accept authentication fields.
+    pub fn open_authenticated(
+        path: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::open_impl(path, Some(store_secret))
+    }
+
+    fn open_impl(
+        path: &str,
+        store_secret: Option<&str>,
+    ) -> Result<Self, EdisonError> {
         let db = Database::builder(path)
             .open()
             .map_err(|_| EdisonError::LoadFailed)?;
@@ -65,26 +90,43 @@ impl FjallBackend {
 
         let actual_count = u64::try_from(audit_len).map_err(|_| EdisonError::AuditChainBroken)?;
 
-        let checkpoint_state = classify_checkpoint_state(
-            checkpoint_bytes,
-            audit_entries.is_empty(),
-            records_empty,
-            actual_count,
-            audit_tail,
-        )
-        .map_err(checkpoint_error)?;
-
-        if checkpoint_state == CheckpointOpenState::Genesis {
-            let checkpoint = AuditCheckpoint {
-                expected_count: 0,
-                expected_head: [0u8; 32],
+        let (checkpoint_state, checkpoint_auth) =
+            if let Some(store_secret) = store_secret {
+                let (state, context) =
+                    crate::classify_authenticated_checkpoint_state(
+                        checkpoint_bytes,
+                        audit_entries.is_empty(),
+                        records_empty,
+                        actual_count,
+                        audit_tail,
+                        store_secret,
+                    )?;
+                (state, Some(context))
+            } else {
+                let state = classify_checkpoint_state(
+                    checkpoint_bytes,
+                    audit_entries.is_empty(),
+                    records_empty,
+                    actual_count,
+                    audit_tail,
+                )
+                .map_err(checkpoint_error)?;
+                (state, None)
             };
 
-            let checkpoint_json =
-                serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+        if checkpoint_state == CheckpointOpenState::Genesis {
+            let checkpoint_json = Self::serialize_checkpoint(
+                0,
+                [0u8; 32],
+                checkpoint_auth.as_ref(),
+            )?;
 
             let mut batch = db.batch();
-            batch.insert(&audit_checkpoint, AUDIT_CHECKPOINT_KEY, checkpoint_json);
+            batch.insert(
+                &audit_checkpoint,
+                AUDIT_CHECKPOINT_KEY,
+                checkpoint_json,
+            );
             batch.commit().map_err(|_| EdisonError::SaveFailed)?;
         }
 
@@ -97,10 +139,49 @@ impl FjallBackend {
             audit_checkpoint,
             audit_len,
             audit_tail,
+            checkpoint_auth,
         };
 
         backend.validate_persisted_records()?;
         Ok(backend)
+    }
+
+    fn serialize_checkpoint(
+        expected_count: u64,
+        expected_head: [u8; 32],
+        checkpoint_auth: Option<&crate::CheckpointAuthContext>,
+    ) -> Result<Vec<u8>, EdisonError> {
+        if let Some(context) = checkpoint_auth {
+            let checkpoint =
+                crate::authenticated_audit_checkpoint_from_context(
+                    expected_count,
+                    expected_head,
+                    context,
+                );
+
+            serde_json::to_vec(&checkpoint)
+                .map_err(|_| EdisonError::SaveFailed)
+        } else {
+            let checkpoint = AuditCheckpoint {
+                expected_count,
+                expected_head,
+            };
+
+            serde_json::to_vec(&checkpoint)
+                .map_err(|_| EdisonError::SaveFailed)
+        }
+    }
+
+    fn checkpoint_bytes(
+        &self,
+        expected_count: u64,
+        expected_head: [u8; 32],
+    ) -> Result<Vec<u8>, EdisonError> {
+        Self::serialize_checkpoint(
+            expected_count,
+            expected_head,
+            self.checkpoint_auth.as_ref(),
+        )
     }
 
     fn validate_persisted_records(&self) -> Result<(), EdisonError> {
@@ -184,13 +265,8 @@ impl FjallBackend {
 
         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
-        let checkpoint = AuditCheckpoint {
-            expected_count: checkpoint_count,
-            expected_head: entry.entry_hash,
-        };
-
         let checkpoint_json =
-            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
 
         let key = format!("{:020}", self.audit_len);
 
@@ -249,13 +325,8 @@ impl StorageBackend for FjallBackend {
 
         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
-        let checkpoint = AuditCheckpoint {
-            expected_count: checkpoint_count,
-            expected_head: entry.entry_hash,
-        };
-
         let checkpoint_json =
-            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
 
         let audit_key = format!("{:020}", self.audit_len);
         let record_keyspace = self.tier_ks(&record.tier).clone();
@@ -369,13 +440,11 @@ impl StorageBackend for FjallBackend {
                 let checkpoint_count =
                     u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
-                let checkpoint = AuditCheckpoint {
-                    expected_count: checkpoint_count,
-                    expected_head: entry.entry_hash,
-                };
-
                 let checkpoint_json =
-                    serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+                    self.checkpoint_bytes(
+                        checkpoint_count,
+                        entry.entry_hash,
+                    )?;
 
                 let audit_key = format!("{:020}", self.audit_len);
 
@@ -417,6 +486,306 @@ impl StorageBackend for FjallBackend {
 
     fn backend_name(&self) -> &'static str {
         "fjall"
+    }
+}
+
+#[cfg(test)]
+mod p35_authenticated_backend_tests {
+    use super::*;
+
+    fn path(label: &str) -> String {
+        format!(
+            "/tmp/edisondb-p35-fjall-{}-{}-{}",
+            label,
+            std::process::id(),
+            rand::random::<u64>(),
+        )
+    }
+
+    fn cleanup(path: &str) {
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_open_and_reopen() {
+        let path = path("round-trip");
+        cleanup(&path);
+
+        let backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        drop(backend);
+
+        let reopened =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        assert_eq!(reopened.backend_name(), "fjall");
+
+        drop(reopened);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_write_preserves_authenticated_checkpoint() {
+        let path = path("write");
+        cleanup(&path);
+
+        let mut backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        let record = Record::new(
+            "rec:p35-fjall",
+            DataTier::Critical,
+            "owner",
+            b"authenticated checkpoint",
+            &[0x42u8; 32],
+            [0x24u8; 32],
+        )
+        .unwrap();
+
+        backend.write(record).unwrap();
+        drop(backend);
+
+        let reopened =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        assert_eq!(reopened.audit_count(), 1);
+
+        drop(reopened);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_read_granted_preserves_checkpoint() {
+        let path = path("read-granted");
+        cleanup(&path);
+
+        let mut backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        let record = Record::new(
+            "rec:p35-read-granted",
+            DataTier::Critical,
+            "owner",
+            b"authenticated read granted",
+            &[0x42u8; 32],
+            [0x24u8; 32],
+        )
+        .unwrap();
+
+        backend.write(record).unwrap();
+        backend
+            .read("rec:p35-read-granted", "owner")
+            .unwrap();
+
+        drop(backend);
+
+        let reopened =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        assert_eq!(
+            reopened.audit_count(),
+            2,
+            "write + granted read must both remain checkpoint-anchored",
+        );
+
+        drop(reopened);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_read_denied_preserves_checkpoint() {
+        let path = path("read-denied");
+        cleanup(&path);
+
+        let mut backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        let record = Record::new(
+            "rec:p35-read-denied",
+            DataTier::Critical,
+            "owner",
+            b"authenticated read denied",
+            &[0x43u8; 32],
+            [0x25u8; 32],
+        )
+        .unwrap();
+
+        backend.write(record).unwrap();
+
+        assert!(matches!(
+            backend.read(
+                "rec:p35-read-denied",
+                "non-owner",
+            ),
+            Err(EdisonError::AccessDenied)
+        ));
+
+        drop(backend);
+
+        let reopened =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        assert_eq!(
+            reopened.audit_count(),
+            2,
+            "write + denied read must both remain checkpoint-anchored",
+        );
+
+        drop(reopened);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_delete_preserves_checkpoint() {
+        let path = path("delete");
+        cleanup(&path);
+
+        let mut backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        let record = Record::new(
+            "rec:p35-delete",
+            DataTier::Critical,
+            "owner",
+            b"authenticated delete",
+            &[0x44u8; 32],
+            [0x26u8; 32],
+        )
+        .unwrap();
+
+        backend.write(record).unwrap();
+        backend
+            .delete("rec:p35-delete", "owner")
+            .unwrap();
+
+        drop(backend);
+
+        let mut reopened =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        assert_eq!(
+            reopened.audit_count(),
+            2,
+            "write + delete must both remain checkpoint-anchored",
+        );
+
+        assert!(matches!(
+            reopened.read(
+                "rec:p35-delete",
+                "owner",
+            ),
+            Err(EdisonError::NotFound)
+        ));
+
+        drop(reopened);
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_open_rejects_wrong_store_secret() {
+        let path = path("wrong-store-secret");
+        cleanup(&path);
+
+        let backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        drop(backend);
+
+        assert!(matches!(
+            FjallBackend::open_authenticated(
+                &path,
+                "wrong-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_legacy_open_rejects_authenticated_checkpoint() {
+        let path = path("legacy-downgrade");
+        cleanup(&path);
+
+        let backend =
+            FjallBackend::open_authenticated(
+                &path,
+                "correct-store-secret",
+            )
+            .unwrap();
+
+        drop(backend);
+
+        assert!(matches!(
+            FjallBackend::open(&path),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        cleanup(&path);
+    }
+
+    #[test]
+    fn p35_fjall_authenticated_open_rejects_legacy_checkpoint() {
+        let path = path("legacy-upgrade");
+        cleanup(&path);
+
+        let backend = FjallBackend::open(&path).unwrap();
+        drop(backend);
+
+        assert!(matches!(
+            FjallBackend::open_authenticated(
+                &path,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        cleanup(&path);
     }
 }
 

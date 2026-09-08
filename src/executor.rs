@@ -86,12 +86,63 @@ pub struct EqlExecutor {
 }
 
 impl EqlExecutor {
-    pub fn open(path: &str, owner_id: &str, password: &str) -> Result<Self, EdisonError> {
+    pub fn open(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::open_impl(path, owner_id, password, None)
+    }
+
+    /// Open or create an EdisonDB executor with an authenticated audit
+    /// checkpoint controlled by a database-global store secret.
+    ///
+    /// `password` remains the owner's record-encryption credential.
+    /// `store_secret` is a distinct host-supplied authority shared by all
+    /// owners that legitimately open the same authenticated database.
+    ///
+    /// Legacy checkpoints are rejected by the authenticated backend seam;
+    /// no implicit migration is performed.
+    pub fn open_authenticated(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::open_impl(
+            path,
+            owner_id,
+            password,
+            Some(store_secret),
+        )
+    }
+
+    fn open_impl(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+        store_secret: Option<&str>,
+    ) -> Result<Self, EdisonError> {
         let backend_type = std::env::var("EDISONDB_BACKEND")
             .unwrap_or_else(|_| "redb".to_string());
+
         let router = match backend_type.to_lowercase().as_str() {
-            "fjall" => Router::new(Box::new(FjallBackend::open(path)?)),
-            _       => Router::new(Box::new(RedbBackend::open(path)?)),
+            "fjall" => match store_secret {
+                Some(secret) => Router::new(Box::new(
+                    FjallBackend::open_authenticated(path, secret)?,
+                )),
+                None => Router::new(Box::new(
+                    FjallBackend::open(path)?,
+                )),
+            },
+            _ => match store_secret {
+                Some(secret) => Router::new(Box::new(
+                    RedbBackend::open_authenticated(path, secret)?,
+                )),
+                None => Router::new(Box::new(
+                    RedbBackend::open(path)?,
+                )),
+            },
         };
         let vector_path = format!("{}.vectors", path);
         let vector_index = if std::path::Path::new(&vector_path).exists() {
@@ -384,6 +435,92 @@ mod tests {
             }
             _ => panic!("wrong variant"),
         }
+    }
+
+    #[test]
+    fn p35_authenticated_store_secret_is_independent_of_owner_password() {
+        let path = "/tmp/eql_p35_store_secret.redb";
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_dir_all(path);
+        let _ = std::fs::remove_file(format!("{}.vectors", path));
+
+        {
+            let mut alice = EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            alice
+                .execute(
+                    parse(
+                        "WRITE p35:alice TIER CRITICAL alice secret",
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+        }
+
+        {
+            let mut bob = EqlExecutor::open_authenticated(
+                path,
+                "bob",
+                "bob-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            assert!(matches!(
+                bob.execute(parse("READ p35:alice").unwrap()),
+                Err(EdisonError::AccessDenied)
+            ));
+
+            bob.execute(
+                parse(
+                    "WRITE p35:bob TIER CRITICAL bob secret",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        }
+
+        {
+            let mut alice = EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            match alice
+                .execute(parse("READ p35:alice").unwrap())
+                .unwrap()
+            {
+                EqlResult::Read { payload, .. } => {
+                    assert_eq!(payload, "alice secret");
+                }
+                other => panic!(
+                    "unexpected authenticated read result: {other:?}"
+                ),
+            }
+        }
+
+        assert!(matches!(
+            EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "wrong-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_dir_all(path);
+        let _ = std::fs::remove_file(format!("{}.vectors", path));
     }
 
     #[test]
