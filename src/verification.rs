@@ -843,3 +843,63 @@ mod kani_harnesses {
         }
     }
 }
+
+
+// FV-5 LIMIT-004 — mobile ARPi structural provenance boundary.
+//
+// This harness proves only the deterministic structural acceptance relation
+// implemented by mobile::ArpiHeader::from_bytes. It does not formally verify
+// BLAKE3, JNI/Kotlin execution, cryptographic collision resistance, deployed
+// Android behavior, persistence atomicity, replay resistance, or anti-rollback.
+#[cfg(all(kani, feature = "mobile"))]
+#[allow(unexpected_cfgs)]
+mod kani_limit004_mobile_provenance {
+    use crate::mobile::ArpiHeader;
+
+    #[kani::proof]
+    fn kani_limit004_mobile_arpi_fail_closed_structure() {
+        let bytes: [u8; ArpiHeader::SIZE] = kani::any();
+
+        let expected_valid =
+            bytes[0] == b'A'
+                && bytes[1] == b'R'
+                && bytes[2] == b'P'
+                && bytes[3] == b'i'
+                && bytes[20] <= 2
+                && bytes[21] == 0
+                && bytes[22] == 0
+                && bytes[23] == 0;
+
+        let parsed = ArpiHeader::from_bytes(&bytes);
+
+        // For an exactly 78-byte candidate, acceptance is equivalent to the
+        // production structural predicates: magic, known tier, zero reserved.
+        assert_eq!(parsed.is_some(), expected_valid);
+
+        if let Some(header) = parsed {
+            assert_eq!(header.magic, *b"ARPi");
+            assert!(header.tier <= 2);
+            assert_eq!(header.reserved, [0u8; 3]);
+
+            let expected_counter = u64::from_le_bytes([
+                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[8], bytes[9], bytes[10], bytes[11],
+            ]);
+            let expected_timestamp = u64::from_le_bytes([
+                bytes[12], bytes[13], bytes[14], bytes[15],
+                bytes[16], bytes[17], bytes[18], bytes[19],
+            ]);
+
+            assert_eq!(header.write_counter, expected_counter);
+            assert_eq!(header.timestamp_us, expected_timestamp);
+            assert_eq!(header.tier, bytes[20]);
+        }
+
+        // Length is also part of the fail-closed production contract.
+        let short: [u8; ArpiHeader::SIZE - 1] = kani::any();
+        let long: [u8; ArpiHeader::SIZE + 1] = kani::any();
+
+        assert!(ArpiHeader::from_bytes(&short).is_none());
+        assert!(ArpiHeader::from_bytes(&long).is_none());
+    }
+}

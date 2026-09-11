@@ -72,6 +72,7 @@ path = "src/main.rs"
 [[bin]]
 name = "edisondb-server"
 path = "src/server.rs"
+required-features = ["server"]
 
 [[bench]]
 name = "edisondb_bench"

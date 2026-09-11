@@ -12,7 +12,7 @@
 #![allow(non_snake_case, clippy::missing_safety_doc)]
 
 use jni::objects::{JByteArray, JClass, JString};
-use jni::sys::{jint, jlong, jstring};
+use jni::sys::{jbyteArray, jint, jlong, jstring};
 use jni::JNIEnv;
 
 use super::ffi::{
@@ -48,6 +48,26 @@ pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeCl
     edisondb_close(handle as *mut super::ffi::DbHandle);
 }
 
+/// com.aieonyx.edisondb.EdisonDbAndroid.nativeBlake3(value): ByteArray?
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3(
+    mut env: JNIEnv,
+    _class: JClass,
+    value: JString,
+) -> jbyteArray {
+    let value_str: String = match env.get_string(&value) {
+        Ok(s) => s.into(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    let digest = blake3::hash(value_str.as_bytes());
+
+    match env.byte_array_from_slice(digest.as_bytes()) {
+        Ok(bytes) => bytes.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 /// com.aieonyx.edisondb.EdisonDbAndroid.nativeInsert(handle, key, value, arpi): Int
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
@@ -69,9 +89,9 @@ pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeIn
         Err(_) => return -1,
     };
 
-    // Copy the 78-byte ARPi header from the JVM heap.
+    // Accept exactly one canonical mobile provenance header.
     let arpi_len = env.get_array_length(&arpi).unwrap_or(0) as usize;
-    if arpi_len < 78 {
+    if arpi_len != super::ArpiHeader::SIZE {
         return -5;
     }
     let mut arpi_bytes = vec![0i8; arpi_len];

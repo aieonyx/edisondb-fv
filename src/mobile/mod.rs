@@ -41,8 +41,10 @@ impl From<std::io::Error> for DbError {
     fn from(e: std::io::Error) -> Self { DbError::Io(e) }
 }
 
-/// ARPi header — 78 bytes fixed.
-/// Public name: AXON Receptor Protocol Interface.
+/// Mobile ARPi write-provenance header — 78 bytes fixed.
+///
+/// This is the mobile storage provenance format. It is distinct from
+/// `crate::arpi::ArpiHeader`, which is the ARPi response/protocol header.
 ///
 /// Offset  Size  Field
 ///  0       4    magic: b"ARPi"
@@ -67,16 +69,44 @@ impl ArpiHeader {
     pub const SIZE: usize = 78;
 
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() < Self::SIZE { return None; }
-        if &bytes[0..4] != b"ARPi" { return None; }
-        let write_counter = u64::from_le_bytes(bytes[4..12].try_into().ok()?);
-        let timestamp_us  = u64::from_le_bytes(bytes[12..20].try_into().ok()?);
+        if bytes.len() != Self::SIZE {
+            return None;
+        }
+        if &bytes[0..4] != b"ARPi" {
+            return None;
+        }
+
         let tier = bytes[20];
-        let mut reserved   = [0u8; 3];  reserved.copy_from_slice(&bytes[21..24]);
-        let mut blake3_hash = [0u8; 32]; blake3_hash.copy_from_slice(&bytes[24..56]);
-        let mut node_id    = [0u8; 22]; node_id.copy_from_slice(&bytes[56..78]);
-        Some(Self { magic: *b"ARPi", write_counter, timestamp_us,
-                    tier, reserved, blake3_hash, node_id })
+        if !matches!(tier, 0..=2) {
+            return None;
+        }
+
+        let write_counter =
+            u64::from_le_bytes(bytes[4..12].try_into().ok()?);
+        let timestamp_us =
+            u64::from_le_bytes(bytes[12..20].try_into().ok()?);
+
+        let mut reserved = [0u8; 3];
+        reserved.copy_from_slice(&bytes[21..24]);
+        if reserved != [0u8; 3] {
+            return None;
+        }
+
+        let mut blake3_hash = [0u8; 32];
+        blake3_hash.copy_from_slice(&bytes[24..56]);
+
+        let mut node_id = [0u8; 22];
+        node_id.copy_from_slice(&bytes[56..78]);
+
+        Some(Self {
+            magic: *b"ARPi",
+            write_counter,
+            timestamp_us,
+            tier,
+            reserved,
+            blake3_hash,
+            node_id,
+        })
     }
 
     pub fn to_bytes(&self) -> [u8; Self::SIZE] {
@@ -156,17 +186,13 @@ impl MobileDb {
         if arpi_raw.len() < 78 { return Err(DbError::InvalidArpi); }
         let header = ArpiHeader::from_bytes(arpi_raw).ok_or(DbError::InvalidArpi)?;
 
-        // Hash verification skipped on Android mobile —
-        // Kotlin ARPi uses SHA-256 stand-in; BLAKE3 verification
-        // is enforced server-side only (see ArpiHeader.kt note)
-        #[cfg(not(target_os = "android"))]
-        {
-            let mut h = Hasher::new();
-            h.update(value.as_bytes());
-            let computed: [u8; 32] = h.finalize().into();
-            if computed != header.blake3_hash {
-                return Err(DbError::InvalidArpi);
-            }
+        // Content provenance is fail-closed on every target, including
+        // Android. The header must bind the exact UTF-8 value persisted below.
+        let mut h = Hasher::new();
+        h.update(value.as_bytes());
+        let computed: [u8; 32] = h.finalize().into();
+        if computed != header.blake3_hash {
+            return Err(DbError::InvalidArpi);
         }
 
         let counter = self.next_counter()?;
@@ -259,7 +285,12 @@ mod p3_counter_tests {
             .unwrap()
             .expect("record must exist");
 
-        ArpiHeader::from_bytes(raw.as_ref())
+        let record = raw.as_ref();
+        let header = record
+            .get(..ArpiHeader::SIZE)
+            .expect("stored record must contain a complete ARPi header");
+
+        ArpiHeader::from_bytes(header)
             .expect("stored ARPi header must decode")
             .write_counter
     }

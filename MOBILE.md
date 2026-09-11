@@ -7,12 +7,17 @@ EdisonDB v0.6.0 expands to Android with a full embedded-mode mobile SDK.
 No gRPC. No server. Sovereign storage + ARPi provenance on every write,
 running natively on Android via JNI.
 
+The mobile 78-byte write-provenance header is distinct from the 78-byte
+response/protocol `ArpiHeader` in `src/arpi.rs`. They serve different
+boundaries and are not wire-compatible. FV-5 LIMIT-004 concerns the mobile
+write-provenance path.
+
 ---
 
 ## Why Mobile
 
 EdisonDB's core guarantees — ARPi provenance headers, AES-256-GCM at rest,
-BLAKE3-signed writes, Inverted Admin Model — are just as necessary on a
+BLAKE3-bound writes, Inverted Admin Model — are just as necessary on a
 mobile device as on a server node. The first integration target is
 [AI Stop](https://github.com/aieonyx/aistop) (`com.aieonyx.aistop`), an
 Android privacy guard app that logs every AI data exposure event.
@@ -48,7 +53,7 @@ Output: `libeditsondb.so` placed in AI Stop's `jniLibs/`.
 ### Phase M2 — Kotlin Android SDK
 
 - `EdisonDbAndroid.kt` — singleton JNI wrapper, lifecycle-aware
-- `ArpiHeader.kt` — generates the 78-byte provenance header per write
+- `ArpiHeader.kt` — generates the 78-byte mobile provenance header per write using Rust-owned BLAKE3
 - `ExposureStore.kt` — interface that mirrors `ExposureDao` exactly (drop-in)
 - `EdisonDbExposureStore.kt` — implements `ExposureStore` via EdisonDB
 - AES-256-GCM encryption at rest using Android Keystore (no key ever leaves device)
