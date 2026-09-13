@@ -359,6 +359,65 @@ mod p3_counter_tests {
     }
 
     #[test]
+    fn limit004_rejected_provenance_does_not_advance_counter_or_persist() {
+        let path = temp_path("limit004-reject-no-advance");
+        let path_str = path.to_str().unwrap();
+
+        let mut db = MobileDb::open(path_str).unwrap();
+        assert_eq!(db.write_counter, 0);
+
+        // Header binds a different payload, so provenance validation must fail
+        // before any record or counter mutation occurs.
+        let mismatched_header = valid_arpi("different payload");
+        let result = db.insert(
+            "rec:rejected",
+            "actual payload",
+            &mismatched_header,
+        );
+
+        assert!(matches!(result, Err(DbError::InvalidArpi)));
+        assert_eq!(
+            db.write_counter, 0,
+            "rejected provenance must not advance the in-memory counter"
+        );
+        assert!(
+            db.partition
+                .get(b"rec:rejected")
+                .unwrap()
+                .is_none(),
+            "rejected provenance must not persist a record"
+        );
+        assert!(
+            db.partition
+                .get(WRITE_COUNTER_KEY)
+                .unwrap()
+                .is_none(),
+            "rejected provenance must not persist counter state"
+        );
+
+        // The first subsequent valid write must still receive counter 1.
+        db.insert(
+            "rec:accepted",
+            "accepted payload",
+            &valid_arpi("accepted payload"),
+        )
+        .unwrap();
+
+        assert_eq!(db.write_counter, 1);
+        assert_eq!(stored_counter(&db, "rec:accepted"), 1);
+
+        drop(db);
+
+        // Reopen proves the rejected write did not secretly persist a counter
+        // increment before the successful write.
+        let reopened = MobileDb::open(path_str).unwrap();
+        assert_eq!(reopened.write_counter, 1);
+
+        drop(reopened);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
     fn p3_counter_transition_never_wraps() {
         assert_eq!(next_write_counter(0), Some(1));
         assert_eq!(next_write_counter(41), Some(42));
