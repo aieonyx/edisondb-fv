@@ -1,0 +1,35 @@
+FV-5 LIMIT-004 bounded evidence claim
+
+Candidate registry ID: CLAIM-FV5-006
+
+Supported:
+- The mobile Rust ARPi parser structurally fails closed on the exact 78-byte
+  format requirements exercised/proved here: ARPi magic, tier range, zero
+  reserved bytes, and exact length.
+- The targeted Kani harness proves only that deterministic parser structural
+  acceptance relation: 158 checks, 0 failed, 4 unreachable.
+- Mobile insertion recomputes BLAKE3 over the supplied value and rejects a
+  mismatched provenance digest in the captured dynamic path.
+- The committed regression demonstrates that rejected mismatched provenance
+  does not advance or persist the mobile counter in the exercised path.
+- The Android JNI insertion boundary rejects 77-byte and 79-byte headers in
+  the captured physical Android runtime.
+- The production JNI nativeBlake3 and nativeInsert exports execute in the
+  captured physical Android runtime.
+- The Rust/JNI library cross-builds at API 26 for arm64-v8a and x86_64.
+
+Not claimed:
+- formal or cryptographic proof of BLAKE3;
+- formal verification of JNI/JVM/Android/Kotlin/Java;
+- full Kotlin application or deployed product runtime verification;
+- arbitrary-length safety for direct C callers beyond the documented
+  exactly-78-byte pointer contract;
+- LIMIT-002, LIMIT-003, or LIMIT-005 closure;
+- crash consistency or anti-rollback;
+- timestamp freshness/semantic validation;
+- node-id authenticity/semantic validation;
+- iOS verification;
+- full-project Kani verification.
+
+The mobile 78-byte write-provenance header is not the same protocol object as
+the separate core ARPi response/protocol header.

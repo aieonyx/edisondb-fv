@@ -1,0 +1,105 @@
+{
+  "android_cross_build": {
+    "abis": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "api_level": 26,
+    "jni_exports_checked": [
+      "nativeBlake3",
+      "nativeInsert"
+    ],
+    "result": "PASS"
+  },
+  "captured_utc": "2026-09-13T02:07:01Z",
+  "claim_id_candidate": "CLAIM-FV5-006",
+  "claim_slice": "FV-5 LIMIT-004",
+  "clippy": {
+    "default_baseline": 23,
+    "default_current": 23,
+    "default_new": 0,
+    "mobile_test_surface_baseline": 60,
+    "mobile_test_surface_current": 60,
+    "mobile_test_surface_new": 0
+  },
+  "dynamic_tests": {
+    "default": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 296
+    },
+    "focused_limit004": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5
+    },
+    "mobile": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 106
+    },
+    "state_invariance": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 1
+    }
+  },
+  "explicit_nonclaims": [
+    "formal verification of BLAKE3",
+    "BLAKE3 collision resistance or cryptographic security",
+    "formal verification of JNI, JVM, Android, Kotlin, or Java execution",
+    "full production Kotlin Android application runtime verification",
+    "arbitrary C FFI caller length validation beyond the documented 78-byte pointer contract",
+    "LIMIT-002 ARPi production integration closure",
+    "LIMIT-003 verified-kernel/mobile bypass closure",
+    "LIMIT-005 crash consistency closure",
+    "anti-rollback protection",
+    "timestamp freshness or semantic timestamp validation",
+    "node-id authenticity or semantic node-id validation",
+    "full-project Kani verification",
+    "iOS verification or iOS support"
+  ],
+  "kani": {
+    "checks": 158,
+    "failed": 0,
+    "harness": "kani_limit004_mobile_arpi_fail_closed_structure",
+    "scope": "mobile ARPi parser structural acceptance only",
+    "unreachable": 4,
+    "verified_harnesses": 1
+  },
+  "physical_android_runtime": {
+    "abi": "arm64-v8a",
+    "android_release": 11,
+    "device_serial_retained": false,
+    "full_kotlin_app_runtime": false,
+    "production_jni_symbols": true,
+    "result": "PASS",
+    "sdk": 30,
+    "temporary_java_harness": true
+  },
+  "port_hygiene": {
+    "criterion": [
+      "no LISTEN socket on TCP 50051",
+      "no edisondb-server process",
+      "SO_REUSEADDR bind succeeds"
+    ],
+    "plain_bind_used_as_leak_gate": false,
+    "post_test": "PASS",
+    "pre_test": "PASS"
+  },
+  "r1": {
+    "reason": "obsolete plain-bind post-test criterion was defeated by TCP TIME_WAIT; no leaked LISTEN socket or server process was established",
+    "retained": true,
+    "status": "FAILED-METHODOLOGY-ATTEMPT"
+  },
+  "schema": "edisondb-fv-evidence-summary-v1",
+  "source": {
+    "baseline_commit": "2726c316051bdebe6c1d04c53200327746bf0c9b",
+    "implementation_commit": "2f3c8fca6860e9f97e79e799a9e8050de38012e0",
+    "implementation_signature": "PASS",
+    "source_commit": "bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3",
+    "source_signature": "PASS",
+    "source_tree": "06f287d08d75043cb7d86faf6de7531cec85ceaf"
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,2 @@
+PASS: /tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libedisondb.so exports nativeBlake3 and nativeInsert
+PASS: /tmp/edisondb-limit004-r2-android-959131/x86_64/libedisondb.so exports nativeBlake3 and nativeInsert

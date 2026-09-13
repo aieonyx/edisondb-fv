@@ -1,0 +1,16 @@
+cargo-check-default.log: OK
+cargo-check-mobile.log: OK
+cargo-test-default.log: OK
+cargo-test-limit004-focused.log: OK
+cargo-test-limit004-state-invariance.log: OK
+cargo-test-mobile.log: OK
+clippy-baseline-aware.txt: OK
+clippy-baseline-default.stderr: OK
+clippy-baseline-mobile.stderr: OK
+clippy-current-default.stderr: OK
+clippy-current-mobile.stderr: OK
+host-gate-exit-codes.txt: OK
+kani-limit004-mobile-arpi-structure.log: OK
+port-post-test.txt: OK
+port-pre-test.txt: OK
+test-summary.txt: OK

@@ -1,0 +1,10 @@
+android-physical-target.txt: OK
+commit-metadata.txt: OK
+environment.txt: OK
+implementation-signature.txt: OK
+r1-manifest-sha256.txt: OK
+source-commit-chain.txt: OK
+source-diff-check.txt: OK
+source-name-status.txt: OK
+source-signature.txt: OK
+source.diff: OK

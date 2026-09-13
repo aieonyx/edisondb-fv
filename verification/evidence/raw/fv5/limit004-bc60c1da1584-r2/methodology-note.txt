@@ -1,0 +1,21 @@
+FV-5 LIMIT-004 r2 methodology note
+
+The preserved r1 directory is retained unchanged as a historical failed-
+methodology evidence attempt.
+
+r1 failed only its post-test plain TCP bind criterion. Subsequent diagnosis
+established that the socket was in TCP TIME_WAIT: no LISTEN socket existed
+and no edisondb-server process remained. A plain bind without SO_REUSEADDR is
+therefore not a valid immediate post-test leak detector.
+
+r2 replaces that obsolete criterion with:
+1. no LISTEN socket on TCP port 50051;
+2. no edisondb-server process; and
+3. successful SO_REUSEADDR bind.
+
+The corrected pre-test and post-test criteria pass.
+
+Physical Android runtime evidence uses a temporary Java harness to invoke the
+production EdisonDB JNI exports on a physical Android device. This proves the
+captured JNI/Rust runtime path for the exercised cases; it does not establish
+full production Kotlin application execution or formally verify Android/JNI.

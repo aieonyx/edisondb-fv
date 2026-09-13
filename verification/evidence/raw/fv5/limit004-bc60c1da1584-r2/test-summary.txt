@@ -1,0 +1,5 @@
+default: passed=296 failed=0 ignored=0 summaries=17
+mobile: passed=106 failed=0 ignored=0 summaries=1
+focused_limit004: passed=5 failed=0 ignored=0 summaries=1
+state_invariance: passed=1 failed=0 ignored=0 summaries=1
+PASS: all captured dynamic test summaries report zero failures

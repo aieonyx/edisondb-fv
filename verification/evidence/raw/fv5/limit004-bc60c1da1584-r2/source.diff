@@ -1,0 +1,546 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index ef58e61..ff2d9bd 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -72,6 +72,7 @@ path = "src/main.rs"
+ [[bin]]
+ name = "edisondb-server"
+ path = "src/server.rs"
++required-features = ["server"]
+ 
+ [[bench]]
+ name = "edisondb_bench"
+diff --git a/MOBILE.md b/MOBILE.md
+index d01d981..e0e55e7 100644
+--- a/MOBILE.md
++++ b/MOBILE.md
+@@ -7,12 +7,17 @@ EdisonDB v0.6.0 expands to Android with a full embedded-mode mobile SDK.
+ No gRPC. No server. Sovereign storage + ARPi provenance on every write,
+ running natively on Android via JNI.
+ 
++The mobile 78-byte write-provenance header is distinct from the 78-byte
++response/protocol `ArpiHeader` in `src/arpi.rs`. They serve different
++boundaries and are not wire-compatible. FV-5 LIMIT-004 concerns the mobile
++write-provenance path.
++
+ ---
+ 
+ ## Why Mobile
+ 
+ EdisonDB's core guarantees — ARPi provenance headers, AES-256-GCM at rest,
+-BLAKE3-signed writes, Inverted Admin Model — are just as necessary on a
++BLAKE3-bound writes, Inverted Admin Model — are just as necessary on a
+ mobile device as on a server node. The first integration target is
+ [AI Stop](https://github.com/aieonyx/aistop) (`com.aieonyx.aistop`), an
+ Android privacy guard app that logs every AI data exposure event.
+@@ -48,7 +53,7 @@ Output: `libeditsondb.so` placed in AI Stop's `jniLibs/`.
+ ### Phase M2 — Kotlin Android SDK
+ 
+ - `EdisonDbAndroid.kt` — singleton JNI wrapper, lifecycle-aware
+-- `ArpiHeader.kt` — generates the 78-byte provenance header per write
++- `ArpiHeader.kt` — generates the 78-byte mobile provenance header per write using Rust-owned BLAKE3
+ - `ExposureStore.kt` — interface that mirrors `ExposureDao` exactly (drop-in)
+ - `EdisonDbExposureStore.kt` — implements `ExposureStore` via EdisonDB
+ - AES-256-GCM encryption at rest using Android Keystore (no key ever leaves device)
+diff --git a/mobile/android-sdk/ArpiHeader.kt b/mobile/android-sdk/ArpiHeader.kt
+index 835a9d7..0e5d168 100644
+--- a/mobile/android-sdk/ArpiHeader.kt
++++ b/mobile/android-sdk/ArpiHeader.kt
+@@ -1,10 +1,10 @@
+ // Copyright (c) 2026 Edison Lepiten / AIEONYX
+ // License: Apache-2.0
+ //
+-// ArpiHeader — 78-byte AXON Receptor Protocol Interface provenance header.
++// ArpiHeader — 78-byte mobile ARPi write-provenance header.
+ // Generated on Android for every EdisonDB write.
+-// Rust FFI validates magic bytes on insert; BLAKE3 verification is
+-// relaxed in debug builds until blake3-jvm is wired (see note below).
++// Rust owns BLAKE3 digest generation and validates the same content binding
++// again before persistence.
+ //
+ // Layout:
+ //   Offset  Size  Field
+@@ -13,14 +13,13 @@
+ //   12       8    timestamp_us (u64 LE, Unix epoch microseconds)
+ //   20       1    tier (0=Critical, 1=Personal, 2=Noise)
+ //   21       3    reserved (zero)
+-//   24      32    content hash (SHA-256 stand-in; replace with BLAKE3 in prod)
++//   24      32    BLAKE3 content hash
+ //   56      22    node_id (UTF-8, zero-padded)
+ 
+ package com.aieonyx.edisondb
+ 
+ import java.nio.ByteBuffer
+ import java.nio.ByteOrder
+-import java.security.MessageDigest
+ 
+ object ArpiHeader {
+ 
+@@ -33,12 +32,9 @@ object ArpiHeader {
+      * [tier]: 0=Critical (AI exposure events), 1=Personal, 2=Noise (index keys)
+      * [nodeId]: device ARPi node identifier (empty = zero-padded)
+      *
+-     * NOTE: SHA-256 is used here as a stand-in for BLAKE3.
+-     * The Rust side verifies with BLAKE3 in release builds.
+-     * To align: add `com.ionspin.kotlin:blake3-jvm:0.1.0` to app/build.gradle
+-     * and replace [hashContent] with `Blake3.hash(data)`.
+-     * In debug/mobile builds the Rust verification is relaxed via
+-     * `#[cfg(debug_assertions)]` guard in src/mobile/mod.rs.
++     * The BLAKE3 content digest is produced by the linked EdisonDB Rust
++     * library. MobileDb validates that digest again against the exact value
++     * before persistence.
+      */
+     fun build(value: String, tier: Byte = 1, nodeId: String = ""): ByteArray {
+         val buf = ByteBuffer.allocate(SIZE).order(ByteOrder.LITTLE_ENDIAN)
+@@ -48,12 +44,10 @@ object ArpiHeader {
+         buf.putLong(System.currentTimeMillis() * 1_000L) // 12–19  timestamp_us
+         buf.put(tier)                                     // 20     tier
+         buf.put(ByteArray(3))                             // 21–23  reserved
+-        buf.put(hashContent(value.toByteArray(Charsets.UTF_8)))  // 24–55  hash
++        buf.put(EdisonDbAndroid.blake3Hash(value))                      // 24–55  hash
+         buf.put(nodeId.toByteArray(Charsets.UTF_8).copyOf(22))   // 56–77  node_id
+ 
+         return buf.array()
+     }
+ 
+-    private fun hashContent(data: ByteArray): ByteArray =
+-        MessageDigest.getInstance("SHA-256").digest(data)
+ }
+diff --git a/mobile/android-sdk/EdisonDbAndroid.kt b/mobile/android-sdk/EdisonDbAndroid.kt
+index 9c3cf60..430c0d9 100644
+--- a/mobile/android-sdk/EdisonDbAndroid.kt
++++ b/mobile/android-sdk/EdisonDbAndroid.kt
+@@ -67,6 +67,15 @@ object EdisonDbAndroid {
+         return insert(key, value, header)
+     }
+ 
++    internal fun blake3Hash(value: String): ByteArray {
++        val hash = nativeBlake3(value)
++            ?: error("EdisonDB native BLAKE3 generation failed")
++        check(hash.size == 32) {
++            "EdisonDB native BLAKE3 returned invalid digest length"
++        }
++        return hash
++    }
++
+     fun query(key: String): String? {
+         checkOpen()
+         return nativeQuery(dbHandle, key)
+@@ -89,6 +98,7 @@ object EdisonDbAndroid {
+ 
+     private external fun nativeOpen(path: String): Long
+     private external fun nativeClose(handle: Long)
++    private external fun nativeBlake3(value: String): ByteArray?
+     private external fun nativeInsert(handle: Long, key: String, value: String, arpi: ByteArray): Int
+     private external fun nativeQuery(handle: Long, key: String): String?
+     private external fun nativeDelete(handle: Long, key: String): Int
+diff --git a/src/mobile/jni_bridge.rs b/src/mobile/jni_bridge.rs
+index b22b6fb..a9c9a63 100644
+--- a/src/mobile/jni_bridge.rs
++++ b/src/mobile/jni_bridge.rs
+@@ -12,7 +12,7 @@
+ #![allow(non_snake_case, clippy::missing_safety_doc)]
+ 
+ use jni::objects::{JByteArray, JClass, JString};
+-use jni::sys::{jint, jlong, jstring};
++use jni::sys::{jbyteArray, jint, jlong, jstring};
+ use jni::JNIEnv;
+ 
+ use super::ffi::{
+@@ -48,6 +48,26 @@ pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeCl
+     edisondb_close(handle as *mut super::ffi::DbHandle);
+ }
+ 
++/// com.aieonyx.edisondb.EdisonDbAndroid.nativeBlake3(value): ByteArray?
++#[unsafe(no_mangle)]
++pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3(
++    mut env: JNIEnv,
++    _class: JClass,
++    value: JString,
++) -> jbyteArray {
++    let value_str: String = match env.get_string(&value) {
++        Ok(s) => s.into(),
++        Err(_) => return std::ptr::null_mut(),
++    };
++
++    let digest = blake3::hash(value_str.as_bytes());
++
++    match env.byte_array_from_slice(digest.as_bytes()) {
++        Ok(bytes) => bytes.into_raw(),
++        Err(_) => std::ptr::null_mut(),
++    }
++}
++
+ /// com.aieonyx.edisondb.EdisonDbAndroid.nativeInsert(handle, key, value, arpi): Int
+ #[unsafe(no_mangle)]
+ pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+@@ -69,9 +89,9 @@ pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeIn
+         Err(_) => return -1,
+     };
+ 
+-    // Copy the 78-byte ARPi header from the JVM heap.
++    // Accept exactly one canonical mobile provenance header.
+     let arpi_len = env.get_array_length(&arpi).unwrap_or(0) as usize;
+-    if arpi_len < 78 {
++    if arpi_len != super::ArpiHeader::SIZE {
+         return -5;
+     }
+     let mut arpi_bytes = vec![0i8; arpi_len];
+diff --git a/src/mobile/mod.rs b/src/mobile/mod.rs
+index 886d6ba..ab205c2 100644
+--- a/src/mobile/mod.rs
++++ b/src/mobile/mod.rs
+@@ -41,8 +41,10 @@ impl From<std::io::Error> for DbError {
+     fn from(e: std::io::Error) -> Self { DbError::Io(e) }
+ }
+ 
+-/// ARPi header — 78 bytes fixed.
+-/// Public name: AXON Receptor Protocol Interface.
++/// Mobile ARPi write-provenance header — 78 bytes fixed.
++///
++/// This is the mobile storage provenance format. It is distinct from
++/// `crate::arpi::ArpiHeader`, which is the ARPi response/protocol header.
+ ///
+ /// Offset  Size  Field
+ ///  0       4    magic: b"ARPi"
+@@ -67,16 +69,44 @@ impl ArpiHeader {
+     pub const SIZE: usize = 78;
+ 
+     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+-        if bytes.len() < Self::SIZE { return None; }
+-        if &bytes[0..4] != b"ARPi" { return None; }
+-        let write_counter = u64::from_le_bytes(bytes[4..12].try_into().ok()?);
+-        let timestamp_us  = u64::from_le_bytes(bytes[12..20].try_into().ok()?);
++        if bytes.len() != Self::SIZE {
++            return None;
++        }
++        if &bytes[0..4] != b"ARPi" {
++            return None;
++        }
++
+         let tier = bytes[20];
+-        let mut reserved   = [0u8; 3];  reserved.copy_from_slice(&bytes[21..24]);
+-        let mut blake3_hash = [0u8; 32]; blake3_hash.copy_from_slice(&bytes[24..56]);
+-        let mut node_id    = [0u8; 22]; node_id.copy_from_slice(&bytes[56..78]);
+-        Some(Self { magic: *b"ARPi", write_counter, timestamp_us,
+-                    tier, reserved, blake3_hash, node_id })
++        if !matches!(tier, 0..=2) {
++            return None;
++        }
++
++        let write_counter =
++            u64::from_le_bytes(bytes[4..12].try_into().ok()?);
++        let timestamp_us =
++            u64::from_le_bytes(bytes[12..20].try_into().ok()?);
++
++        let mut reserved = [0u8; 3];
++        reserved.copy_from_slice(&bytes[21..24]);
++        if reserved != [0u8; 3] {
++            return None;
++        }
++
++        let mut blake3_hash = [0u8; 32];
++        blake3_hash.copy_from_slice(&bytes[24..56]);
++
++        let mut node_id = [0u8; 22];
++        node_id.copy_from_slice(&bytes[56..78]);
++
++        Some(Self {
++            magic: *b"ARPi",
++            write_counter,
++            timestamp_us,
++            tier,
++            reserved,
++            blake3_hash,
++            node_id,
++        })
+     }
+ 
+     pub fn to_bytes(&self) -> [u8; Self::SIZE] {
+@@ -156,17 +186,13 @@ impl MobileDb {
+         if arpi_raw.len() < 78 { return Err(DbError::InvalidArpi); }
+         let header = ArpiHeader::from_bytes(arpi_raw).ok_or(DbError::InvalidArpi)?;
+ 
+-        // Hash verification skipped on Android mobile —
+-        // Kotlin ARPi uses SHA-256 stand-in; BLAKE3 verification
+-        // is enforced server-side only (see ArpiHeader.kt note)
+-        #[cfg(not(target_os = "android"))]
+-        {
+-            let mut h = Hasher::new();
+-            h.update(value.as_bytes());
+-            let computed: [u8; 32] = h.finalize().into();
+-            if computed != header.blake3_hash {
+-                return Err(DbError::InvalidArpi);
+-            }
++        // Content provenance is fail-closed on every target, including
++        // Android. The header must bind the exact UTF-8 value persisted below.
++        let mut h = Hasher::new();
++        h.update(value.as_bytes());
++        let computed: [u8; 32] = h.finalize().into();
++        if computed != header.blake3_hash {
++            return Err(DbError::InvalidArpi);
+         }
+ 
+         let counter = self.next_counter()?;
+@@ -259,7 +285,12 @@ mod p3_counter_tests {
+             .unwrap()
+             .expect("record must exist");
+ 
+-        ArpiHeader::from_bytes(raw.as_ref())
++        let record = raw.as_ref();
++        let header = record
++            .get(..ArpiHeader::SIZE)
++            .expect("stored record must contain a complete ARPi header");
++
++        ArpiHeader::from_bytes(header)
+             .expect("stored ARPi header must decode")
+             .write_counter
+     }
+@@ -327,6 +358,65 @@ mod p3_counter_tests {
+         let _ = std::fs::remove_dir_all(path);
+     }
+ 
++    #[test]
++    fn limit004_rejected_provenance_does_not_advance_counter_or_persist() {
++        let path = temp_path("limit004-reject-no-advance");
++        let path_str = path.to_str().unwrap();
++
++        let mut db = MobileDb::open(path_str).unwrap();
++        assert_eq!(db.write_counter, 0);
++
++        // Header binds a different payload, so provenance validation must fail
++        // before any record or counter mutation occurs.
++        let mismatched_header = valid_arpi("different payload");
++        let result = db.insert(
++            "rec:rejected",
++            "actual payload",
++            &mismatched_header,
++        );
++
++        assert!(matches!(result, Err(DbError::InvalidArpi)));
++        assert_eq!(
++            db.write_counter, 0,
++            "rejected provenance must not advance the in-memory counter"
++        );
++        assert!(
++            db.partition
++                .get(b"rec:rejected")
++                .unwrap()
++                .is_none(),
++            "rejected provenance must not persist a record"
++        );
++        assert!(
++            db.partition
++                .get(WRITE_COUNTER_KEY)
++                .unwrap()
++                .is_none(),
++            "rejected provenance must not persist counter state"
++        );
++
++        // The first subsequent valid write must still receive counter 1.
++        db.insert(
++            "rec:accepted",
++            "accepted payload",
++            &valid_arpi("accepted payload"),
++        )
++        .unwrap();
++
++        assert_eq!(db.write_counter, 1);
++        assert_eq!(stored_counter(&db, "rec:accepted"), 1);
++
++        drop(db);
++
++        // Reopen proves the rejected write did not secretly persist a counter
++        // increment before the successful write.
++        let reopened = MobileDb::open(path_str).unwrap();
++        assert_eq!(reopened.write_counter, 1);
++
++        drop(reopened);
++        let _ = std::fs::remove_dir_all(path);
++    }
++
+     #[test]
+     fn p3_counter_transition_never_wraps() {
+         assert_eq!(next_write_counter(0), Some(1));
+diff --git a/src/verification.rs b/src/verification.rs
+index 09a9dfc..9cd5eea 100644
+--- a/src/verification.rs
++++ b/src/verification.rs
+@@ -843,3 +843,63 @@ mod kani_harnesses {
+         }
+     }
+ }
++
++
++// FV-5 LIMIT-004 — mobile ARPi structural provenance boundary.
++//
++// This harness proves only the deterministic structural acceptance relation
++// implemented by mobile::ArpiHeader::from_bytes. It does not formally verify
++// BLAKE3, JNI/Kotlin execution, cryptographic collision resistance, deployed
++// Android behavior, persistence atomicity, replay resistance, or anti-rollback.
++#[cfg(all(kani, feature = "mobile"))]
++#[allow(unexpected_cfgs)]
++mod kani_limit004_mobile_provenance {
++    use crate::mobile::ArpiHeader;
++
++    #[kani::proof]
++    fn kani_limit004_mobile_arpi_fail_closed_structure() {
++        let bytes: [u8; ArpiHeader::SIZE] = kani::any();
++
++        let expected_valid =
++            bytes[0] == b'A'
++                && bytes[1] == b'R'
++                && bytes[2] == b'P'
++                && bytes[3] == b'i'
++                && bytes[20] <= 2
++                && bytes[21] == 0
++                && bytes[22] == 0
++                && bytes[23] == 0;
++
++        let parsed = ArpiHeader::from_bytes(&bytes);
++
++        // For an exactly 78-byte candidate, acceptance is equivalent to the
++        // production structural predicates: magic, known tier, zero reserved.
++        assert_eq!(parsed.is_some(), expected_valid);
++
++        if let Some(header) = parsed {
++            assert_eq!(header.magic, *b"ARPi");
++            assert!(header.tier <= 2);
++            assert_eq!(header.reserved, [0u8; 3]);
++
++            let expected_counter = u64::from_le_bytes([
++                bytes[4], bytes[5], bytes[6], bytes[7],
++                bytes[8], bytes[9], bytes[10], bytes[11],
++            ]);
++            let expected_timestamp = u64::from_le_bytes([
++                bytes[12], bytes[13], bytes[14], bytes[15],
++                bytes[16], bytes[17], bytes[18], bytes[19],
++            ]);
++
++            assert_eq!(header.write_counter, expected_counter);
++            assert_eq!(header.timestamp_us, expected_timestamp);
++            assert_eq!(header.tier, bytes[20]);
++        }
++
++        // Length is also part of the fail-closed production contract.
++        let short: [u8; ArpiHeader::SIZE - 1] = kani::any();
++        let long: [u8; ArpiHeader::SIZE + 1] = kani::any();
++
++        assert!(ArpiHeader::from_bytes(&short).is_none());
++        assert!(ArpiHeader::from_bytes(&long).is_none());
++    }
++}
+diff --git a/tests/fv5_mobile_provenance_tests.rs b/tests/fv5_mobile_provenance_tests.rs
+new file mode 100644
+index 0000000..3847cad
+--- /dev/null
++++ b/tests/fv5_mobile_provenance_tests.rs
+@@ -0,0 +1,108 @@
++// Copyright (c) 2026 Edison Lepiten / AIEONYX
++// License: Apache-2.0
++
++#![cfg(feature = "mobile")]
++
++use edisondb::mobile::{ArpiHeader, DbError, MobileDb};
++use std::path::PathBuf;
++use std::time::{SystemTime, UNIX_EPOCH};
++
++fn header_for(value: &str, tier: u8) -> [u8; ArpiHeader::SIZE] {
++    let mut hash = [0u8; 32];
++    hash.copy_from_slice(blake3::hash(value.as_bytes()).as_bytes());
++
++    ArpiHeader {
++        magic: *b"ARPi",
++        write_counter: 0,
++        timestamp_us: 1,
++        tier,
++        reserved: [0u8; 3],
++        blake3_hash: hash,
++        node_id: [0u8; 22],
++    }
++    .to_bytes()
++}
++
++fn unique_path(label: &str) -> PathBuf {
++    let nonce = SystemTime::now()
++        .duration_since(UNIX_EPOCH)
++        .expect("system clock must be after Unix epoch")
++        .as_nanos();
++
++    std::env::temp_dir().join(format!(
++        "edisondb-fv5-limit004-{}-{nonce}-{label}",
++        std::process::id()
++    ))
++}
++
++#[test]
++fn limit004_header_requires_exact_length() {
++    let valid = header_for("payload", 1);
++
++    assert!(ArpiHeader::from_bytes(&valid).is_some());
++    assert!(ArpiHeader::from_bytes(&valid[..77]).is_none());
++
++    let mut long = valid.to_vec();
++    long.push(0);
++    assert!(ArpiHeader::from_bytes(&long).is_none());
++}
++
++#[test]
++fn limit004_header_rejects_invalid_tier() {
++    let mut header = header_for("payload", 1);
++    header[20] = 3;
++
++    assert!(ArpiHeader::from_bytes(&header).is_none());
++}
++
++#[test]
++fn limit004_header_rejects_nonzero_reserved_bytes() {
++    let mut header = header_for("payload", 1);
++    header[21] = 1;
++
++    assert!(ArpiHeader::from_bytes(&header).is_none());
++}
++
++#[test]
++fn limit004_insert_accepts_matching_blake3_content() {
++    let path = unique_path("valid");
++    let path_str = path.to_str().expect("temporary path must be UTF-8");
++
++    let mut db = MobileDb::open(path_str).expect("mobile database must open");
++    let value = "sovereign mobile provenance";
++    let header = header_for(value, 0);
++
++    db.insert("record:1", value, &header)
++        .expect("matching BLAKE3 provenance must be accepted");
++
++    assert_eq!(
++        db.query("record:1")
++            .expect("query must succeed")
++            .as_deref(),
++        Some(value)
++    );
++
++    drop(db);
++    let _ = std::fs::remove_dir_all(path);
++}
++
++#[test]
++fn limit004_insert_rejects_mismatched_content_hash() {
++    let path = unique_path("hash-mismatch");
++    let path_str = path.to_str().expect("temporary path must be UTF-8");
++
++    let mut db = MobileDb::open(path_str).expect("mobile database must open");
++    let header = header_for("different payload", 0);
++
++    let result = db.insert("record:1", "actual payload", &header);
++
++    assert!(matches!(result, Err(DbError::InvalidArpi)));
++    assert!(
++        db.query("record:1")
++            .expect("query must succeed")
++            .is_none()
++    );
++
++    drop(db);
++    let _ = std::fs::remove_dir_all(path);
++}

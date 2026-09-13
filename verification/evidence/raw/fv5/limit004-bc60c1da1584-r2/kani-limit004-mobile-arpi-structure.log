@@ -1,0 +1,1652 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling jni-sys-macros v0.4.1
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+   Compiling jni-sys v0.4.1
+   Compiling jni-sys v0.3.1
+   Compiling jni v0.21.1
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (1)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+For more information about this error, try `rustc --explain E0133`.
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.27s
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+
+For more information about this error, try `rustc --explain E0133`.
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.30s
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+
+For more information about this error, try `rustc --explain E0133`.
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.01s
+Checking harness verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/edisonbl/Documents/AIEONYX/edisondb-fv/target/kani/x86_64-unknown-linux-gnu/debug/deps/edisondb__RNvNtNtCs8BwfyB6FmXq_8edisondb12verification31kani_limit004_mobile_provenance47kani_limit004_mobile_arpi_fail_closed_structure.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+aborting path on assume(false) at file src/verification.rs line 860 column 5 function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Runtime Symex: 0.385655s
+size of program expression: 12362 steps
+slicing removed 8786 assignments
+Generated 464 VCC(s), 43 remaining after simplification
+Runtime Postprocess Equation: 0.00811871s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0362375s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 7.103e-06s
+Solving with CaDiCaL 2.0.0
+21275 variables, 26601 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00166399s
+Runtime decision procedure: 0.0390887s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+21276 variables, 26602 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000685323s
+Runtime decision procedure: 0.000870081s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+21277 variables, 26603 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000699209s
+Runtime decision procedure: 0.000887224s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+21278 variables, 26604 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000784811s
+Runtime decision procedure: 0.000969038s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+21279 variables, 26605 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00271634s
+Runtime decision procedure: 0.0029184s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+21280 variables, 26606 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.0143785s
+Runtime decision procedure: 0.014538s
+
+RESULTS:
+Check 1: kani::rustc_intrinsics::offset::<u8, *const u8, usize>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "Offset in bytes overflows isize"
+	 - Location: ../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<u8, *const u8, usize>
+
+Check 2: kani::rustc_intrinsics::offset::<u8, *const u8, usize>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "Offset result and original pointer must point to the same allocation"
+	 - Location: ../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<u8, *const u8, usize>
+
+Check 3: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.1
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:864:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 4: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.2
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:865:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 5: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.3
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:866:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 6: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.4
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:867:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 7: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.5
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:868:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 8: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.6
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:869:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 9: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.7
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:870:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 10: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.8
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:871:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 11: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.9
+	 - Status: SUCCESS
+	 - Description: "assertion failed: parsed.is_some() == expected_valid"
+	 - Location: src/verification.rs:877:9 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 12: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: src/verification.rs:860:5 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 13: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.10
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.magic == *b"ARPi""
+	 - Location: src/verification.rs:880:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 14: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.11
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.tier <= 2"
+	 - Location: src/verification.rs:881:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 15: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.12
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.reserved == [0u8; 3]"
+	 - Location: src/verification.rs:882:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 16: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.13
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 17: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.14
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:27 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 18: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.15
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 19: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.16
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:47 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 20: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.17
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 21: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.18
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:27 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 22: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.19
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 23: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.20
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:48 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 24: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.21
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 25: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.22
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:28 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 26: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.23
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:39 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 27: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.24
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:50 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 28: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.25
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 29: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.26
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:28 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 30: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.27
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:39 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 31: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.28
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:50 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 32: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.29
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.write_counter == expected_counter"
+	 - Location: src/verification.rs:893:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 33: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.30
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.timestamp_us == expected_timestamp"
+	 - Location: src/verification.rs:894:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 34: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.31
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:895:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 35: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.32
+	 - Status: SUCCESS
+	 - Description: "assertion failed: header.tier == bytes[20]"
+	 - Location: src/verification.rs:895:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 36: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.33
+	 - Status: SUCCESS
+	 - Description: "assertion failed: ArpiHeader::from_bytes(&short).is_none()"
+	 - Location: src/verification.rs:902:9 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 37: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.assertion.34
+	 - Status: SUCCESS
+	 - Description: "assertion failed: ArpiHeader::from_bytes(&long).is_none()"
+	 - Location: src/verification.rs:903:9 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 38: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1717:15 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 39: mobile::ArpiHeader::from_bytes.assertion.1
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 40: mobile::ArpiHeader::from_bytes.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: src/lib.rs:0:0 in function mobile::ArpiHeader::from_bytes
+
+Check 41: core::slice::index::slice_index_fail::do_panic::runtime.assertion.1
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:40:9 in function core::slice::index::slice_index_fail::do_panic::runtime
+
+Check 42: core::slice::index::slice_index_fail::do_panic::runtime.assertion.2
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:68:5 in function core::slice::index::slice_index_fail::do_panic::runtime
+
+Check 43: std::ptr::copy_nonoverlapping::<u8>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "`src` must be properly aligned"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 44: std::ptr::copy_nonoverlapping::<u8>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "`dst` must be properly aligned"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 45: std::ptr::copy_nonoverlapping::<u8>.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "copy_nonoverlapping: attempt to compute number in bytes which would overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 46: std::result::Result::<[u8; 8], std::array::TryFromSliceError>::ok.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:713:15 in function std::result::Result::<[u8; 8], std::array::TryFromSliceError>::ok
+
+Check 47: std::array::equality::<impl std::cmp::PartialEq<[u8; 4]> for [u8]>::ne.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/array/equality.rs:56:15 in function std::array::equality::<impl std::cmp::PartialEq<[u8; 4]> for [u8]>::ne
+
+Check 48: <usize as kani::rustc_intrinsics::ToISize>::to_isize.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/work/kani/kani/library/kani_core/src/models.rs:176:17 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 49: <usize as kani::rustc_intrinsics::ToISize>::to_isize.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "Offset value overflows isize"
+	 - Location: ../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 50: <usize as kani::rustc_intrinsics::ToISize>::to_isize.assertion.1
+	 - Status: SUCCESS
+	 - Description: "internal error: entered unreachable code"
+	 - Location: ../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 51: core::slice::<impl [u8]>::as_array::<4>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:854:31 in function core::slice::<impl [u8]>::as_array::<4>
+
+Check 52: core::slice::<impl [u8]>::as_array::<4>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:854:31 in function core::slice::<impl [u8]>::as_array::<4>
+
+Check 53: std::panic::Location::<'_>::caller.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "caller_location is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/374"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/location.rs:147:9 in function std::panic::Location::<'_>::caller
+
+Check 54: <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:435:5 in function <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index
+
+Check 55: <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:441:22 in function <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index
+
+Check 56: <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:441:22 in function <std::ops::Range<usize> as std::slice::SliceIndex<[u8]>>::index
+
+Check 57: memcmp.precondition.1
+	 - Status: SUCCESS
+	 - Description: "memcmp region 1 readable"
+	 - Location: <builtin-library-memcmp>:19 in function memcmp
+
+Check 58: memcmp.precondition.2
+	 - Status: SUCCESS
+	 - Description: "memcpy region 2 readable"
+	 - Location: <builtin-library-memcmp>:21 in function memcmp
+
+Check 59: core::slice::<impl [u8]>::as_array::<8>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:854:31 in function core::slice::<impl [u8]>::as_array::<8>
+
+Check 60: core::slice::<impl [u8]>::as_array::<8>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:854:31 in function core::slice::<impl [u8]>::as_array::<8>
+
+Check 61: std::ptr::const_ptr::<impl *const ()>::is_aligned_to.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to subtract with overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/const_ptr.rs:1377:23 in function std::ptr::const_ptr::<impl *const ()>::is_aligned_to
+
+Check 62: std::ptr::const_ptr::<impl *const ()>::is_aligned_to.assertion.2
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/const_ptr.rs:1374:13 in function std::ptr::const_ptr::<impl *const ()>::is_aligned_to
+
+Check 63: core::slice::copy_from_slice_impl::len_mismatch_fail::do_panic::runtime.assertion.1
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:5117:9 in function core::slice::copy_from_slice_impl::len_mismatch_fail::do_panic::runtime
+
+Check 64: <std::option::Option<[u8; 8]> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:2666:15 in function <std::option::Option<[u8; 8]> as std::ops::Try>::branch
+
+Check 65: core::num::<impl usize>::checked_sub.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:812:31 in function core::num::<impl usize>::checked_sub
+
+Check 66: std::fmt::Arguments::<'_>::from_str.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to shift left with overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:820:38 in function std::fmt::Arguments::<'_>::from_str
+
+Check 67: kani::mem::cbmc::same_allocation.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "Kani does not support reasoning about pointer to unallocated memory"
+	 - Location: ../../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::mem::cbmc::same_allocation
+
+Check 68: core::slice::index::slice_index_fail::do_panic::runtime.assertion.3
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:49:9 in function core::slice::index::slice_index_fail::do_panic::runtime
+
+Check 69: std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>
+
+Check 70: core::slice::index::slice_index_fail::do_panic::runtime.assertion.4
+	 - Status: SUCCESS
+	 - Description: "This is a placeholder message; Kani doesn't support message formatted at runtime"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/index.rs:58:9 in function core::slice::index::slice_index_fail::do_panic::runtime
+
+Check 71: core::num::<impl usize>::abs_diff.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to subtract with overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:2852:21 in function core::num::<impl usize>::abs_diff
+
+Check 72: core::num::<impl usize>::abs_diff.assertion.2
+	 - Status: UNREACHABLE
+	 - Description: "attempt to subtract with overflow"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:2854:21 in function core::num::<impl usize>::abs_diff
+
+Check 73: core::ub_checks::maybe_is_nonoverlapping::runtime.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/intrinsics/mod.rs:2437:9 in function core::ub_checks::maybe_is_nonoverlapping::runtime
+
+Check 74: core::panicking::panic_nounwind_fmt::runtime.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "call to foreign "Rust" function `_RNvCs1hStedNDpZ2_7___rustc17rust_begin_unwind` is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/new/choose"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:110:17 in function core::panicking::panic_nounwind_fmt::runtime
+
+Check 75: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 76: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 77: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 78: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 79: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 80: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:27 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 81: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 82: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 83: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 84: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 85: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 86: std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2094:34 in function std::cmp::impls::<impl std::cmp::PartialEq<&[u8; 4]> for &[u8]>::ne
+
+Check 87: core::slice::<impl [u8]>::as_array::<8>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:857:13 in function core::slice::<impl [u8]>::as_array::<8>
+
+Check 88: memcmp.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 89: memcmp.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 90: memcmp.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 91: memcmp.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 92: memcmp.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 93: memcmp.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 94: memcmp.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 95: memcmp.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 96: memcmp.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 97: memcmp.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 98: memcmp.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 99: memcmp.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 100: core::slice::<impl [u8]>::as_array::<4>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/mod.rs:857:13 in function core::slice::<impl [u8]>::as_array::<4>
+
+Check 101: memcpy.pointer.1
+	 - Status: SUCCESS
+	 - Description: "same object violation in (const char *)(void *)src >= (const char *)(void *)dst + (signed long int)(count * sizeof(unsigned char) /*1*/ )"
+	 - Location: <builtin-library-memcpy>:33 in function memcpy
+
+Check 102: memcpy.pointer.2
+	 - Status: SUCCESS
+	 - Description: "same object violation in (const char *)(void *)dst >= (const char *)(void *)src + (signed long int)(count * sizeof(unsigned char) /*1*/ )"
+	 - Location: <builtin-library-memcpy>:34 in function memcpy
+
+Check 103: std::ptr::copy_nonoverlapping::<u8>.precondition_instance.1
+	 - Status: SUCCESS
+	 - Description: "memcpy src/dst overlap"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 104: std::ptr::copy_nonoverlapping::<u8>.precondition_instance.2
+	 - Status: SUCCESS
+	 - Description: "memcpy source region readable"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 105: std::ptr::copy_nonoverlapping::<u8>.precondition_instance.3
+	 - Status: SUCCESS
+	 - Description: "memcpy destination region writeable"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs:547:14 in function std::ptr::copy_nonoverlapping::<u8>
+
+Check 106: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.1
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:864:13 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 107: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.2
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:865:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 108: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.3
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:866:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 109: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.4
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:867:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 110: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.5
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:868:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 111: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.6
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:869:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 112: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.7
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:870:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 113: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.8
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:871:20 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 114: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.9
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 115: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.10
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:27 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 116: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.11
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 117: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.12
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:885:47 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 118: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.13
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 119: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.14
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:27 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 120: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.15
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 121: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.16
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:886:48 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 122: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.17
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 123: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.18
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:28 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 124: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.19
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:39 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 125: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.20
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:889:50 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 126: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.21
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:17 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 127: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.22
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:28 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 128: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.23
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:39 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 129: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.24
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:890:50 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 130: verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure.array_bounds.25
+	 - Status: SUCCESS
+	 - Description: "index out of bounds: the length is less than or equal to the given index"
+	 - Location: src/verification.rs:895:37 in function verification::kani_limit004_mobile_provenance::kani_limit004_mobile_arpi_fail_closed_structure
+
+Check 131: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1717:15 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 132: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 133: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 134: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 135: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 136: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 137: std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1718:17 in function std::result::Result::<&[u8; 8], std::array::TryFromSliceError>::copied
+
+Check 138: std::array::equality::<impl std::cmp::PartialEq<[u8; 4]> for [u8]>::ne.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/array/equality.rs:56:15 in function std::array::equality::<impl std::cmp::PartialEq<[u8; 4]> for [u8]>::ne
+
+Check 139: mobile::ArpiHeader::from_bytes.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 140: mobile::ArpiHeader::from_bytes.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 141: mobile::ArpiHeader::from_bytes.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 142: mobile::ArpiHeader::from_bytes.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 143: mobile::ArpiHeader::from_bytes.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 144: mobile::ArpiHeader::from_bytes.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/mobile/mod.rs:79:20 in function mobile::ArpiHeader::from_bytes
+
+Check 145: mobile::ArpiHeader::from_bytes.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 146: mobile::ArpiHeader::from_bytes.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 147: mobile::ArpiHeader::from_bytes.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 148: mobile::ArpiHeader::from_bytes.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 149: mobile::ArpiHeader::from_bytes.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 150: mobile::ArpiHeader::from_bytes.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: src/mobile/mod.rs:102:20 in function mobile::ArpiHeader::from_bytes
+
+Check 151: std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>
+
+Check 152: std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1340:21 in function std::option::Option::<&[u8; 8]>::ok_or::<std::array::TryFromSliceError>
+
+Check 153: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+Check 154: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+Check 155: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+Check 156: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+Check 157: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+Check 158: std::option::Option::<mobile::ArpiHeader>::is_some.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:636:18 in function std::option::Option::<mobile::ArpiHeader>::is_some
+
+
+SUMMARY:
+ ** 0 of 158 failed (4 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 2.3119466s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.

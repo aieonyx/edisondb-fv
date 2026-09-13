@@ -891,8 +891,93 @@ Raw evidence:
 
 `verification/evidence/raw/fv5/p35-f5e14886304d-r1/`
 
-`LIMIT-004`, `LIMIT-005`, and `LIMIT-012` remain open within their documented
-boundaries.
+At the P3.5 verified source boundary, `LIMIT-004`, `LIMIT-005`, and
+`LIMIT-012` remained open within their documented boundaries. `LIMIT-004` is
+subsequently closed by `CLAIM-FV5-006`; `LIMIT-005` and `LIMIT-012` remain
+open.
+
+
+### CLAIM-FV5-006 — Mobile fail-closed provenance validation boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Physical Android runtime:** `PASS — PRODUCTION JNI/RUST PATH EXERCISED`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 LIMIT-004 hardens and verifies the bounded mobile write-provenance
+validation boundary.
+
+Verified final source commit:
+
+`bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3`
+
+Initial production-remediation commit:
+
+`2f3c8fca6860e9f97e79e799a9e8050de38012e0`
+
+Commit-bound evidence records:
+
+- `296 passed / 0 failed / 0 ignored` aggregate default dynamic tests across
+  `17` test-result summaries;
+- `106 passed / 0 failed / 0 ignored` mobile-library tests;
+- `5 passed / 0 failed / 0 ignored` focused LIMIT-004 integration tests;
+- `1 passed / 0 failed / 0 ignored` rejected-provenance state-invariance
+  regression;
+- successful default and mobile Cargo checks;
+- baseline-aware default Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- baseline-aware server-plus-mobile test-surface Clippy with `60` baseline
+  diagnostics, `60` current diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `158` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `4` unreachable targeted Kani checks;
+- parser structural fail-closed enforcement for exact 78-byte length, `ARPi`
+  magic, tier range, and zero reserved bytes;
+- dynamic rejection of mismatched BLAKE3 content provenance before the
+  monotonic counter transition;
+- regression evidence that rejected mismatched provenance does not advance or
+  persist the mobile counter in the exercised path;
+- Android API-26 cross-builds for `arm64-v8a` and `x86_64`;
+- exported production `nativeBlake3` and `nativeInsert` JNI symbols on both
+  Android artifacts;
+- physical Android 11 / API-30 / `arm64-v8a` execution of the production
+  JNI/Rust path;
+- physical-runtime rejection of mismatched content, invalid tier, nonzero
+  reserved bytes, and both 77-byte and 79-byte JNI headers;
+- successful valid write after the physical-runtime rejection cases.
+
+The targeted Kani result proves only the deterministic structural parser
+acceptance relation. It does not formally verify BLAKE3 or any other
+cryptographic primitive.
+
+The physical Android result exercises a temporary Java harness against the
+production EdisonDB JNI exports. It does not establish full production Kotlin
+application execution or formally verify JNI, JVM, Android, Java, or Kotlin.
+
+The direct C FFI remains an exactly-78-byte caller pointer contract; arbitrary
+C-caller length validation is not claimed.
+
+This claim does not establish crash consistency, replay resistance,
+anti-rollback, timestamp freshness, node-id authenticity, verified-kernel
+integration, or complete production ARPi integration.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-004-MOBILE-PROVENANCE.md`
+
+Raw passing evidence:
+
+`verification/evidence/raw/fv5/limit004-bc60c1da1584-r2/`
+
+Preserved failed-methodology evidence:
+
+`verification/evidence/raw/fv5/limit004-2f3c8fca6860-r1/`
+
+`LIMIT-004` is closed for this bounded provenance-validation scope.
+`LIMIT-002`, `LIMIT-003`, and `LIMIT-005` remain open within their separately
+documented boundaries.
 
 
 ## Registered Limitations
@@ -1034,10 +1119,35 @@ storage and policy chokepoint as the core Store path.
 
 ### LIMIT-004 — Mobile fail-closed provenance validation
 
-Mobile provenance/content verification requires fail-closed on-device
-enforcement on the deployed target.
+**Status:** `CLOSED — FV-5 / CLAIM-FV5-006`
+
+The bounded mobile provenance-validation property is closed by commit-bound
+FV-5 evidence at:
+
+`bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3`
+
+The verified boundary includes:
+
+- exact 78-byte mobile ARPi structural validation;
+- fail-closed `ARPi` magic, tier, and reserved-byte validation;
+- BLAKE3 content recomputation with mismatch rejection;
+- rejection before local monotonic-counter advancement;
+- regression evidence that rejected mismatched provenance does not advance or
+  persist the counter in the exercised path;
+- exact-length enforcement at the Android JNI insertion boundary;
+- Android API-26 `arm64-v8a` and `x86_64` cross-build evidence;
+- physical Android execution of the production JNI/Rust provenance path.
+
+Closure is limited to `CLAIM-FV5-006`.
+
+It does not claim formal verification of BLAKE3, JNI/JVM/Android/Kotlin/Java,
+full Kotlin application deployment, arbitrary direct-C caller length
+validation, crash consistency, anti-rollback, timestamp freshness, node-id
+authenticity, `LIMIT-002`, `LIMIT-003`, or `LIMIT-005`.
 
 **Assigned phase:** FV-5.
+
+**Closed by:** `CLAIM-FV5-006`.
 
 ### LIMIT-005 — Mobile counter crash consistency
 

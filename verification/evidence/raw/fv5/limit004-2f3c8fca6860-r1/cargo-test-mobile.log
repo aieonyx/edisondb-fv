@@ -1,0 +1,367 @@
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+For more information about this error, try `rustc --explain E0133`.
+warning: `edisondb` (lib test) generated 18 warnings (run `cargo fix --lib -p edisondb --tests` to apply 11 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s
+     Running unittests src/lib.rs (target/debug/deps/edisondb-3b7c1771da88afae)
+
+running 105 tests
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_count_mismatch ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_head_mismatch ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_malformed ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_missing ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_unanchored_records ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_empty_record_id_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_invalid_created_at_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_no_owner_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_rejects_malformed_persisted_json ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_truncated_current_envelope_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_unknown_version_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_unmarked_legacy_payload_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_valid_versioned_persisted_payload_reconstructs ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_delete_preserves_checkpoint ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_open_and_reopen ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_open_rejects_legacy_checkpoint ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_open_rejects_wrong_store_secret ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_read_denied_preserves_checkpoint ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_read_granted_preserves_checkpoint ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_authenticated_write_preserves_authenticated_checkpoint ... ok
+test backends::fjall::p35_authenticated_backend_tests::p35_fjall_legacy_open_rejects_authenticated_checkpoint ... ok
+test backends::redb::p35_authenticated_backend_tests::p35_redb_authenticated_open_rejects_legacy_checkpoint ... ok
+test backends::redb::p35_authenticated_backend_tests::p35_redb_authenticated_open_rejects_wrong_store_secret ... ok
+test backends::redb::p35_authenticated_backend_tests::p35_redb_authenticated_open_save_and_reopen ... ok
+test backends::redb::p35_authenticated_backend_tests::p35_redb_legacy_open_rejects_authenticated_checkpoint ... ok
+test embedding::tests::embedding_client_returns_vec ... ok
+test embedding::tests::embedding_client_unavailable ... ok
+test eql::parser::tests::parse_audit_global ... ok
+test eql::parser::tests::parse_audit_specific ... ok
+test eql::parser::tests::parse_case_insensitive ... ok
+test eql::parser::tests::parse_delete_stmt ... ok
+test eql::parser::tests::parse_empty_fails ... ok
+test eql::parser::tests::parse_list_all ... ok
+test eql::parser::tests::parse_list_tier ... ok
+test eql::parser::tests::parse_read ... ok
+test eql::parser::tests::parse_unknown_tier_fails ... ok
+test eql::parser::tests::parse_write_critical ... ok
+test eql::parser::tests::parse_write_noise ... ok
+test eql::parser::tests::parse_write_personal ... ok
+test executor::tests::eql_audit_captures_operations ... ok
+test executor::tests::eql_delete_removes_record ... ok
+test executor::tests::eql_duplicate_id_rejected ... ok
+test executor::tests::eql_list_all ... ok
+test executor::tests::eql_list_tier_filter ... ok
+test executor::tests::eql_read_nonexistent_fails ... ok
+test executor::tests::eql_write_and_read_critical ... ok
+test executor::tests::eql_write_and_read_noise ... ok
+test executor::tests::eql_write_and_read_personal ... ok
+test executor::tests::eql_wrong_password_fails ... ok
+test executor::tests::p35_authenticated_store_secret_is_independent_of_owner_password ... ok
+test executor::tests::vector_empty_returns_empty ... ok
+test executor::tests::vector_eql_embed_and_search ... ok
+test executor::tests::vector_similarity_threshold ... ok
+test mobile::p3_counter_tests::p3_counter_exhaustion_rejects_write_without_wraparound ... ok
+test mobile::p3_counter_tests::p3_counter_increments_and_resumes_after_reopen ... ok
+test mobile::p3_counter_tests::p3_counter_transition_never_wraps ... ok
+test mobile::p3_counter_tests::p3_malformed_persisted_counter_fails_closed ... ok
+test tests::aad_mismatch_fails_decryption ... ok
+test tests::aad_tier_mismatch_fails_decryption ... ok
+test tests::admin_cannot_read_critical ... ok
+test tests::attacker_cannot_read_stored_record ... ok
+test tests::audit_chain_detects_tampering ... ok
+test tests::audit_chain_is_valid ... ok
+test tests::audit_log_persists ... ok
+test tests::denied_read_is_audited ... ok
+test tests::different_password_different_key ... ok
+test tests::duplicate_id_rejected ... ok
+test tests::granted_read_is_audited ... ok
+test tests::list_returns_owner_records_only ... ok
+test tests::multiple_writes_all_audited ... ok
+test tests::noise_readable_by_anyone ... ok
+test tests::non_owner_cannot_delete_record ... ok
+test tests::non_owner_cannot_read_critical ... ok
+test tests::owner_can_delete_own_record ... ok
+test tests::owner_can_read_critical ... ok
+test tests::owner_can_read_stored_record ... ok
+test tests::p1b_construction_zero_timestamp_remains_allowed ... ok
+test tests::p1b_persisted_zero_timestamp_fails_closed ... ok
+test tests::p1c_encryption_emits_versioned_envelope_and_round_trips ... ok
+test tests::p1c_pre_p1b_record_json_fails_closed_as_legacy ... ok
+test tests::p1c_truncated_current_envelope_fails_closed ... ok
+test tests::p1c_unknown_payload_version_fails_closed ... ok
+test tests::p1c_unmarked_legacy_payload_fails_closed ... ok
+test tests::p2_record_constructor_binds_payload_to_immutable_id_and_tier ... ok
+test tests::p35_authenticated_checkpoint_cannot_parse_as_legacy ... ok
+test tests::p35_checkpoint_mac_rejects_count_head_and_mac_tamper ... ok
+test tests::p35_checkpoint_mac_rejects_unknown_version ... ok
+test tests::p35_checkpoint_mac_rejects_wrong_store_secret_and_salt_tamper ... ok
+test tests::p35_checkpoint_mac_round_trips ... ok
+test tests::p35_store_authenticated_load_rejects_legacy_checkpoint ... ok
+test tests::p35_store_authenticated_load_rejects_wrong_store_secret ... ok
+test tests::p35_store_authenticated_round_trip_and_legacy_load_rejects ... ok
+test tests::payload_encrypts_and_decrypts ... ok
+test tests::record_has_timestamp ... ok
+test tests::record_identity_both_empty_preserves_no_owner_precedence ... ok
+test tests::record_without_owner_rejected ... ok
+test tests::same_password_same_key ... ok
+test tests::store_saves_and_loads ... ok
+test tests::write_creates_audit_entry ... ok
+test vector::tests::vector_empty_search ... ok
+test vector::tests::vector_index_is_send ... ok
+test vector::tests::vector_insert_and_search ... ok
+test vector::tests::vector_persists_and_loads ... ok
+test vector::tests::vector_remove ... ok
+test vector::tests::vector_search_respects_k ... ok
+
+test result: ok. 105 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 52.75s
+

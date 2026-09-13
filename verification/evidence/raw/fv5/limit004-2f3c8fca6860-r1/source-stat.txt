@@ -1,0 +1,10 @@
+2f3c8fc FV-5 LIMIT-004: enforce fail-closed mobile provenance
+ Cargo.toml                            |   1 +
+ MOBILE.md                             |   9 ++-
+ mobile/android-sdk/ArpiHeader.kt      |  22 +++----
+ mobile/android-sdk/EdisonDbAndroid.kt |  10 ++++
+ src/mobile/jni_bridge.rs              |  26 +++++++-
+ src/mobile/mod.rs                     |  77 ++++++++++++++++--------
+ src/verification.rs                   |  60 +++++++++++++++++++
+ tests/fv5_mobile_provenance_tests.rs  | 108 ++++++++++++++++++++++++++++++++++
+ 8 files changed, 271 insertions(+), 42 deletions(-)
