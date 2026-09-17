@@ -1,0 +1,6 @@
+FV-5 LIMIT-010 final authority verification
+record_salt_private=PASS
+public_salt_accessor_read_only=PASS
+public_salt_mutator_absent=PASS
+public_mutable_salt_reference_absent=PASS
+production_direct_salt_assignment_absent=PASS

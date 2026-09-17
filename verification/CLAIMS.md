@@ -1036,6 +1036,42 @@ authenticity scope. `LIMIT-008`, `LIMIT-009`, `LIMIT-013`, and other separately
 registered boundaries remain governed by their own claims and limitations.
 
 
+### FV-5 phase closure — Encryption and Secret Boundaries
+
+**Status:** `COMMIT-BOUND PHASE ACCOUNTING COMPLETE`
+
+Final reviewed FV-5 head before the phase-closure record:
+
+`aff67ac84012e32f1bbfd4d4976e176d1d0241e2`
+
+FV-5 records seven bounded claims, `CLAIM-FV5-001` through
+`CLAIM-FV5-007`.
+
+Final phase accounting confirms:
+
+- `LIMIT-010` source remediation remains effective in the final FV-5 tree and
+  is closed for the bounded public record-salt mutation authority;
+- `LIMIT-005` has completed its required FV-5 witness, with crash-consistent
+  remediation assigned to FV-6;
+- `LIMIT-002` and `LIMIT-003` remain assigned to FV-7;
+- `LIMIT-008` remains an explicit trust boundary;
+- `LIMIT-009` remains an explicit metadata-confidentiality nonclaim;
+- `LIMIT-013` remains a separate local-clock anomaly boundary.
+
+FV-5 phase closure does not claim complete formal verification, crash
+consistency, external anti-rollback, timestamp freshness, general metadata
+confidentiality, verified-kernel integration, or complete ARPi production
+integration.
+
+Evidence:
+
+`verification/evidence/FV-5-PHASE-CLOSURE.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/phase-closure-aff67ac84012-r1/`
+
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
@@ -1339,13 +1375,22 @@ The FV-5 audit identified direct public mutation authority over record
 salt state.
 
 P1a source commit
-`81782052fb4ad1c73aeb51df0a72973318f4fa7c` makes the salt field private
-and exposes only read-only access.
+`81782052fb4ad1c73aeb51df0a72973318f4fa7c` makes the salt field private and exposes only read-only access.
 
-**Status:** `SOURCE REMEDIATED / FV-5 PHASE CLOSURE PENDING`.
+Final FV-5 authority verification against
+`aff67ac84012e32f1bbfd4d4976e176d1d0241e2` confirms that `Record.salt` remains private, the public accessor is
+read-only, no public salt mutator or mutable salt reference is exposed, and no
+direct production `.salt = ...` assignment exists.
 
-This status records the source-boundary remediation without treating the
-entire FV-5 encryption phase as complete.
+**Status:** `CLOSED FOR FV-5 PUBLIC SALT MUTATION SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-PHASE-CLOSURE.md`
+
+This closure is limited to the public record-salt mutation authority identified
+by the FV-5 audit. It does not establish broader metadata confidentiality or
+cryptographic primitive verification.
 
 ### LIMIT-011 — Persisted reconstruction validation bypass
 
