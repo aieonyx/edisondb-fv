@@ -980,6 +980,62 @@ Preserved failed-methodology evidence:
 documented boundaries.
 
 
+### CLAIM-FV5-007 — Persisted `created_at` authenticated-checkpoint boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+FV-5 LIMIT-012 authenticates the persisted association between record identity
+and nonzero `created_at` metadata in authenticated checkpoint version 2.
+
+Verified source commit:
+
+`e1cb11dcbcfb0913ce4f61c8c00be019527fb1fa`
+
+Commit-bound evidence records:
+
+- default and mobile Cargo checks: `PASS`;
+- aggregate default dynamic tests:
+  `301 passed / 0 failed / 0 ignored`;
+- aggregate mobile dynamic tests:
+  `311 passed / 0 failed / 0 ignored`;
+- focused core LIMIT-012 regressions: `2 passed / 0 failed`;
+- focused Redb/Fjall tamper regressions: `2 passed / 0 failed`;
+- baseline/current Clippy diagnostics: `36 / 36`;
+- new Clippy diagnostics: `0`;
+- targeted Kani: `395` checks, `0` failed,
+  `7` unreachable, `1` verified harness.
+
+Authenticated checkpoint v2 binds a deterministic commitment over current
+record `id -> created_at` state into the checkpoint MAC input. Record state is
+canonicalized independently of backend iteration order.
+
+Authenticated Redb and Fjall reopen fail closed when a persisted nonzero
+`created_at` value is modified without corresponding authenticated checkpoint
+authority.
+
+Authenticated checkpoint-v1 shape is rejected rather than silently migrated
+or upgraded into version 2.
+
+The targeted Kani harness proves only structural checkpoint MAC-input layout.
+It does not formally prove BLAKE3 or other cryptographic primitives.
+
+This claim does not establish wall-clock correctness, timestamp freshness,
+external anti-rollback, metadata confidentiality, or detection of replay of
+an older complete internally valid authenticated state.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-012-CREATED-AT-AUTHENTICITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/limit012-e1cb11dcbcfb-r1/`
+
+`LIMIT-012` is closed for this bounded authenticated persisted-`created_at`
+authenticity scope. `LIMIT-008`, `LIMIT-009`, `LIMIT-013`, and other separately
+registered boundaries remain governed by their own claims and limitations.
+
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
@@ -1314,17 +1370,31 @@ Evidence:
 
 ### LIMIT-012 — Persisted created_at authenticity
 
-Persisted `created_at` is attacker-controllable when local storage is
-modified and is not yet cryptographically authenticated by the current
-audit/checkpoint integrity boundary.
+The original FV-5 finding was that persisted `created_at` could be modified
+to another nonzero value without invalidating the authenticated checkpoint.
+P1b's nonzero reconstruction rule provided structural validation but not
+timestamp authenticity.
 
-P1b validates the structural rule that a reconstructed timestamp must be
-nonzero, but that is not evidence of timestamp authenticity.
+Authenticated checkpoint version 2 now binds a deterministic commitment over
+the current record `id -> created_at` state into the checkpoint MAC boundary.
 
-**Status:** `OPEN`.
+Verified source commit:
 
-**Assigned phase:** FV-5 authenticated metadata/checkpoint work, including
-the P3.5 boundary where applicable.
+`e1cb11dcbcfb0913ce4f61c8c00be019527fb1fa`
+
+Authenticated Redb and Fjall fail closed when the exercised persisted nonzero
+`created_at` value is modified without corresponding authenticated checkpoint
+authority.
+
+**Status:** `CLOSED FOR FV-5 AUTHENTICATED CHECKPOINT-V2 SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-012-CREATED-AT-AUTHENTICITY.md`
+
+This closure does not claim timestamp freshness, wall-clock correctness,
+external anti-rollback, BLAKE3 formal verification, or general metadata
+confidentiality. `LIMIT-013` remains separate.
 
 ### LIMIT-013 — Local zero-timestamp clock anomaly
 

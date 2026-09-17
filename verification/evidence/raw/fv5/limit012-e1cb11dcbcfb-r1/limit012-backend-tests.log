@@ -1,0 +1,10 @@
+   Compiling edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.25s
+     Running tests/fv5_limit012_created_at_auth_tests.rs (target/debug/deps/fv5_limit012_created_at_auth_tests-4665278c44cdb71a)
+
+running 2 tests
+test limit012_fjall_authenticated_open_rejects_nonzero_created_at_tamper ... ok
+test limit012_redb_authenticated_load_rejects_nonzero_created_at_tamper ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.65s
+

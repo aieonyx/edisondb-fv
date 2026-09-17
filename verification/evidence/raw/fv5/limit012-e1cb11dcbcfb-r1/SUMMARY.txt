@@ -1,0 +1,16 @@
+FV-5 LIMIT-012 commit-bound raw evidence
+source_commit=e1cb11dcbcfb0913ce4f61c8c00be019527fb1fa
+source_parent=3f7d80740c9ec08ade42ae497a3d2c7d4d43d734
+default_check=PASS
+mobile_check=PASS
+clippy_baseline_diagnostics=36
+clippy_current_diagnostics=36
+clippy_new_diagnostics=0
+default_tests=PASS
+mobile_tests=PASS
+limit012_core_tests=2 passed / 0 failed
+limit012_backend_tests=2 passed / 0 failed
+targeted_kani=PASS
+targeted_kani_scope=canonical checkpoint-v2 MAC-input structural layout only
+blake3_formal_proof=NOT CLAIMED
+anti_rollback=NOT CLAIMED
