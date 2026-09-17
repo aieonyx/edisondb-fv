@@ -641,11 +641,13 @@ impl AuditEntry {
     }
 }
 
-const AUTHENTICATED_AUDIT_CHECKPOINT_VERSION: u8 = 1;
+const AUTHENTICATED_AUDIT_CHECKPOINT_VERSION: u8 = 2;
 const CHECKPOINT_STORE_SALT_LEN: usize = 32;
-const CHECKPOINT_MAC_DOMAIN: &[u8] = b"EDISONDB-AUDIT-CHECKPOINT-V1";
+const CHECKPOINT_MAC_DOMAIN: &[u8] = b"EDISONDB-AUDIT-CHECKPOINT-V2";
 const CHECKPOINT_MAC_KEY_CONTEXT: &str =
-    "AIEONYX EdisonDB audit checkpoint MAC key v1";
+    "AIEONYX EdisonDB audit checkpoint MAC key v2";
+const RECORD_CREATED_AT_COMMITMENT_DOMAIN: &[u8] =
+    b"EDISONDB-RECORD-CREATED-AT-V1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -657,27 +659,61 @@ pub(crate) struct AuditCheckpoint {
 /// Versioned authenticated audit checkpoint.
 ///
 /// `store_salt` is a database-level KDF salt, distinct from per-record salts.
-/// `mac` authenticates the canonical `(expected_count, expected_head)`
-/// checkpoint tuple under a domain-separated key derived from the store key.
+/// `mac` authenticates the canonical audit count/head plus the deterministic
+/// current-record `id -> created_at` commitment under a domain-separated key
+/// derived from the store key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AuthenticatedAuditCheckpoint {
     pub(crate) version: u8,
     pub(crate) expected_count: u64,
     pub(crate) expected_head: [u8; 32],
+    pub(crate) record_created_at_commitment: [u8; 32],
     pub(crate) store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
     pub(crate) mac: [u8; 32],
+}
+
+pub(crate) fn record_created_at_commitment<'a, I>(
+    records: I,
+) -> [u8; 32]
+where
+    I: IntoIterator<Item = (&'a str, u64)>,
+{
+    let mut entries: Vec<(Vec<u8>, u64)> = records
+        .into_iter()
+        .map(|(id, created_at)| (id.as_bytes().to_vec(), created_at))
+        .collect();
+
+    entries.sort_by(|left, right| left.0.cmp(&right.0));
+
+    let mut input = Vec::new();
+    input.extend_from_slice(RECORD_CREATED_AT_COMMITMENT_DOMAIN);
+    input.extend_from_slice(&(entries.len() as u64).to_be_bytes());
+
+    for (id, created_at) in entries {
+        input.extend_from_slice(&(id.len() as u64).to_be_bytes());
+        input.extend_from_slice(&id);
+        input.extend_from_slice(&created_at.to_be_bytes());
+    }
+
+    *blake3::hash(&input).as_bytes()
 }
 
 fn checkpoint_mac_input(
     expected_count: u64,
     expected_head: &[u8; 32],
+    record_created_at_commitment: &[u8; 32],
 ) -> Vec<u8> {
-    let mut input =
-        Vec::with_capacity(CHECKPOINT_MAC_DOMAIN.len() + 8 + expected_head.len());
+    let mut input = Vec::with_capacity(
+        CHECKPOINT_MAC_DOMAIN.len()
+            + 8
+            + expected_head.len()
+            + record_created_at_commitment.len(),
+    );
     input.extend_from_slice(CHECKPOINT_MAC_DOMAIN);
     input.extend_from_slice(&expected_count.to_be_bytes());
     input.extend_from_slice(expected_head);
+    input.extend_from_slice(record_created_at_commitment);
     input
 }
 
@@ -696,8 +732,13 @@ fn checkpoint_mac(
     mac_key: &[u8; 32],
     expected_count: u64,
     expected_head: &[u8; 32],
+    record_created_at_commitment: &[u8; 32],
 ) -> [u8; 32] {
-    let input = checkpoint_mac_input(expected_count, expected_head);
+    let input = checkpoint_mac_input(
+        expected_count,
+        expected_head,
+        record_created_at_commitment,
+    );
     *blake3::keyed_hash(mac_key, &input).as_bytes()
 }
 
@@ -721,18 +762,21 @@ fn checkpoint_auth_context(
 pub(crate) fn authenticated_audit_checkpoint_from_context(
     expected_count: u64,
     expected_head: [u8; 32],
+    record_created_at_commitment: [u8; 32],
     context: &CheckpointAuthContext,
 ) -> AuthenticatedAuditCheckpoint {
     let mac = checkpoint_mac(
         &context.mac_key,
         expected_count,
         &expected_head,
+        &record_created_at_commitment,
     );
 
     AuthenticatedAuditCheckpoint {
         version: AUTHENTICATED_AUDIT_CHECKPOINT_VERSION,
         expected_count,
         expected_head,
+        record_created_at_commitment,
         store_salt: context.store_salt,
         mac,
     }
@@ -752,6 +796,7 @@ fn verify_authenticated_audit_checkpoint_with_context(
         &context.mac_key,
         checkpoint.expected_count,
         &checkpoint.expected_head,
+        &checkpoint.record_created_at_commitment,
     );
 
     // Equality is accumulated over the complete fixed-size MAC. No
@@ -773,6 +818,7 @@ fn verify_authenticated_audit_checkpoint_with_context(
 pub(crate) fn authenticate_audit_checkpoint(
     expected_count: u64,
     expected_head: [u8; 32],
+    record_created_at_commitment: [u8; 32],
     store_secret: &str,
     store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
 ) -> Result<AuthenticatedAuditCheckpoint, EdisonError> {
@@ -780,6 +826,7 @@ pub(crate) fn authenticate_audit_checkpoint(
     Ok(authenticated_audit_checkpoint_from_context(
         expected_count,
         expected_head,
+        record_created_at_commitment,
         &context,
     ))
 }
@@ -803,6 +850,7 @@ pub(crate) fn classify_authenticated_checkpoint_state(
     records_empty: bool,
     actual_count: u64,
     actual_head: [u8; 32],
+    actual_record_created_at_commitment: [u8; 32],
     store_secret: &str,
 ) -> Result<(CheckpointOpenState, CheckpointAuthContext), EdisonError> {
     match checkpoint_bytes {
@@ -827,6 +875,12 @@ pub(crate) fn classify_authenticated_checkpoint_state(
                 actual_count,
                 actual_head,
             )?;
+
+            if checkpoint.record_created_at_commitment
+                != actual_record_created_at_commitment
+            {
+                return Err(EdisonError::AuditChainBroken);
+            }
 
             if audit_empty && !records_empty {
                 return Err(EdisonError::AuditChainBroken);
@@ -1177,6 +1231,47 @@ impl Store {
             .map(|entry| entry.entry_hash)
             .unwrap_or([0u8; 32]);
 
+        let persisted_record_created_at_commitment =
+            if store_secret.is_some() {
+                let table = write_txn
+                    .open_table(RECORDS_TABLE)
+                    .map_err(|_| EdisonError::AuditChainBroken)?;
+
+                let mut entries = Vec::new();
+
+                for entry in table
+                    .iter()
+                    .map_err(|_| EdisonError::AuditChainBroken)?
+                {
+                    let (key, value) =
+                        entry.map_err(|_| EdisonError::AuditChainBroken)?;
+
+                    let persisted: PersistedRecord =
+                        serde_json::from_str(value.value())
+                            .map_err(|_| EdisonError::AuditChainBroken)?;
+
+                    let record = persisted
+                        .into_validated_record()
+                        .map_err(|_| EdisonError::AuditChainBroken)?;
+
+                    if key.value() != record.id {
+                        return Err(EdisonError::AuditChainBroken);
+                    }
+
+                    entries.push((record.id.clone(), record.created_at));
+                }
+
+                Some(record_created_at_commitment(
+                    entries
+                        .iter()
+                        .map(|(id, created_at)| {
+                            (id.as_str(), *created_at)
+                        }),
+                ))
+            } else {
+                None
+            };
+
         let checkpoint_auth = if let Some(store_secret) = store_secret {
             let (_, context) = classify_authenticated_checkpoint_state(
                 persisted_checkpoint.as_deref().map(str::as_bytes),
@@ -1184,6 +1279,8 @@ impl Store {
                 persisted_records_empty,
                 persisted_count,
                 persisted_head,
+                persisted_record_created_at_commitment
+                    .ok_or(EdisonError::AuditChainBroken)?,
                 store_secret,
             )?;
             Some(context)
@@ -1257,11 +1354,21 @@ impl Store {
                 u64::try_from(self.audit_log.len()).map_err(|_| EdisonError::SaveFailed)?;
             let checkpoint_head = self.last_chain_hash();
 
+            let checkpoint_record_created_at_commitment =
+                record_created_at_commitment(
+                    self.records
+                        .iter()
+                        .map(|(id, record)| {
+                            (id.as_str(), record.created_at)
+                        }),
+                );
+
             let checkpoint_json = if let Some(context) = checkpoint_auth.as_ref() {
                 let checkpoint =
                     authenticated_audit_checkpoint_from_context(
                         checkpoint_count,
                         checkpoint_head,
+                        checkpoint_record_created_at_commitment,
                         context,
                     );
                 serde_json::to_string(&checkpoint)
@@ -1384,6 +1491,16 @@ impl Store {
         let records_empty = store.records.is_empty();
         let audit_empty = store.audit_log.is_empty();
 
+        let actual_record_created_at_commitment =
+            record_created_at_commitment(
+                store
+                    .records
+                    .iter()
+                    .map(|(id, record)| {
+                        (id.as_str(), record.created_at)
+                    }),
+            );
+
         {
             let mut table = write_txn
                 .open_table(AUDIT_CHECKPOINT_TABLE)
@@ -1405,6 +1522,7 @@ impl Store {
                         records_empty,
                         actual_count,
                         actual_head,
+                        actual_record_created_at_commitment,
                         store_secret,
                     )?;
 
@@ -1415,6 +1533,7 @@ impl Store {
                         authenticated_audit_checkpoint_from_context(
                             0,
                             [0u8; 32],
+                            actual_record_created_at_commitment,
                             &context,
                         );
 
@@ -2068,6 +2187,7 @@ mod tests {
         let checkpoint = authenticate_audit_checkpoint(
             7,
             [0xA5u8; 32],
+            [0xC1u8; 32],
             "checkpoint-store-secret",
             salt,
         )
@@ -2088,6 +2208,7 @@ mod tests {
         let checkpoint = authenticate_audit_checkpoint(
             11,
             [0xB6u8; 32],
+            [0xC1u8; 32],
             "checkpoint-store-secret",
             salt,
         )
@@ -2113,6 +2234,16 @@ mod tests {
             Err(EdisonError::AuditChainBroken)
         );
 
+        let mut commitment_tampered = checkpoint;
+        commitment_tampered.record_created_at_commitment[0] ^= 1;
+        assert_eq!(
+            verify_authenticated_audit_checkpoint_mac(
+                &commitment_tampered,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        );
+
         let mut mac_tampered = checkpoint;
         mac_tampered.mac[31] ^= 1;
         assert_eq!(
@@ -2130,6 +2261,7 @@ mod tests {
         let checkpoint = authenticate_audit_checkpoint(
             3,
             [0xC7u8; 32],
+            [0xC1u8; 32],
             "correct-store-secret",
             salt,
         )
@@ -2159,6 +2291,7 @@ mod tests {
         let mut checkpoint = authenticate_audit_checkpoint(
             1,
             [0xD8u8; 32],
+            [0xC1u8; 32],
             "checkpoint-store-secret",
             [0x73u8; CHECKPOINT_STORE_SALT_LEN],
         )
@@ -2177,10 +2310,85 @@ mod tests {
     }
 
     #[test]
+    fn limit012_record_created_at_commitment_is_canonical_and_timestamp_sensitive() {
+        let first = record_created_at_commitment([
+            ("rec:b", 20),
+            ("rec:a", 10),
+        ]);
+
+        let reordered = record_created_at_commitment([
+            ("rec:a", 10),
+            ("rec:b", 20),
+        ]);
+
+        assert_eq!(
+            first, reordered,
+            "record iteration order must not change the commitment",
+        );
+
+        let timestamp_changed = record_created_at_commitment([
+            ("rec:a", 11),
+            ("rec:b", 20),
+        ]);
+
+        assert_ne!(
+            first, timestamp_changed,
+            "changing created_at must change the commitment",
+        );
+
+        let boundary_left = record_created_at_commitment([
+            ("a", 1),
+            ("bc", 2),
+        ]);
+
+        let boundary_right = record_created_at_commitment([
+            ("ab", 1),
+            ("c", 2),
+        ]);
+
+        assert_ne!(
+            boundary_left, boundary_right,
+            "length-delimited record ids must remain unambiguous",
+        );
+    }
+
+    #[test]
+    fn limit012_authenticated_checkpoint_v1_shape_fails_closed() {
+        let v1_shape = serde_json::json!({
+            "version": 1,
+            "expected_count": 0,
+            "expected_head": vec![0u8; 32],
+            "store_salt": vec![0u8; CHECKPOINT_STORE_SALT_LEN],
+            "mac": vec![0u8; 32],
+        });
+
+        let bytes = serde_json::to_vec(&v1_shape).unwrap();
+
+        let empty_record_commitment =
+            record_created_at_commitment(
+                std::iter::empty::<(&str, u64)>(),
+            );
+
+        assert!(matches!(
+            classify_authenticated_checkpoint_state(
+                Some(&bytes),
+                true,
+                true,
+                0,
+                [0u8; 32],
+                empty_record_commitment,
+                "limit012-v1-rejection-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+    }
+
+    #[test]
     fn p35_authenticated_checkpoint_cannot_parse_as_legacy() {
         let checkpoint = authenticate_audit_checkpoint(
             5,
             [0xE9u8; 32],
+            [0xC1u8; 32],
             "checkpoint-store-secret",
             [0x84u8; CHECKPOINT_STORE_SALT_LEN],
         )

@@ -27,6 +27,7 @@ pub struct FjallBackend {
     // Authenticated mode retains only the derived checkpoint context rather
     // than the original store secret. FV-5 P4 owns secret-key zeroization.
     checkpoint_auth: Option<crate::CheckpointAuthContext>,
+    record_created_at_commitment: [u8; 32],
 }
 
 impl FjallBackend {
@@ -78,9 +79,23 @@ impl FjallBackend {
             .map(|entry| entry.entry_hash)
             .unwrap_or([0u8; 32]);
 
-        let records_empty = critical.is_empty().map_err(|_| EdisonError::LoadFailed)?
-            && personal.is_empty().map_err(|_| EdisonError::LoadFailed)?
-            && noise.is_empty().map_err(|_| EdisonError::LoadFailed)?;
+        let record_created_at_entries =
+            Self::validated_record_created_at_entries(
+                &critical,
+                &personal,
+                &noise,
+            )?;
+
+        let records_empty = record_created_at_entries.is_empty();
+
+        let actual_record_created_at_commitment =
+            crate::record_created_at_commitment(
+                record_created_at_entries
+                    .iter()
+                    .map(|(id, created_at)| {
+                        (id.as_str(), *created_at)
+                    }),
+            );
 
         let checkpoint_value = audit_checkpoint
             .get(AUDIT_CHECKPOINT_KEY)
@@ -99,6 +114,7 @@ impl FjallBackend {
                         records_empty,
                         actual_count,
                         audit_tail,
+                        actual_record_created_at_commitment,
                         store_secret,
                     )?;
                 (state, Some(context))
@@ -118,6 +134,7 @@ impl FjallBackend {
             let checkpoint_json = Self::serialize_checkpoint(
                 0,
                 [0u8; 32],
+                actual_record_created_at_commitment,
                 checkpoint_auth.as_ref(),
             )?;
 
@@ -140,15 +157,17 @@ impl FjallBackend {
             audit_len,
             audit_tail,
             checkpoint_auth,
+            record_created_at_commitment:
+                actual_record_created_at_commitment,
         };
 
-        backend.validate_persisted_records()?;
         Ok(backend)
     }
 
     fn serialize_checkpoint(
         expected_count: u64,
         expected_head: [u8; 32],
+        record_created_at_commitment: [u8; 32],
         checkpoint_auth: Option<&crate::CheckpointAuthContext>,
     ) -> Result<Vec<u8>, EdisonError> {
         if let Some(context) = checkpoint_auth {
@@ -156,6 +175,7 @@ impl FjallBackend {
                 crate::authenticated_audit_checkpoint_from_context(
                     expected_count,
                     expected_head,
+                    record_created_at_commitment,
                     context,
                 );
 
@@ -176,29 +196,42 @@ impl FjallBackend {
         &self,
         expected_count: u64,
         expected_head: [u8; 32],
+        record_created_at_commitment: [u8; 32],
     ) -> Result<Vec<u8>, EdisonError> {
         Self::serialize_checkpoint(
             expected_count,
             expected_head,
+            record_created_at_commitment,
             self.checkpoint_auth.as_ref(),
         )
     }
 
-    fn validate_persisted_records(&self) -> Result<(), EdisonError> {
+    fn validated_record_created_at_entries(
+        critical: &fjall::Keyspace,
+        personal: &fjall::Keyspace,
+        noise: &fjall::Keyspace,
+    ) -> Result<Vec<(String, u64)>, EdisonError> {
         let mut record_ids = HashSet::new();
+        let mut entries = Vec::new();
 
         for (keyspace, expected_tier) in [
-            (&self.critical, DataTier::Critical),
-            (&self.personal, DataTier::Personal),
-            (&self.noise, DataTier::Noise),
+            (critical, DataTier::Critical),
+            (personal, DataTier::Personal),
+            (noise, DataTier::Noise),
         ] {
             for guard in keyspace.iter() {
-                let (key, value) = guard.into_inner().map_err(|_| EdisonError::LoadFailed)?;
+                let (key, value) =
+                    guard.into_inner()
+                        .map_err(|_| EdisonError::LoadFailed)?;
+
                 let persisted: crate::PersistedRecord =
-                    serde_json::from_slice(&value).map_err(|_| EdisonError::LoadFailed)?;
+                    serde_json::from_slice(&value)
+                        .map_err(|_| EdisonError::LoadFailed)?;
+
                 let record = persisted.into_validated_record()?;
 
-                let id_is_unique = record_ids.insert(record.id.clone());
+                let id_is_unique =
+                    record_ids.insert(record.id.clone());
 
                 crate::validate_persisted_record_metadata(
                     &key,
@@ -206,7 +239,53 @@ impl FjallBackend {
                     &expected_tier,
                     id_is_unique,
                 )?;
+
+                entries.push((
+                    record.id.clone(),
+                    record.created_at,
+                ));
             }
+        }
+
+        Ok(entries)
+    }
+
+    fn current_record_created_at_entries(
+        &self,
+    ) -> Result<Vec<(String, u64)>, EdisonError> {
+        Self::validated_record_created_at_entries(
+            &self.critical,
+            &self.personal,
+            &self.noise,
+        )
+    }
+
+    fn current_record_created_at_commitment(
+        &self,
+    ) -> Result<[u8; 32], EdisonError> {
+        let entries =
+            self.current_record_created_at_entries()?;
+
+        Ok(crate::record_created_at_commitment(
+            entries
+                .iter()
+                .map(|(id, created_at)| {
+                    (id.as_str(), *created_at)
+                }),
+        ))
+    }
+
+    fn ensure_authenticated_record_commitment_current(
+        &self,
+    ) -> Result<(), EdisonError> {
+        if self.checkpoint_auth.is_none() {
+            return Ok(());
+        }
+
+        if self.current_record_created_at_commitment()?
+            != self.record_created_at_commitment
+        {
+            return Err(EdisonError::AuditChainBroken);
         }
 
         Ok(())
@@ -254,6 +333,8 @@ impl FjallBackend {
         requester_id: String,
         action: AuditAction,
     ) -> Result<(), EdisonError> {
+        self.ensure_authenticated_record_commitment_current()?;
+
         let next_len = self
             .audit_len
             .checked_add(1)
@@ -266,7 +347,11 @@ impl FjallBackend {
         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
         let checkpoint_json =
-            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
+            self.checkpoint_bytes(
+                checkpoint_count,
+                entry.entry_hash,
+                self.record_created_at_commitment,
+            )?;
 
         let key = format!("{:020}", self.audit_len);
 
@@ -293,6 +378,7 @@ impl FjallBackend {
 impl StorageBackend for FjallBackend {
     fn write(&mut self, record: Record) -> Result<(), EdisonError> {
         record.validate()?;
+        self.ensure_authenticated_record_commitment_current()?;
 
         let mut id_exists = false;
         for ks in [&self.critical, &self.personal, &self.noise] {
@@ -325,8 +411,29 @@ impl StorageBackend for FjallBackend {
 
         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
+        let mut record_entries =
+            self.current_record_created_at_entries()?;
+
+        record_entries.push((
+            record.id.clone(),
+            record.created_at,
+        ));
+
+        let next_record_created_at_commitment =
+            crate::record_created_at_commitment(
+                record_entries
+                    .iter()
+                    .map(|(id, created_at)| {
+                        (id.as_str(), *created_at)
+                    }),
+            );
+
         let checkpoint_json =
-            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
+            self.checkpoint_bytes(
+                checkpoint_count,
+                entry.entry_hash,
+                next_record_created_at_commitment,
+            )?;
 
         let audit_key = format!("{:020}", self.audit_len);
         let record_keyspace = self.tier_ks(&record.tier).clone();
@@ -347,11 +454,15 @@ impl StorageBackend for FjallBackend {
 
         self.audit_len = next_len;
         self.audit_tail = entry.entry_hash;
+        self.record_created_at_commitment =
+            next_record_created_at_commitment;
 
         Ok(())
     }
 
     fn read(&mut self, id: &str, requester_id: &str) -> Result<Record, EdisonError> {
+        self.ensure_authenticated_record_commitment_current()?;
+
         for tier in [DataTier::Critical, DataTier::Personal, DataTier::Noise] {
             let ks = self.tier_ks(&tier);
             if let Some(v) = ks.get(id.as_bytes()).map_err(|_| EdisonError::LoadFailed)? {
@@ -383,6 +494,8 @@ impl StorageBackend for FjallBackend {
         &self,
         owner_id: &str,
     ) -> Result<Vec<Record>, EdisonError> {
+        self.ensure_authenticated_record_commitment_current()?;
+
         let mut records = Vec::new();
 
         for ks in [&self.critical, &self.personal, &self.noise] {
@@ -406,6 +519,8 @@ impl StorageBackend for FjallBackend {
     }
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
+        self.ensure_authenticated_record_commitment_current()?;
+
         for tier in [DataTier::Critical, DataTier::Personal, DataTier::Noise] {
             let record_keyspace = self.tier_ks(&tier).clone();
 
@@ -440,10 +555,27 @@ impl StorageBackend for FjallBackend {
                 let checkpoint_count =
                     u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
 
+                let mut record_entries =
+                    self.current_record_created_at_entries()?;
+
+                record_entries.retain(
+                    |(record_id, _)| record_id != id,
+                );
+
+                let next_record_created_at_commitment =
+                    crate::record_created_at_commitment(
+                        record_entries
+                            .iter()
+                            .map(|(record_id, created_at)| {
+                                (record_id.as_str(), *created_at)
+                            }),
+                    );
+
                 let checkpoint_json =
                     self.checkpoint_bytes(
                         checkpoint_count,
                         entry.entry_hash,
+                        next_record_created_at_commitment,
                     )?;
 
                 let audit_key = format!("{:020}", self.audit_len);
@@ -460,6 +592,8 @@ impl StorageBackend for FjallBackend {
 
                 self.audit_len = next_len;
                 self.audit_tail = entry.entry_hash;
+                self.record_created_at_commitment =
+                    next_record_created_at_commitment;
 
                 return Ok(());
             }

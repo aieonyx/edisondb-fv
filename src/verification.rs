@@ -691,8 +691,9 @@ mod kani_harnesses {
         }
     }
 
-    /// FV-5 P3.5: authenticated checkpoint MAC input has one canonical
-    /// byte layout: domain || big-endian count || checkpoint head.
+    /// FV-5 P3.5 + LIMIT-012: authenticated checkpoint MAC input has one
+    /// canonical byte layout: domain || big-endian count || checkpoint head
+    /// || record-created-at commitment.
     ///
     /// Symbolic indices cover every byte position in each component.
     /// This proves only structural encoding. It does not prove BLAKE3,
@@ -701,16 +702,23 @@ mod kani_harnesses {
     fn kani_p35_checkpoint_mac_input_canonical_layout() {
         let expected_count: u64 = kani::any();
         let expected_head: [u8; 32] = kani::any();
+        let record_created_at_commitment: [u8; 32] = kani::any();
 
-        let input =
-            crate::checkpoint_mac_input(expected_count, &expected_head);
+        let input = crate::checkpoint_mac_input(
+            expected_count,
+            &expected_head,
+            &record_created_at_commitment,
+        );
         let domain = crate::CHECKPOINT_MAC_DOMAIN;
         let domain_len = domain.len();
         let count_bytes = expected_count.to_be_bytes();
 
         assert_eq!(
             input.len(),
-            domain_len + count_bytes.len() + expected_head.len()
+            domain_len
+                + count_bytes.len()
+                + expected_head.len()
+                + record_created_at_commitment.len()
         );
 
         let domain_index: u8 = kani::any();
@@ -735,6 +743,23 @@ mod kani_harnesses {
         assert_eq!(
             input[domain_len + count_bytes.len() + head_index],
             expected_head[head_index]
+        );
+
+        let commitment_index: u8 = kani::any();
+        kani::assume(
+            (commitment_index as usize)
+                < record_created_at_commitment.len(),
+        );
+        let commitment_index = commitment_index as usize;
+
+        assert_eq!(
+            input[
+                domain_len
+                    + count_bytes.len()
+                    + expected_head.len()
+                    + commitment_index
+            ],
+            record_created_at_commitment[commitment_index]
         );
     }
 
