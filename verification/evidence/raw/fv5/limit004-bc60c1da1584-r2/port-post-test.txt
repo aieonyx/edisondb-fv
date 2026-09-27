@@ -1,0 +1,3 @@
+PASS: no LISTEN socket remains on port 50051
+PASS: no edisondb-server process remains
+PASS: SO_REUSEADDR post-test bind succeeds

@@ -79,7 +79,7 @@ impl TierSummary {
                 DataTier::Personal => s.personal_count += 1,
                 DataTier::Noise    => s.noise_count += 1,
             }
-            s.total_payload_bytes += r.payload.len();
+            s.total_payload_bytes += r.payload().len();
         }
         s
     }

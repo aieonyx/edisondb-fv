@@ -5,7 +5,9 @@
 // Line 0: header  {"edm":1,"exported_at":N,"record_count":N,"owner_filter":"..|null"}
 // Line 1+: record {"id":"..","tier":"..","owner_id":"..","payload_hex":"..","salt_hex":"..","created_at":N}
 
-use crate::{Record, DataTier, now_secs};
+use crate::{
+    DataTier, EncryptedPayload, Record, now_secs,
+};
 use serde::{Deserialize, Serialize};
 
 // ── .edm format ───────────────────────────────────────────────────────────────
@@ -37,32 +39,45 @@ impl EdmRecord {
             id: r.id.clone(),
             tier: r.tier.as_str().to_string(),
             owner_id: r.owner_id.clone(),
-            payload_hex: hex(&r.payload),
-            salt_hex: hex(&r.salt),
+            payload_hex: hex(r.payload()),
+            salt_hex: hex(r.salt()),
             created_at: r.created_at,
         }
     }
 
+
     pub fn to_record(&self) -> Result<Record, MigrationError> {
         let tier = DataTier::from_str(&self.tier)
             .ok_or_else(|| MigrationError::InvalidTier(self.tier.clone()))?;
+
         let payload = unhex(&self.payload_hex)
             .ok_or_else(|| MigrationError::InvalidHex("payload".into()))?;
+
+        let payload = EncryptedPayload::from_persisted(payload)
+            .map_err(|e| MigrationError::InvalidRecordData(e.to_string()))?;
+
         let salt_bytes = unhex(&self.salt_hex)
             .ok_or_else(|| MigrationError::InvalidHex("salt".into()))?;
+
         if salt_bytes.len() != 32 {
-            return Err(MigrationError::InvalidHex("salt must be 32 bytes".into()));
+            return Err(MigrationError::InvalidHex(
+                "salt must be 32 bytes".into(),
+            ));
         }
+
         let mut salt = [0u8; 32];
         salt.copy_from_slice(&salt_bytes);
-        Ok(Record {
-            id: self.id.clone(),
+
+        crate::PersistedRecord::from_parts(
+            self.id.clone(),
             tier,
-            owner_id: self.owner_id.clone(),
+            self.owner_id.clone(),
             payload,
             salt,
-            created_at: self.created_at,
-        })
+            self.created_at,
+        )
+        .into_validated_record()
+        .map_err(|e| MigrationError::InvalidRecordData(e.to_string()))
     }
 }
 
@@ -243,7 +258,7 @@ pub fn build_manifest(records: &[Record]) -> MigrationManifest {
 
     for r in records {
         *tier_counts.entry(r.tier.as_str().to_string()).or_insert(0) += 1;
-        total_payload += r.payload.len();
+        total_payload += r.payload().len();
     }
 
     // Hash: SHA-256 of sorted IDs concatenated with null bytes
@@ -275,6 +290,7 @@ pub enum MigrationError {
     InvalidHeader(String),
     VersionMismatch(u32),
     InvalidRecord(usize, String),
+    InvalidRecordData(String),
     InvalidTier(String),
     InvalidHex(String),
     Conflict(String),
@@ -288,6 +304,7 @@ impl std::fmt::Display for MigrationError {
             Self::InvalidHeader(s)     => write!(f, "invalid header: {}", s),
             Self::VersionMismatch(v)   => write!(f, "unsupported .edm version: {}", v),
             Self::InvalidRecord(i, s)  => write!(f, "invalid record at line {}: {}", i, s),
+            Self::InvalidRecordData(s) => write!(f, "invalid record data: {}", s),
             Self::InvalidTier(s)       => write!(f, "invalid tier: {}", s),
             Self::InvalidHex(s)        => write!(f, "invalid hex: {}", s),
             Self::Conflict(s)          => write!(f, "conflict: {}", s),

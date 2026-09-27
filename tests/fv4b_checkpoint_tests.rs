@@ -1,5 +1,8 @@
+mod common;
+use common::record_new;
+
 use edisondb::{
-    DataTier, EdisonError, Record,
+    DataTier, EdisonError,
     backends::{FjallBackend, StorageBackend},
 };
 use fjall::{Database, KeyspaceCreateOptions};
@@ -71,7 +74,7 @@ fn fjall_open_rejects_existing_records_without_checkpoint() {
         .keyspace("records_personal", KeyspaceCreateOptions::default)
         .unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:unanchored",
         DataTier::Personal,
         "owner",
@@ -82,7 +85,7 @@ fn fjall_open_rejects_existing_records_without_checkpoint() {
 
     let json = serde_json::to_vec(&record).unwrap();
 
-    personal.insert(record.id.as_bytes(), json).unwrap();
+    personal.insert(record.id().as_bytes(), json).unwrap();
 
     drop(personal);
     drop(db);
@@ -120,7 +123,7 @@ fn fjall_open_rejects_unanchored_records_with_valid_checkpoint() {
         .keyspace("audit_checkpoint", KeyspaceCreateOptions::default)
         .unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:unanchored-present-checkpoint",
         DataTier::Personal,
         "owner",
@@ -131,7 +134,7 @@ fn fjall_open_rejects_unanchored_records_with_valid_checkpoint() {
 
     let record_json = serde_json::to_vec(&record).unwrap();
 
-    personal.insert(record.id.as_bytes(), record_json).unwrap();
+    personal.insert(record.id().as_bytes(), record_json).unwrap();
 
     let genesis_checkpoint = serde_json::json!({
         "expected_count": 0,
@@ -171,7 +174,7 @@ fn fjall_reopen_after_write_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-write",
         DataTier::Personal,
         "owner",
@@ -256,7 +259,7 @@ fn fjall_reopen_after_delete_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-delete",
         DataTier::Personal,
         "owner",
@@ -276,14 +279,14 @@ fn fjall_reopen_after_delete_preserves_checkpoint_coherence() {
         .entry_hash;
 
     assert_eq!(cached_count, 2);
-    assert!(backend.list_by_owner("owner").is_empty());
+    assert!(backend.list_by_owner("owner").unwrap().is_empty());
 
     drop(backend);
 
     let reopened = FjallBackend::open(path).unwrap();
 
     assert_eq!(reopened.audit_count(), cached_count);
-    assert!(reopened.list_by_owner("owner").is_empty());
+    assert!(reopened.list_by_owner("owner").unwrap().is_empty());
 
     let reopened_head = reopened
         .audit_entries()
@@ -352,7 +355,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-read-granted",
         DataTier::Personal,
         "owner",
@@ -367,7 +370,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
         .read("rec:checkpoint-read-granted", "owner")
         .unwrap();
 
-    assert_eq!(returned.id, "rec:checkpoint-read-granted");
+    assert_eq!(returned.id(), "rec:checkpoint-read-granted");
 
     let cached_count = backend.audit_count();
     let cached_head = backend
@@ -384,12 +387,12 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-granted")
+            .any(|record| record.id() == "rec:checkpoint-read-granted")
     );
 
     let reopened_head = reopened
@@ -452,7 +455,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:checkpoint-read-denied",
         DataTier::Personal,
         "owner",
@@ -476,12 +479,12 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     assert_eq!(cached_count, 2);
 
-    let records = backend.list_by_owner("owner");
+    let records = backend.list_by_owner("owner").unwrap();
 
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-denied")
+            .any(|record| record.id() == "rec:checkpoint-read-denied")
     );
 
     drop(backend);
@@ -490,12 +493,12 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let reopened_records = reopened.list_by_owner("owner");
+    let reopened_records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         reopened_records
             .iter()
-            .any(|record| record.id == "rec:checkpoint-read-denied")
+            .any(|record| record.id() == "rec:checkpoint-read-denied")
     );
 
     let reopened_head = reopened
@@ -610,7 +613,7 @@ fn redb_open_rejects_existing_records_without_checkpoint() {
 
     let path = db_path.to_str().unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-missing-checkpoint",
         DataTier::Personal,
         "owner",
@@ -630,7 +633,7 @@ fn redb_open_rejects_existing_records_without_checkpoint() {
 
             let json = serde_json::to_string(&record).unwrap();
 
-            table.insert(record.id.as_str(), json.as_str()).unwrap();
+            table.insert(record.id(), json.as_str()).unwrap();
         }
 
         txn.commit().unwrap();
@@ -659,7 +662,7 @@ fn redb_open_rejects_unanchored_records_with_valid_checkpoint() {
 
     let path = db_path.to_str().unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-unanchored",
         DataTier::Personal,
         "owner",
@@ -682,7 +685,7 @@ fn redb_open_rejects_unanchored_records_with_valid_checkpoint() {
 
             let json = serde_json::to_string(&record).unwrap();
 
-            table.insert(record.id.as_str(), json.as_str()).unwrap();
+            table.insert(record.id(), json.as_str()).unwrap();
         }
 
         {
@@ -726,7 +729,7 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-write",
         DataTier::Personal,
         "owner",
@@ -756,12 +759,12 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
             .iter()
-            .any(|record| record.id == "rec:redb-checkpoint-write")
+            .any(|record| record.id() == "rec:redb-checkpoint-write")
     );
 
     let reopened_entries = reopened.audit_entries();
@@ -828,7 +831,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-delete",
         DataTier::Personal,
         "owner",
@@ -852,7 +855,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
         .entry_hash;
 
     assert_eq!(cached_count, 2);
-    assert!(backend.list_by_owner("owner").is_empty());
+    assert!(backend.list_by_owner("owner").unwrap().is_empty());
 
     backend.save().unwrap();
 
@@ -861,7 +864,7 @@ fn redb_reopen_after_delete_save_preserves_checkpoint_coherence() {
     let reopened = edisondb::backends::RedbBackend::open(path).unwrap();
 
     assert_eq!(reopened.audit_count(), cached_count);
-    assert!(reopened.list_by_owner("owner").is_empty());
+    assert!(reopened.list_by_owner("owner").unwrap().is_empty());
 
     let reopened_entries = reopened.audit_entries();
 
@@ -936,7 +939,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-read-granted",
         DataTier::Personal,
         "owner",
@@ -951,7 +954,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
         .read("rec:redb-checkpoint-read-granted", "owner")
         .unwrap();
 
-    assert_eq!(returned.id, "rec:redb-checkpoint-read-granted");
+    assert_eq!(returned.id(), "rec:redb-checkpoint-read-granted");
 
     let cached_count = backend.audit_count();
 
@@ -971,12 +974,12 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let records = reopened.list_by_owner("owner");
+    let records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-granted" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-granted" })
     );
 
     let reopened_head = reopened
@@ -1042,7 +1045,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-checkpoint-read-denied",
         DataTier::Personal,
         "owner",
@@ -1067,12 +1070,12 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     assert_eq!(cached_count, 2);
 
-    let records = backend.list_by_owner("owner");
+    let records = backend.list_by_owner("owner").unwrap();
 
     assert!(
         records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
     );
 
     backend.save().unwrap();
@@ -1083,12 +1086,12 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
 
     assert_eq!(reopened.audit_count(), cached_count);
 
-    let reopened_records = reopened.list_by_owner("owner");
+    let reopened_records = reopened.list_by_owner("owner").unwrap();
 
     assert!(
         reopened_records
             .iter()
-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
+            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
     );
 
     let reopened_head = reopened
@@ -1154,7 +1157,7 @@ fn redb_open_rejects_final_audit_row_deletion_against_checkpoint() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let first = Record::new(
+    let first = record_new(
         "rec:redb-tail-drop-1",
         DataTier::Personal,
         "owner",
@@ -1163,7 +1166,7 @@ fn redb_open_rejects_final_audit_row_deletion_against_checkpoint() {
     )
     .unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:redb-tail-drop-2",
         DataTier::Personal,
         "owner",
@@ -1226,7 +1229,7 @@ fn fjall_open_rejects_final_audit_row_deletion_against_checkpoint() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let first = Record::new(
+    let first = record_new(
         "rec:fjall-tail-drop-1",
         DataTier::Personal,
         "owner",
@@ -1235,7 +1238,7 @@ fn fjall_open_rejects_final_audit_row_deletion_against_checkpoint() {
     )
     .unwrap();
 
-    let second = Record::new(
+    let second = record_new(
         "rec:fjall-tail-drop-2",
         DataTier::Personal,
         "owner",
@@ -1359,7 +1362,7 @@ fn redb_open_rejects_checkpoint_count_mismatch() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-count-mismatch",
         DataTier::Personal,
         "owner",
@@ -1429,7 +1432,7 @@ fn redb_open_rejects_checkpoint_head_mismatch() {
 
     let mut backend = edisondb::backends::RedbBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:redb-head-mismatch",
         DataTier::Personal,
         "owner",
@@ -1551,7 +1554,7 @@ fn fjall_open_rejects_checkpoint_count_mismatch() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:fjall-count-mismatch",
         DataTier::Personal,
         "owner",
@@ -1621,7 +1624,7 @@ fn fjall_open_rejects_checkpoint_head_mismatch() {
 
     let mut backend = FjallBackend::open(path).unwrap();
 
-    let record = Record::new(
+    let record = record_new(
         "rec:fjall-head-mismatch",
         DataTier::Personal,
         "owner",

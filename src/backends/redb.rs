@@ -6,6 +6,13 @@ use crate::{AuditEntry, EdisonError, Record, Store};
 pub struct RedbBackend {
     store: Store,
     path: String,
+    // P3.5 authenticated checkpoint mode.
+    //
+    // The store secret is retained only so the existing keyless
+    // StorageBackend `save()` trait method can continue persisting
+    // authenticated checkpoints after an authenticated open.
+    // FV-5 P4 owns secret zeroization.
+    store_secret: Option<String>,
 }
 
 impl RedbBackend {
@@ -17,9 +24,36 @@ impl RedbBackend {
             store.save(path)?;
             store
         };
+
         Ok(Self {
             store,
             path: path.to_string(),
+            store_secret: None,
+        })
+    }
+
+    /// Open or create a Redb backend whose audit checkpoint is controlled
+    /// by `store_secret`.
+    ///
+    /// Legacy checkpoints are rejected rather than implicitly upgraded.
+    /// Conversely, `open()` rejects authenticated checkpoints because strict
+    /// legacy checkpoint parsing does not accept authentication fields.
+    pub fn open_authenticated(
+        path: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        let store = if std::path::Path::new(path).exists() {
+            Store::load_authenticated(path, store_secret)?
+        } else {
+            let store = Store::new();
+            store.save_authenticated(path, store_secret)?;
+            store
+        };
+
+        Ok(Self {
+            store,
+            path: path.to_string(),
+            store_secret: Some(store_secret.to_string()),
         })
     }
 }
@@ -33,12 +67,17 @@ impl StorageBackend for RedbBackend {
         self.store.read(id, requester_id).cloned()
     }
 
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
-        self.store
-            .list_by_owner(owner_id)
+
+    fn list_by_owner(
+        &self,
+        owner_id: &str,
+    ) -> Result<Vec<Record>, EdisonError> {
+        Ok(self
+            .store
+            .list_by_owner(owner_id)?
             .into_iter()
             .cloned()
-            .collect()
+            .collect())
     }
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
@@ -58,13 +97,19 @@ impl StorageBackend for RedbBackend {
     }
 
     fn save(&self) -> Result<(), EdisonError> {
-        self.store.save(&self.path)
+        match self.store_secret.as_deref() {
+            Some(store_secret) => {
+                self.store.save_authenticated(&self.path, store_secret)
+            }
+            None => self.store.save(&self.path),
+        }
     }
 
     fn backend_name(&self) -> &'static str {
         "redb"
     }
 }
+
 
 // ── Router ────────────────────────────────────────────────────────────────────
 // The router holds the active backend and delegates all operations to it.
@@ -91,7 +136,7 @@ impl Router {
         self.backend.read(id, requester_id)
     }
 
-    pub fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
+    pub fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError> {
         self.backend.list_by_owner(owner_id)
     }
 
@@ -113,5 +158,95 @@ impl Router {
 
     pub fn save(&self) -> Result<(), EdisonError> {
         self.backend.save()
+    }
+}
+
+#[cfg(test)]
+mod p35_authenticated_backend_tests {
+    use super::*;
+
+    fn path(label: &str) -> String {
+        format!(
+            "/tmp/edisondb-p35-redb-{}-{}-{}.redb",
+            label,
+            std::process::id(),
+            rand::random::<u64>(),
+        )
+    }
+
+    #[test]
+    fn p35_redb_authenticated_open_save_and_reopen() {
+        let path = path("round-trip");
+        let _ = std::fs::remove_file(&path);
+
+        let backend =
+            RedbBackend::open_authenticated(&path, "correct-store-secret")
+                .unwrap();
+
+        backend.save().unwrap();
+        drop(backend);
+
+        let reopened =
+            RedbBackend::open_authenticated(&path, "correct-store-secret")
+                .unwrap();
+
+        assert_eq!(reopened.backend_name(), "redb");
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_redb_authenticated_open_rejects_wrong_store_secret() {
+        let path = path("wrong-store-secret");
+        let _ = std::fs::remove_file(&path);
+
+        let backend =
+            RedbBackend::open_authenticated(&path, "correct-store-secret")
+                .unwrap();
+        drop(backend);
+
+        assert!(matches!(
+            RedbBackend::open_authenticated(&path, "wrong-store-secret"),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_redb_legacy_open_rejects_authenticated_checkpoint() {
+        let path = path("legacy-downgrade");
+        let _ = std::fs::remove_file(&path);
+
+        let backend =
+            RedbBackend::open_authenticated(&path, "correct-store-secret")
+                .unwrap();
+        drop(backend);
+
+        assert!(matches!(
+            RedbBackend::open(&path),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn p35_redb_authenticated_open_rejects_legacy_checkpoint() {
+        let path = path("legacy-upgrade");
+        let _ = std::fs::remove_file(&path);
+
+        let backend = RedbBackend::open(&path).unwrap();
+        drop(backend);
+
+        assert!(matches!(
+            RedbBackend::open_authenticated(
+                &path,
+                "checkpoint-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(&path);
     }
 }

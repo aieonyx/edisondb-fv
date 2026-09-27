@@ -1,0 +1,34 @@
+--- files ---
+/tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libedisondb.so
+/tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libredb-8e22f9045e6d7a0e.so
+/tmp/edisondb-limit004-r2-android-959131/x86_64/libedisondb.so
+/tmp/edisondb-limit004-r2-android-959131/x86_64/libredb-499b79e57fdff016.so
+
+--- file identification ---
+/tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libedisondb.so: ELF 64-bit LSB shared object, ARM aarch64, version 1 (SYSV), dynamically linked, not stripped
+/tmp/edisondb-limit004-r2-android-959131/x86_64/libedisondb.so:    ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, not stripped
+
+--- ELF headers ---
+  Class:                             ELF64
+  Type:                              DYN (Shared object file)
+  Machine:                           AArch64
+  Class:                             ELF64
+  Type:                              DYN (Shared object file)
+  Machine:                           Advanced Micro Devices X86-64
+
+--- JNI provenance symbols ---
+[/tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libedisondb.so]
+    94: 00000000000a2e54  2292 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert
+    98: 00000000000a2be0   232 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3
+   355: 00000000000a1dc0   280 FUNC    LOCAL  HIDDEN    13 _RNvXs_NtNtCslwblvHZBSgN_5alloc3vec21spec_from_iter_nestedINtB6_3VechEINtB4_18SpecFromIterNestedhINtNtNtNtCsfyMZSCmpsrs_4core4iter8adapters3map3MapINtNtNtB1F_5slice4iter4IteraENCNvNtNtCs1brYtm0bBa2_8edisondb6mobile10jni_bridge54Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert0EE9from_iterB2V_
+ 24616: 00000000000a2be0   232 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3
+ 24619: 00000000000a2e54  2292 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert
+[/tmp/edisondb-limit004-r2-android-959131/x86_64/libedisondb.so]
+    90: 00000000000a74b0  1332 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert
+    94: 00000000000a7250   240 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3
+ 10930: 00000000000a7250   240 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeBlake3
+ 10933: 00000000000a74b0  1332 FUNC    GLOBAL DEFAULT   13 Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert
+
+--- SHA256 ---
+2e82a1135b7118dc829c75763e355b5c71b284fee0f0218ef3840878fdcf591e  /tmp/edisondb-limit004-r2-android-959131/arm64-v8a/libedisondb.so
+ff1f55d571865d18699143a27765c45bf3dbf376a414084af9836e0a865d2d16  /tmp/edisondb-limit004-r2-android-959131/x86_64/libedisondb.so

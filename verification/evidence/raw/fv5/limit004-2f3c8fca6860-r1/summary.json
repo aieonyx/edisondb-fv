@@ -1,0 +1,92 @@
+{
+  "android_source_contract": "PASS",
+  "cargo_check": {
+    "default_all_targets": "PASS",
+    "mobile_library": "PASS"
+  },
+  "clippy": {
+    "default_baseline_diagnostics": 23,
+    "default_current_diagnostics": 23,
+    "default_new_diagnostics": 0,
+    "focused_test_own_diagnostics": 0,
+    "mobile_baseline_diagnostics": 29,
+    "mobile_current_diagnostics": 29,
+    "mobile_new_diagnostics": 0,
+    "result": "PASS"
+  },
+  "dynamic_tests": {
+    "default": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 296,
+      "summaries": 17
+    },
+    "focused_limit004": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 5,
+      "summaries": 1
+    },
+    "mobile": {
+      "failed": 0,
+      "ignored": 0,
+      "passed": 105,
+      "summaries": 1
+    }
+  },
+  "exit_codes": {
+    "android_contract_exit_code": 0,
+    "baseline_default_clippy_exit_code": 0,
+    "baseline_mobile_clippy_exit_code": 0,
+    "baseline_worktree_exit_code": 0,
+    "clippy_comparison_exit_code": 0,
+    "current_default_clippy_exit_code": 0,
+    "current_mobile_clippy_exit_code": 0,
+    "default_check_exit_code": 0,
+    "default_test_exit_code": 0,
+    "focused_clippy_exit_code": 0,
+    "focused_test_exit_code": 0,
+    "mobile_check_exit_code": 0,
+    "mobile_test_exit_code": 0,
+    "post_test_port_exit_code": 1,
+    "pre_test_port_exit_code": 0,
+    "source_diff_check_exit_code": 0,
+    "source_signature_exit_code": 0,
+    "targeted_kani_exit_code": 0,
+    "worktree_cleanup_exit_code": 0
+  },
+  "explicit_nonclaims": [
+    "formal verification of BLAKE3",
+    "BLAKE3 collision resistance or cryptographic security",
+    "formal verification of JNI or Kotlin execution",
+    "formal proof of deployed Android runtime behavior",
+    "mobile counter persistence atomicity or crash consistency",
+    "replay resistance",
+    "anti-rollback protection",
+    "ARPi production integration beyond this mobile boundary"
+  ],
+  "grpc_port": {
+    "post_test_free_with_grace": false,
+    "pre_test_free": true
+  },
+  "kani": {
+    "checks": 158,
+    "failed": 0,
+    "harness": "kani_limit004_mobile_arpi_fail_closed_structure",
+    "result": "PASS",
+    "total_harnesses": 1,
+    "unreachable": 4,
+    "verified_harnesses": 1
+  },
+  "parent_commit": "2726c316051bdebe6c1d04c53200327746bf0c9b",
+  "phase": "FV-5 LIMIT-004",
+  "related_limitations": {
+    "LIMIT-002": "remains separate; ARPi production integration assigned to FV-7",
+    "LIMIT-003": "remains separate; verified-kernel bypass assigned to FV-7",
+    "LIMIT-004": "source-remediated at this commit; evidence closure pending",
+    "LIMIT-005": "remains open; mobile counter crash consistency assigned to FV-6"
+  },
+  "scope": "mobile fail-closed provenance validation",
+  "source_commit": "2f3c8fca6860e9f97e79e799a9e8050de38012e0",
+  "source_signature": "PASS"
+}

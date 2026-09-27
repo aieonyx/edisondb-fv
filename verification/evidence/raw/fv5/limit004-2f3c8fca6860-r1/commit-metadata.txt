@@ -1,0 +1,6 @@
+source_commit=2f3c8fca6860e9f97e79e799a9e8050de38012e0
+parent_commit=2726c316051bdebe6c1d04c53200327746bf0c9b
+source_tree=c3505ee807242ddf1ead9631d777562a5c88fbb7
+branch=fv/5-encryption-boundaries
+subject=FV-5 LIMIT-004: enforce fail-closed mobile provenance
+captured_utc=2026-09-11T05:58:27Z

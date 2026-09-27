@@ -1,0 +1,257 @@
+    Checking edisondb v0.6.0-p3m9 (/home/edisonbl/Documents/AIEONYX/edisondb-fv)
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+For more information about this error, try `rustc --explain E0133`.
+warning: `edisondb` (lib) generated 18 warnings (run `cargo fix --lib -p edisondb` to apply 11 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.67s

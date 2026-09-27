@@ -12,6 +12,15 @@ use std::path::Path;
 use blake3::Hasher;
 use fjall::{Database, Keyspace, KeyspaceCreateOptions};
 
+const WRITE_COUNTER_KEY: &[u8] = b"__write_counter__";
+
+/// Return the next monotonic mobile write counter.
+///
+/// `None` represents counter exhaustion. Wrapping to zero is forbidden.
+pub(crate) fn next_write_counter(current: u64) -> Option<u64> {
+    current.checked_add(1)
+}
+
 /// Errors surfaced across the FFI boundary.
 #[derive(Debug)]
 pub enum DbError {
@@ -20,6 +29,8 @@ pub enum DbError {
     KeyExists,
     NotFound,
     InvalidArpi,
+    InvalidCounterState,
+    CounterExhausted,
     Other(String),
 }
 
@@ -30,8 +41,10 @@ impl From<std::io::Error> for DbError {
     fn from(e: std::io::Error) -> Self { DbError::Io(e) }
 }
 
-/// ARPi header — 78 bytes fixed.
-/// Public name: AXON Receptor Protocol Interface.
+/// Mobile ARPi write-provenance header — 78 bytes fixed.
+///
+/// This is the mobile storage provenance format. It is distinct from
+/// `crate::arpi::ArpiHeader`, which is the ARPi response/protocol header.
 ///
 /// Offset  Size  Field
 ///  0       4    magic: b"ARPi"
@@ -56,16 +69,44 @@ impl ArpiHeader {
     pub const SIZE: usize = 78;
 
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() < Self::SIZE { return None; }
-        if &bytes[0..4] != b"ARPi" { return None; }
-        let write_counter = u64::from_le_bytes(bytes[4..12].try_into().ok()?);
-        let timestamp_us  = u64::from_le_bytes(bytes[12..20].try_into().ok()?);
+        if bytes.len() != Self::SIZE {
+            return None;
+        }
+        if &bytes[0..4] != b"ARPi" {
+            return None;
+        }
+
         let tier = bytes[20];
-        let mut reserved   = [0u8; 3];  reserved.copy_from_slice(&bytes[21..24]);
-        let mut blake3_hash = [0u8; 32]; blake3_hash.copy_from_slice(&bytes[24..56]);
-        let mut node_id    = [0u8; 22]; node_id.copy_from_slice(&bytes[56..78]);
-        Some(Self { magic: *b"ARPi", write_counter, timestamp_us,
-                    tier, reserved, blake3_hash, node_id })
+        if !matches!(tier, 0..=2) {
+            return None;
+        }
+
+        let write_counter =
+            u64::from_le_bytes(bytes[4..12].try_into().ok()?);
+        let timestamp_us =
+            u64::from_le_bytes(bytes[12..20].try_into().ok()?);
+
+        let mut reserved = [0u8; 3];
+        reserved.copy_from_slice(&bytes[21..24]);
+        if reserved != [0u8; 3] {
+            return None;
+        }
+
+        let mut blake3_hash = [0u8; 32];
+        blake3_hash.copy_from_slice(&bytes[24..56]);
+
+        let mut node_id = [0u8; 22];
+        node_id.copy_from_slice(&bytes[56..78]);
+
+        Some(Self {
+            magic: *b"ARPi",
+            write_counter,
+            timestamp_us,
+            tier,
+            reserved,
+            blake3_hash,
+            node_id,
+        })
     }
 
     pub fn to_bytes(&self) -> [u8; Self::SIZE] {
@@ -113,25 +154,31 @@ impl MobileDb {
                 DbError::Fjall(e)
             })?;
 
-        let counter = match partition.get(b"__write_counter__") {
+        let counter = match partition.get(WRITE_COUNTER_KEY) {
             Ok(Some(v)) => {
-                let arr: [u8; 8] = v.as_ref().try_into().unwrap_or([0u8; 8]);
+                let arr: [u8; 8] = v
+                    .as_ref()
+                    .try_into()
+                    .map_err(|_| DbError::InvalidCounterState)?;
                 u64::from_le_bytes(arr)
             }
-            _ => 0u64,
+            Ok(None) => 0u64,
+            Err(e) => return Err(DbError::Fjall(e)),
         };
 
         Ok(Self { _db: db, partition, write_counter: counter })
     }
 
-    fn next_counter(&mut self) -> u64 {
-        self.write_counter += 1;
-        self.write_counter
+    fn next_counter(&mut self) -> Result<u64, DbError> {
+        let next =
+            next_write_counter(self.write_counter).ok_or(DbError::CounterExhausted)?;
+        self.write_counter = next;
+        Ok(next)
     }
 
     fn persist_counter(&self) -> Result<(), DbError> {
         self.partition
-            .insert(b"__write_counter__", &self.write_counter.to_le_bytes())
+            .insert(WRITE_COUNTER_KEY, &self.write_counter.to_le_bytes())
             .map_err(DbError::Fjall)
     }
 
@@ -139,20 +186,16 @@ impl MobileDb {
         if arpi_raw.len() < 78 { return Err(DbError::InvalidArpi); }
         let header = ArpiHeader::from_bytes(arpi_raw).ok_or(DbError::InvalidArpi)?;
 
-        // Hash verification skipped on Android mobile —
-        // Kotlin ARPi uses SHA-256 stand-in; BLAKE3 verification
-        // is enforced server-side only (see ArpiHeader.kt note)
-        #[cfg(not(target_os = "android"))]
-        {
-            let mut h = Hasher::new();
-            h.update(value.as_bytes());
-            let computed: [u8; 32] = h.finalize().into();
-            if computed != header.blake3_hash {
-                return Err(DbError::InvalidArpi);
-            }
+        // Content provenance is fail-closed on every target, including
+        // Android. The header must bind the exact UTF-8 value persisted below.
+        let mut h = Hasher::new();
+        h.update(value.as_bytes());
+        let computed: [u8; 32] = h.finalize().into();
+        if computed != header.blake3_hash {
+            return Err(DbError::InvalidArpi);
         }
 
-        let counter = self.next_counter();
+        let counter = self.next_counter()?;
         let mut final_header = header.clone();
         final_header.write_counter = counter;
         let header_bytes = final_header.to_bytes();
@@ -184,5 +227,204 @@ impl MobileDb {
             .remove(key.as_bytes())
             .map_err(DbError::Fjall)?;
         Ok(existed)
+    }
+}
+
+
+#[cfg(test)]
+mod p3_counter_tests {
+    use super::*;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_path(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        std::env::temp_dir().join(format!(
+            "edisondb-fv5-p3-{label}-{}-{nonce}",
+            std::process::id()
+        ))
+    }
+
+    fn valid_arpi(value: &str) -> [u8; ArpiHeader::SIZE] {
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(value.as_bytes());
+        let blake3_hash: [u8; 32] = hasher.finalize().into();
+
+        ArpiHeader {
+            magic: *b"ARPi",
+            write_counter: 0,
+            timestamp_us: 1,
+            tier: 2,
+            reserved: [0u8; 3],
+            blake3_hash,
+            node_id: [0u8; 22],
+        }
+        .to_bytes()
+    }
+
+    fn seed_counter(path: &Path, value: &[u8]) {
+        let db = Database::builder(path).open().unwrap();
+        let partition = db
+            .keyspace("main", KeyspaceCreateOptions::default)
+            .unwrap();
+
+        partition.insert(WRITE_COUNTER_KEY, value).unwrap();
+
+        drop(partition);
+        drop(db);
+    }
+
+    fn stored_counter(db: &MobileDb, key: &str) -> u64 {
+        let raw = db
+            .partition
+            .get(key.as_bytes())
+            .unwrap()
+            .expect("record must exist");
+
+        let record = raw.as_ref();
+        let header = record
+            .get(..ArpiHeader::SIZE)
+            .expect("stored record must contain a complete ARPi header");
+
+        ArpiHeader::from_bytes(header)
+            .expect("stored ARPi header must decode")
+            .write_counter
+    }
+
+    #[test]
+    fn p3_counter_increments_and_resumes_after_reopen() {
+        let path = temp_path("reopen");
+        let path_str = path.to_str().unwrap();
+
+        let mut db = MobileDb::open(path_str).unwrap();
+
+        db.insert("rec:1", "alpha", &valid_arpi("alpha"))
+            .unwrap();
+        db.insert("rec:2", "beta", &valid_arpi("beta"))
+            .unwrap();
+
+        assert_eq!(stored_counter(&db, "rec:1"), 1);
+        assert_eq!(stored_counter(&db, "rec:2"), 2);
+        assert_eq!(db.write_counter, 2);
+
+        drop(db);
+
+        let mut reopened = MobileDb::open(path_str).unwrap();
+        assert_eq!(reopened.write_counter, 2);
+
+        reopened
+            .insert("rec:3", "gamma", &valid_arpi("gamma"))
+            .unwrap();
+
+        assert_eq!(stored_counter(&reopened, "rec:3"), 3);
+        assert_eq!(reopened.write_counter, 3);
+
+        drop(reopened);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_malformed_persisted_counter_fails_closed() {
+        let path = temp_path("malformed");
+        seed_counter(&path, &[1u8, 2, 3]);
+
+        let result = MobileDb::open(path.to_str().unwrap());
+
+        assert!(matches!(result, Err(DbError::InvalidCounterState)));
+
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_counter_exhaustion_rejects_write_without_wraparound() {
+        let path = temp_path("exhausted");
+        seed_counter(&path, &u64::MAX.to_le_bytes());
+
+        let mut db = MobileDb::open(path.to_str().unwrap()).unwrap();
+        assert_eq!(db.write_counter, u64::MAX);
+
+        let result =
+            db.insert("rec:max", "omega", &valid_arpi("omega"));
+
+        assert!(matches!(result, Err(DbError::CounterExhausted)));
+        assert_eq!(db.write_counter, u64::MAX);
+        assert!(db.partition.get(b"rec:max").unwrap().is_none());
+
+        drop(db);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn limit004_rejected_provenance_does_not_advance_counter_or_persist() {
+        let path = temp_path("limit004-reject-no-advance");
+        let path_str = path.to_str().unwrap();
+
+        let mut db = MobileDb::open(path_str).unwrap();
+        assert_eq!(db.write_counter, 0);
+
+        // Header binds a different payload, so provenance validation must fail
+        // before any record or counter mutation occurs.
+        let mismatched_header = valid_arpi("different payload");
+        let result = db.insert(
+            "rec:rejected",
+            "actual payload",
+            &mismatched_header,
+        );
+
+        assert!(matches!(result, Err(DbError::InvalidArpi)));
+        assert_eq!(
+            db.write_counter, 0,
+            "rejected provenance must not advance the in-memory counter"
+        );
+        assert!(
+            db.partition
+                .get(b"rec:rejected")
+                .unwrap()
+                .is_none(),
+            "rejected provenance must not persist a record"
+        );
+        assert!(
+            db.partition
+                .get(WRITE_COUNTER_KEY)
+                .unwrap()
+                .is_none(),
+            "rejected provenance must not persist counter state"
+        );
+
+        // The first subsequent valid write must still receive counter 1.
+        db.insert(
+            "rec:accepted",
+            "accepted payload",
+            &valid_arpi("accepted payload"),
+        )
+        .unwrap();
+
+        assert_eq!(db.write_counter, 1);
+        assert_eq!(stored_counter(&db, "rec:accepted"), 1);
+
+        drop(db);
+
+        // Reopen proves the rejected write did not secretly persist a counter
+        // increment before the successful write.
+        let reopened = MobileDb::open(path_str).unwrap();
+        assert_eq!(reopened.write_counter, 1);
+
+        drop(reopened);
+        let _ = std::fs::remove_dir_all(path);
+    }
+
+    #[test]
+    fn p3_counter_transition_never_wraps() {
+        assert_eq!(next_write_counter(0), Some(1));
+        assert_eq!(next_write_counter(41), Some(42));
+        assert_eq!(
+            next_write_counter(u64::MAX - 1),
+            Some(u64::MAX)
+        );
+        assert_eq!(next_write_counter(u64::MAX), None);
     }
 }

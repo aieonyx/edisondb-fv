@@ -1,0 +1,7 @@
+default_baseline_diagnostics=23
+default_current_diagnostics=23
+default_new_diagnostics=0
+mobile_test_surface_baseline_diagnostics=60
+mobile_test_surface_current_diagnostics=60
+mobile_test_surface_new_diagnostics=0
+PASS: final LIMIT-004 tree introduces no new diagnostics

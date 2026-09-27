@@ -1,0 +1,7 @@
+source_commit=6793c15c77b07c8f8cdbb51934bf4be1eee5e883
+parent_commit=b082d11824efcab8330df804d5556601ca673d82
+branch=fv/5-encryption-boundaries
+rustc=rustc 1.97.0 (2d8144b78 2026-07-07)
+cargo=cargo 1.97.0 (c980f4866 2026-06-30)
+kani=cargo-kani 0.67.0
+uname=Linux pop-os 6.17.9-76061709-generic #202511241048~1764607909~24.04~df6b2b6 SMP PREEMPT_DYNAMIC Mon D x86_64 x86_64 x86_64 GNU/Linux

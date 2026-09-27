@@ -1,19 +1,21 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M8 — Formal verification hooks tests (20 tests)
 
 use edisondb::policy::PolicyEngine;
 use edisondb::verification::*;
-use edisondb::{AuditAction, AuditEntry, DataTier, Record, Store};
+use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Record, Store};
+
 
 fn make_record(id: &str, tier: DataTier, owner: &str) -> Record {
-    Record {
-        id: id.to_string(),
-        tier,
-        owner_id: owner.to_string(),
-        payload: b"data".to_vec(),
-        salt: [0u8; 32],
-        created_at: 1000,
-    }
+    let safe_owner = if owner.is_empty() { "verification:test-owner" } else { owner };
+    let mut record =
+        record_new(id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
+    record.owner_id = owner.to_string();
+    record.created_at = 1000;
+    record
 }
 
 fn make_audit(ts: u64, prev: [u8; 32]) -> AuditEntry {
@@ -136,9 +138,16 @@ fn t14_pre_write_empty_owner() {
 
 // ── T15: pre_write empty id fails ────────────────────────────────────────────
 #[test]
-fn t15_pre_write_empty_id() {
-    let r = make_record("", DataTier::Noise, "owner1");
-    assert!(pre_write(&r).is_err());
+fn t15_empty_id_rejected_at_record_construction() {
+    let result = record_new(
+        "",
+        DataTier::Noise,
+        "owner1",
+        b"data".to_vec(),
+        [0u8; 32],
+    );
+
+    assert_eq!(result, Err(EdisonError::EmptyRecordId));
 }
 
 // ── T16: post_write count tracking ───────────────────────────────────────────

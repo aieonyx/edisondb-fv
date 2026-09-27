@@ -1,6 +1,9 @@
 use rand::RngCore;
 
-use crate::{DataTier, EdisonError, Record, decrypt_payload, derive_key, encrypt_payload};
+use crate::{
+    DataTier, EdisonError, EncryptedPayload, Record,
+    decrypt_payload, derive_key,
+};
 use crate::backends::{RedbBackend, FjallBackend, Router};
 use crate::eql::{Statement, Tier};
 
@@ -83,12 +86,63 @@ pub struct EqlExecutor {
 }
 
 impl EqlExecutor {
-    pub fn open(path: &str, owner_id: &str, password: &str) -> Result<Self, EdisonError> {
+    pub fn open(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::open_impl(path, owner_id, password, None)
+    }
+
+    /// Open or create an EdisonDB executor with an authenticated audit
+    /// checkpoint controlled by a database-global store secret.
+    ///
+    /// `password` remains the owner's record-encryption credential.
+    /// `store_secret` is a distinct host-supplied authority shared by all
+    /// owners that legitimately open the same authenticated database.
+    ///
+    /// Legacy checkpoints are rejected by the authenticated backend seam;
+    /// no implicit migration is performed.
+    pub fn open_authenticated(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+        store_secret: &str,
+    ) -> Result<Self, EdisonError> {
+        Self::open_impl(
+            path,
+            owner_id,
+            password,
+            Some(store_secret),
+        )
+    }
+
+    fn open_impl(
+        path: &str,
+        owner_id: &str,
+        password: &str,
+        store_secret: Option<&str>,
+    ) -> Result<Self, EdisonError> {
         let backend_type = std::env::var("EDISONDB_BACKEND")
             .unwrap_or_else(|_| "redb".to_string());
+
         let router = match backend_type.to_lowercase().as_str() {
-            "fjall" => Router::new(Box::new(FjallBackend::open(path)?)),
-            _       => Router::new(Box::new(RedbBackend::open(path)?)),
+            "fjall" => match store_secret {
+                Some(secret) => Router::new(Box::new(
+                    FjallBackend::open_authenticated(path, secret)?,
+                )),
+                None => Router::new(Box::new(
+                    FjallBackend::open(path)?,
+                )),
+            },
+            _ => match store_secret {
+                Some(secret) => Router::new(Box::new(
+                    RedbBackend::open_authenticated(path, secret)?,
+                )),
+                None => Router::new(Box::new(
+                    RedbBackend::open(path)?,
+                )),
+            },
         };
         let vector_path = format!("{}.vectors", path);
         let vector_index = if std::path::Path::new(&vector_path).exists() {
@@ -130,9 +184,16 @@ impl EqlExecutor {
         let mut salt  = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut salt);
         let key       = derive_key(&self.password, &salt)?;
-        // AAD bound to id + tier — transplant attacks impossible
-        let encrypted = encrypt_payload(payload.as_bytes(), &key, &id, &data_tier)?;
-        let record    = Record::new(&id, data_tier, &self.owner_id, encrypted, salt)?;
+        // Record construction owns encryption so AAD and immutable metadata
+        // cannot be supplied independently.
+        let record = Record::new(
+            &id,
+            data_tier,
+            &self.owner_id,
+            payload.as_bytes(),
+            &key,
+            salt,
+        )?;
         self.router.write(record)?;
         self.router.save()?;
         if auto_embed {
@@ -150,7 +211,11 @@ impl EqlExecutor {
 
         let (salt, payload, tier) = {
             let record = read_result?;
-            (record.salt, record.payload.clone(), record.tier.clone())
+            (
+                *record.salt(),
+                record.encrypted_payload().clone(),
+                record.tier.clone(),
+            )
         };
         let key       = derive_key(&self.password, &salt)?;
         // AAD must match — wrong id or tier = decryption failure
@@ -161,11 +226,25 @@ impl EqlExecutor {
 
     fn exec_list(&mut self, tier_filter: Option<Tier>) -> Result<EqlResult, EdisonError> {
         // Collect owned snapshots first to release borrow on self.router
-        type Snapshot = (String, [u8; 32], Vec<u8>, DataTier, u64);
+        type Snapshot = (
+            String,
+            [u8; 32],
+            EncryptedPayload,
+            DataTier,
+            u64,
+        );
         let snapshots: Vec<Snapshot> = self.router
-            .list_by_owner(&self.owner_id)
+            .list_by_owner(&self.owner_id)?
             .into_iter()
-            .map(|r| (r.id.clone(), r.salt, r.payload.clone(), r.tier.clone(), r.created_at))
+            .map(|r| {
+                (
+                    r.id.clone(),
+                    *r.salt(),
+                    r.encrypted_payload().clone(),
+                    r.tier.clone(),
+                    r.created_at,
+                )
+            })
             .collect();
 
         let mut infos = Vec::new();
@@ -206,12 +285,14 @@ impl EqlExecutor {
     fn exec_auto_embed(&mut self, id: String) -> Result<EqlResult, EdisonError> {
         // Find the record payload to embed
         let record = self.router.read(&id, &self.owner_id)?;
-        let payload_bytes = record.payload.clone();
-        let salt = record.salt;
+        let encrypted_payload =
+            record.encrypted_payload().clone();
+        let salt = *record.salt();
         let tier = record.tier.clone();
         // Decrypt to get plaintext
         let key = crate::derive_key(&self.password, &salt)?;
-        let decrypted = crate::decrypt_payload(&payload_bytes, &key, &id, &tier)?;
+        let decrypted =
+            crate::decrypt_payload(&encrypted_payload, &key, &id, &tier)?;
         let text = String::from_utf8(decrypted).map_err(|_| EdisonError::DecryptionFailed)?;
         // Generate embedding
         let client = crate::embedding::EmbeddingClient::default_ollama();
@@ -257,20 +338,30 @@ pub struct DbStats {
 }
 
 impl EqlExecutor {
-    pub fn stats(&self) -> DbStats {
-        let records: Vec<_> = self.router.list_by_owner(&self.owner_id);
-        let critical_count = records.iter().filter(|r| r.tier == crate::DataTier::Critical).count();
-        let personal_count = records.iter().filter(|r| r.tier == crate::DataTier::Personal).count();
-        let noise_count    = records.iter().filter(|r| r.tier == crate::DataTier::Noise).count();
-        let chain_valid    = self.router.verify_audit_chain().is_ok();
-        DbStats {
+    pub fn stats(&self) -> Result<DbStats, EdisonError> {
+        let records = self.router.list_by_owner(&self.owner_id)?;
+        let critical_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Critical)
+            .count();
+        let personal_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Personal)
+            .count();
+        let noise_count = records
+            .iter()
+            .filter(|r| r.tier == crate::DataTier::Noise)
+            .count();
+        let chain_valid = self.router.verify_audit_chain().is_ok();
+
+        Ok(DbStats {
             record_count: records.len(),
-            audit_count:  self.router.audit_count(),
+            audit_count: self.router.audit_count(),
             critical_count,
             personal_count,
             noise_count,
             chain_valid,
-        }
+        })
     }
 
     pub fn verify_chain(&self) -> Result<(), crate::EdisonError> {
@@ -344,6 +435,92 @@ mod tests {
             }
             _ => panic!("wrong variant"),
         }
+    }
+
+    #[test]
+    fn p35_authenticated_store_secret_is_independent_of_owner_password() {
+        let path = "/tmp/eql_p35_store_secret.redb";
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_dir_all(path);
+        let _ = std::fs::remove_file(format!("{}.vectors", path));
+
+        {
+            let mut alice = EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            alice
+                .execute(
+                    parse(
+                        "WRITE p35:alice TIER CRITICAL alice secret",
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+        }
+
+        {
+            let mut bob = EqlExecutor::open_authenticated(
+                path,
+                "bob",
+                "bob-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            assert!(matches!(
+                bob.execute(parse("READ p35:alice").unwrap()),
+                Err(EdisonError::AccessDenied)
+            ));
+
+            bob.execute(
+                parse(
+                    "WRITE p35:bob TIER CRITICAL bob secret",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        }
+
+        {
+            let mut alice = EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "shared-store-secret",
+            )
+            .unwrap();
+
+            match alice
+                .execute(parse("READ p35:alice").unwrap())
+                .unwrap()
+            {
+                EqlResult::Read { payload, .. } => {
+                    assert_eq!(payload, "alice secret");
+                }
+                other => panic!(
+                    "unexpected authenticated read result: {other:?}"
+                ),
+            }
+        }
+
+        assert!(matches!(
+            EqlExecutor::open_authenticated(
+                path,
+                "alice",
+                "alice-password",
+                "wrong-store-secret",
+            ),
+            Err(EdisonError::AuditChainBroken)
+        ));
+
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_dir_all(path);
+        let _ = std::fs::remove_file(format!("{}.vectors", path));
     }
 
     #[test]

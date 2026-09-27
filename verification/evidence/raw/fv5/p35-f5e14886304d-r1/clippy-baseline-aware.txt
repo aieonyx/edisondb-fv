@@ -1,0 +1,9 @@
+default_current_diagnostics=23
+default_baseline_diagnostics=23
+default_new_diagnostics=0
+default_removed_diagnostics=0
+mobile_current_diagnostics=29
+mobile_baseline_diagnostics=29
+mobile_new_diagnostics=0
+mobile_removed_diagnostics=0
+result=PASS

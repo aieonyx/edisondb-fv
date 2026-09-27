@@ -1,0 +1,7 @@
+commit 6793c15c77b07c8f8cdbb51934bf4be1eee5e883
+Author:     Ed <aieonyx.eu@gmail.com>
+AuthorDate: Thu Sep 3 07:05:00 2026 +0200
+Commit:     Ed <aieonyx.eu@gmail.com>
+CommitDate: Thu Sep 3 07:05:00 2026 +0200
+
+    FV-5 P2: harden AAD metadata authority

@@ -1,0 +1,3 @@
+gpg: Signature made Thu 20 Aug 2026 05:32:57 PM CEST
+gpg:                using EDDSA key 3DD2E5298055E03F17116E96B4C8548260DB40E1
+gpg: Good signature from "Edison Lepiten (AIEONYX Project Root Key v1) <aieonyx.eu@gmail.com>" [ultimate]

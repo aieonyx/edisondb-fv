@@ -1,0 +1,12 @@
+rustc 1.97.0 (2d8144b78 2026-07-07)
+cargo 1.97.0 (c980f4866 2026-06-30)
+cargo-kani 0.67.0
+cargo-ndk 4.1.2
+Cargo.lock.sha256=9b33517f58b16900e774e26132fbbb7a48179f121d2795365c9608d45bc19c8b
+ANDROID_HOME=/home/edisonbl/Android/Sdk
+NDK=/home/edisonbl/Android/Sdk/ndk/26.3.11579264
+Pkg.Desc = Android NDK
+Pkg.Revision = 26.3.11579264
+Android Debug Bridge version 1.0.41
+Version 34.0.4-debian
+Installed as /usr/lib/android-sdk/platform-tools/adb

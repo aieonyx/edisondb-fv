@@ -1,0 +1,6 @@
+e1cb11d FV-5: authenticate persisted created_at metadata
+ src/backends/fjall.rs                       | 160 ++++++++++++++++++--
+ src/lib.rs                                  | 224 +++++++++++++++++++++++++++-
+ src/verification.rs                         |  35 ++++-
+ tests/fv5_limit012_created_at_auth_tests.rs | 154 +++++++++++++++++++
+ 4 files changed, 547 insertions(+), 26 deletions(-)

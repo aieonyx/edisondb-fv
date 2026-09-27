@@ -1,10 +1,10 @@
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // License: Apache-2.0
 //
-// ArpiHeader — 78-byte AXON Receptor Protocol Interface provenance header.
+// ArpiHeader — 78-byte mobile ARPi write-provenance header.
 // Generated on Android for every EdisonDB write.
-// Rust FFI validates magic bytes on insert; BLAKE3 verification is
-// relaxed in debug builds until blake3-jvm is wired (see note below).
+// Rust owns BLAKE3 digest generation and validates the same content binding
+// again before persistence.
 //
 // Layout:
 //   Offset  Size  Field
@@ -13,14 +13,13 @@
 //   12       8    timestamp_us (u64 LE, Unix epoch microseconds)
 //   20       1    tier (0=Critical, 1=Personal, 2=Noise)
 //   21       3    reserved (zero)
-//   24      32    content hash (SHA-256 stand-in; replace with BLAKE3 in prod)
+//   24      32    BLAKE3 content hash
 //   56      22    node_id (UTF-8, zero-padded)
 
 package com.aieonyx.edisondb
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.security.MessageDigest
 
 object ArpiHeader {
 
@@ -33,12 +32,9 @@ object ArpiHeader {
      * [tier]: 0=Critical (AI exposure events), 1=Personal, 2=Noise (index keys)
      * [nodeId]: device ARPi node identifier (empty = zero-padded)
      *
-     * NOTE: SHA-256 is used here as a stand-in for BLAKE3.
-     * The Rust side verifies with BLAKE3 in release builds.
-     * To align: add `com.ionspin.kotlin:blake3-jvm:0.1.0` to app/build.gradle
-     * and replace [hashContent] with `Blake3.hash(data)`.
-     * In debug/mobile builds the Rust verification is relaxed via
-     * `#[cfg(debug_assertions)]` guard in src/mobile/mod.rs.
+     * The BLAKE3 content digest is produced by the linked EdisonDB Rust
+     * library. MobileDb validates that digest again against the exact value
+     * before persistence.
      */
     fun build(value: String, tier: Byte = 1, nodeId: String = ""): ByteArray {
         val buf = ByteBuffer.allocate(SIZE).order(ByteOrder.LITTLE_ENDIAN)
@@ -48,12 +44,10 @@ object ArpiHeader {
         buf.putLong(System.currentTimeMillis() * 1_000L) // 12–19  timestamp_us
         buf.put(tier)                                     // 20     tier
         buf.put(ByteArray(3))                             // 21–23  reserved
-        buf.put(hashContent(value.toByteArray(Charsets.UTF_8)))  // 24–55  hash
+        buf.put(EdisonDbAndroid.blake3Hash(value))                      // 24–55  hash
         buf.put(nodeId.toByteArray(Charsets.UTF_8).copyOf(22))   // 56–77  node_id
 
         return buf.array()
     }
 
-    private fun hashContent(data: ByteArray): ByteArray =
-        MessageDigest.getInstance("SHA-256").digest(data)
 }

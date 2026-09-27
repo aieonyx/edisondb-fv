@@ -7,7 +7,7 @@ use crate::{Store, Record, AuditEntry, EdisonError};
 pub trait StorageBackend: Send {
     fn write(&mut self, record: Record) -> Result<(), EdisonError>;
     fn read(&mut self, id: &str, requester_id: &str) -> Result<Record, EdisonError>;
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record>;
+    fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError>;
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError>;
     fn audit_entries(&self) -> Vec<AuditEntry>;
     fn audit_count(&self) -> usize;
@@ -43,11 +43,17 @@ impl StorageBackend for RedbBackend {
         self.store.read(id, requester_id).cloned()
     }
 
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
-        self.store.list_by_owner(owner_id)
+
+    fn list_by_owner(
+        &self,
+        owner_id: &str,
+    ) -> Result<Vec<Record>, EdisonError> {
+        Ok(self
+            .store
+            .list_by_owner(owner_id)?
             .into_iter()
             .cloned()
-            .collect()
+            .collect())
     }
 
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> {
@@ -100,7 +106,7 @@ impl Router {
         self.backend.read(id, requester_id)
     }
 
-    pub fn list_by_owner(&self, owner_id: &str) -> Vec<Record> {
+    pub fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError> {
         self.backend.list_by_owner(owner_id)
     }
 

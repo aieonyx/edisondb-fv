@@ -1,0 +1,13 @@
+PASS: nativeBlake3 executed on physical Android
+PASS: EdisonDB mobile database opened on physical Android
+PASS: valid provenance accepted return_code=0
+PASS: valid provenance record round-tripped
+PASS: mismatched BLAKE3 provenance rejected return_code=-3
+PASS: rejected hash-mismatch record absent
+PASS: invalid tier rejected return_code=-3
+PASS: nonzero reserved byte rejected return_code=-3
+PASS: 77-byte JNI header rejected return_code=-5
+PASS: 79-byte JNI header rejected return_code=-5
+PASS: valid provenance accepted after rejection cases return_code=0
+PASS: valid write works after fail-closed rejections
+PHYSICAL_ANDROID_LIMIT004_R2_RUNTIME=PASS

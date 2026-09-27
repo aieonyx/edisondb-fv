@@ -1,0 +1,14 @@
+prestate_exit_code=0
+android_cross_build_exit_code=0
+artifact_capture_exit_code=0
+jni_symbol_exit_code=0
+device_precondition_exit_code=0
+harness_write_exit_code=0
+javac_exit_code=0
+d8_exit_code=0
+jar_exit_code=0
+device_prepare_exit_code=0
+push_exit_code=0
+physical_runtime_exit_code=0
+runtime_marker_exit_code=0
+device_cleanup_exit_code=0

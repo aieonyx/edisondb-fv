@@ -1,0 +1,8 @@
+commit=f5e14886304dc57895d7f988e56883a9b394e189
+parent=824182b556b63d18c70f343122a1a200edf6a411
+tree=06f5ca327255f0f3b94d3b137cc2db35c88d5213
+subject=FV-5 P3.5: authenticate audit checkpoints
+committed_at=2026-09-08T06:09:35+02:00
+gpg: Signature made Tue 08 Sep 2026 06:09:35 AM CEST
+gpg:                using EDDSA key 3DD2E5298055E03F17116E96B4C8548260DB40E1
+gpg: Good signature from "Edison Lepiten (AIEONYX Project Root Key v1) <aieonyx.eu@gmail.com>" [ultimate]

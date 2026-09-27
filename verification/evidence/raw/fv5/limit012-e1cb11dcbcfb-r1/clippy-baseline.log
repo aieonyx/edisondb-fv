@@ -1,0 +1,755 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+    Checking cfg-if v1.0.4
+    Checking smallvec v1.15.1
+    Checking once_cell v1.21.4
+    Checking scopeguard v1.2.0
+    Checking bytes v1.11.1
+    Checking pin-project-lite v0.2.17
+   Compiling parking_lot_core v0.9.12
+    Checking memchr v2.8.0
+    Checking futures-core v0.3.32
+    Checking typenum v1.20.0
+    Checking itoa v1.0.18
+    Checking log v0.4.30
+   Compiling find-msvc-tools v0.1.9
+    Checking lock_api v0.4.14
+   Compiling serde_core v1.0.228
+   Compiling shlex v2.0.1
+   Compiling version_check v0.9.5
+    Checking futures-sink v0.3.32
+    Checking stable_deref_trait v1.2.1
+    Checking equivalent v1.0.2
+    Checking slab v0.4.12
+    Checking tracing-core v0.1.36
+    Checking subtle v2.6.1
+   Compiling rustix v1.1.4
+    Checking futures-channel v0.3.32
+   Compiling dunce v1.0.5
+    Checking futures-io v0.3.32
+    Checking hashbrown v0.17.1
+   Compiling zerocopy v0.8.48
+   Compiling crossbeam-utils v0.8.21
+    Checking futures-task v0.3.32
+   Compiling fs_extra v1.3.0
+    Checking fnv v1.0.7
+   Compiling generic-array v0.14.7
+   Compiling serde v1.0.228
+   Compiling anyhow v1.0.102
+    Checking percent-encoding v2.3.2
+   Compiling getrandom v0.3.4
+    Checking http v1.4.1
+   Compiling zmij v1.0.21
+   Compiling httparse v1.10.1
+    Checking tower-service v0.3.3
+    Checking bitflags v2.11.1
+   Compiling either v1.16.0
+    Checking litemap v0.8.2
+    Checking zeroize v1.8.2
+    Checking atomic-waker v1.1.2
+   Compiling itertools v0.10.5
+    Checking writeable v0.6.3
+   Compiling aws-lc-rs v1.17.0
+    Checking indexmap v2.14.0
+    Checking try-lock v0.2.5
+   Compiling serde_json v1.0.149
+    Checking want v0.3.1
+   Compiling syn v2.0.117
+    Checking crossbeam-epoch v0.9.18
+   Compiling autocfg v1.5.1
+   Compiling icu_normalizer_data v2.2.0
+    Checking utf8_iter v1.0.4
+   Compiling icu_properties_data v2.2.0
+    Checking httpdate v1.0.3
+    Checking rustls-pki-types v1.14.1
+    Checking form_urlencoded v1.2.2
+    Checking sync_wrapper v1.0.2
+    Checking http-body v1.0.1
+   Compiling heck v0.5.0
+   Compiling prettyplease v0.2.37
+   Compiling jobserver v0.1.34
+    Checking ipnet v2.12.0
+    Checking base64 v0.22.1
+   Compiling pulldown-cmark v0.13.4
+    Checking tower-layer v0.3.3
+   Compiling num-traits v0.2.19
+   Compiling linux-raw-sys v0.12.1
+   Compiling foldhash v0.1.5
+   Compiling cc v1.2.63
+    Checking untrusted v0.9.0
+   Compiling unicase v2.9.0
+   Compiling rustls v0.23.40
+    Checking utf8parse v0.2.2
+   Compiling regex-syntax v0.8.10
+   Compiling hashbrown v0.15.5
+    Checking http-body-util v0.1.3
+    Checking fastrand v2.4.1
+    Checking getrandom v0.2.17
+    Checking errno v0.3.14
+    Checking socket2 v0.6.4
+    Checking mio v1.2.1
+    Checking signal-hook-registry v1.4.8
+    Checking rand_core v0.6.4
+    Checking parking_lot v0.12.5
+    Checking crypto-common v0.1.7
+   Compiling fixedbitset v0.5.7
+    Checking cpufeatures v0.2.17
+    Checking mime v0.3.17
+   Compiling rayon-core v1.13.0
+    Checking anstyle-parse v1.0.0
+    Checking inout v0.1.4
+    Checking crossbeam-deque v0.8.6
+    Checking hybrid-array v0.4.12
+    Checking is_terminal_polyfill v1.70.2
+    Checking colorchoice v1.0.5
+   Compiling multimap v0.10.1
+    Checking ryu v1.0.23
+    Checking anstyle v1.0.14
+   Compiling ucd-trie v0.1.7
+   Compiling cfg_aliases v0.2.1
+    Checking anstyle-query v1.1.5
+    Checking serde_path_to_error v0.1.20
+   Compiling nix v0.31.3
+    Checking cipher v0.4.4
+   Compiling cmake v0.1.58
+    Checking anstream v1.0.0
+   Compiling pest v2.8.6
+    Checking universal-hash v0.5.1
+    Checking block-buffer v0.10.4
+    Checking xxhash-rust v0.8.15
+   Compiling protoc-bin-vendored-linux-aarch_64 v3.2.0
+    Checking opaque-debug v0.3.1
+   Compiling protoc-bin-vendored-linux-x86_64 v3.2.0
+    Checking glob v0.3.3
+    Checking byteorder-lite v0.1.0
+   Compiling protoc-bin-vendored-linux-s390_64 v3.2.0
+    Checking openssl-probe v0.2.1
+   Compiling protoc-bin-vendored-macos-x86_64 v3.2.0
+   Compiling protoc-bin-vendored-linux-ppcle_64 v3.2.0
+   Compiling thiserror v1.0.69
+    Checking twox-hash v2.1.2
+   Compiling protoc-bin-vendored-win32 v3.2.0
+   Compiling protoc-bin-vendored-linux-x86_32 v3.2.0
+   Compiling protoc-bin-vendored-macos-aarch_64 v3.2.0
+    Checking hashbrown v0.16.1
+   Compiling petgraph v0.8.3
+    Checking compare v0.0.6
+   Compiling jni-sys v0.3.1
+    Checking clap_lex v1.1.0
+    Checking matchit v0.8.4
+    Checking strsim v0.11.1
+   Compiling pulldown-cmark-to-cmark v22.0.0
+   Compiling regex-automata v0.4.14
+    Checking interval-heap v0.0.5
+    Checking sfa v1.0.0
+   Compiling aws-lc-sys v0.41.0
+    Checking clap_builder v4.6.0
+   Compiling blake3 v1.8.5
+   Compiling protoc-bin-vendored v3.2.0
+    Checking lz4_flex v0.13.1
+    Checking rustls-native-certs v0.8.4
+    Checking block-buffer v0.12.0
+    Checking tempfile v3.27.0
+    Checking crypto-common v0.2.2
+    Checking digest v0.10.7
+    Checking polyval v0.6.2
+    Checking rayon v1.12.0
+    Checking crossbeam-skiplist v0.1.3
+    Checking quick_cache v0.6.22
+    Checking spin v0.9.8
+    Checking nibble_vec v0.1.0
+    Checking byteview v0.10.1
+    Checking self_cell v1.2.2
+    Checking cpufeatures v0.3.0
+    Checking base64ct v1.8.3
+    Checking rustc-hash v2.1.2
+    Checking endian-type v0.2.0
+    Checking varint-rs v2.2.0
+    Checking hashbrown v0.14.5
+   Compiling redb v2.6.3
+    Checking const-oid v0.10.2
+   Compiling pest_meta v2.8.6
+    Checking radix_trie v0.3.0
+    Checking password-hash v0.5.0
+    Checking flume v0.12.0
+    Checking blake2 v0.10.6
+    Checking ghash v0.5.1
+    Checking java-locator v0.1.9
+    Checking aes v0.8.4
+    Checking ctr v0.9.2
+    Checking ordered-float v3.9.2
+    Checking aead v0.5.2
+    Checking digest v0.11.3
+    Checking rand_core v0.9.5
+    Checking num_cpus v1.17.0
+    Checking rtoolbox v0.0.5
+    Checking combine v4.6.7
+    Checking libloading v0.7.4
+    Checking encoding_rs v0.8.35
+    Checking home v0.5.12
+    Checking dashmap v6.2.1
+    Checking cesu8 v1.1.0
+    Checking unicode-segmentation v1.13.2
+    Checking unicode-width v0.2.2
+    Checking arrayvec v0.7.8
+    Checking constant_time_eq v0.4.2
+    Checking arrayref v0.3.9
+    Checking aes-gcm v0.10.3
+    Checking rpassword v7.5.3
+    Checking sha2 v0.11.0
+    Checking argon2 v0.5.3
+   Compiling target-triple v1.0.1
+   Compiling regex v1.12.3
+    Checking ciborium-io v0.2.2
+    Checking winnow v1.0.4
+    Checking plotters-backend v0.3.7
+   Compiling synstructure v0.13.2
+   Compiling pest_generator v2.8.6
+    Checking toml_parser v1.1.3+spec-1.1.0
+    Checking plotters-svg v0.3.7
+    Checking toml_datetime v1.1.1+spec-1.1.0
+    Checking serde_spanned v1.1.1
+    Checking wait-timeout v0.2.1
+    Checking quick-error v1.2.3
+    Checking cast v0.3.0
+    Checking bit-vec v0.8.0
+    Checking toml_writer v1.1.2+spec-1.1.0
+    Checking same-file v1.0.6
+    Checking rustyline v18.0.0
+    Checking rusty-fork v0.3.1
+    Checking plotters v0.3.7
+    Checking rand v0.9.4
+    Checking walkdir v2.5.0
+   Compiling tonic-build v0.14.6
+    Checking toml v1.1.4+spec-1.1.0
+    Checking bit-set v0.8.0
+    Checking rand_xorshift v0.4.0
+    Checking is-terminal v0.4.17
+    Checking unarray v0.1.4
+    Checking termcolor v1.4.1
+    Checking oorandom v11.1.5
+    Checking anes v0.1.6
+   Compiling zerofrom-derive v0.1.7
+   Compiling tokio-macros v2.7.0
+   Compiling yoke-derive v0.8.2
+   Compiling tracing-attributes v0.1.31
+   Compiling zerovec-derive v0.11.3
+   Compiling futures-macro v0.3.32
+   Compiling displaydoc v0.2.6
+   Compiling zerocopy-derive v0.8.48
+   Compiling serde_derive v1.0.228
+   Compiling prost-derive v0.14.3
+   Compiling jni-sys-macros v0.4.1
+   Compiling pin-project-internal v1.1.13
+    Checking tokio v1.52.3
+   Compiling thiserror-impl v1.0.69
+    Checking jni-sys v0.4.1
+   Compiling clap_derive v4.6.1
+    Checking futures-util v0.3.32
+   Compiling async-trait v0.1.89
+   Compiling enum_dispatch v0.3.13
+    Checking zerofrom v0.1.8
+   Compiling pest_derive v2.8.6
+    Checking yoke v0.8.3
+    Checking tracing v0.1.44
+    Checking pin-project v1.1.13
+    Checking criterion-plot v0.5.0
+    Checking zerovec v0.11.6
+    Checking zerotrie v0.2.4
+    Checking axum-core v0.5.6
+   Compiling prost v0.14.3
+    Checking lsm-tree v3.1.6
+    Checking tinystr v0.8.3
+    Checking potential_utf v0.1.5
+    Checking icu_collections v2.2.0
+    Checking icu_locale_core v2.2.0
+   Compiling prost-types v0.14.3
+    Checking jni v0.21.1
+    Checking clap v4.6.1
+    Checking icu_provider v2.2.0
+    Checking icu_properties v2.2.0
+    Checking icu_normalizer v2.2.0
+   Compiling prost-build v0.14.3
+    Checking serde_urlencoded v0.7.1
+    Checking tinytemplate v1.2.1
+    Checking trybuild v1.0.120
+    Checking futures-executor v0.3.32
+    Checking futures v0.3.32
+    Checking fjall v3.1.6
+   Compiling tonic-prost-build v0.14.6
+    Checking idna_adapter v1.2.2
+    Checking idna v1.1.0
+   Compiling edisondb v0.6.0-p3m9 (/tmp/edisondb-limit012-baseline-959131)
+    Checking url v2.5.8
+    Checking tokio-util v0.7.18
+    Checking tokio-stream v0.1.18
+    Checking h2 v0.4.14
+    Checking tower v0.5.3
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+    Checking ciborium-ll v0.2.2
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking ciborium v0.2.2
+    Checking rand v0.8.6
+    Checking proptest v1.11.0
+    Checking tower-http v0.6.11
+    Checking criterion v0.5.1
+    Checking instant-distance v0.6.1
+    Checking hyper v1.10.1
+    Checking hyper-util v0.1.20
+    Checking hyper-timeout v0.5.2
+    Checking axum v0.8.9
+    Checking rustls-webpki v0.103.13
+    Checking tonic v0.14.6
+    Checking tokio-rustls v0.26.4
+    Checking rustls-platform-verifier v0.7.0
+    Checking hyper-rustls v0.27.9
+    Checking reqwest v0.13.4
+    Checking tonic-prost v0.14.6
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:28:26
+   |
+28 |     let path_str = match CStr::from_ptr(path).to_str() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:24:1
+   |
+24 | pub unsafe extern "C" fn edisondb_open(path: *const c_char) -> *mut DbHandle {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:53:25
+   |
+53 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:44:1
+   |
+44 | / pub unsafe extern "C" fn edisondb_insert(
+45 | |     db: *mut DbHandle,
+46 | |     key: *const c_char,
+47 | |     value: *const c_char,
+48 | |     arpi_header: *const u8,
+49 | | ) -> i32 {
+   | |________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:57:27
+   |
+57 |     let value_str = match CStr::from_ptr(value).to_str() {
+   |                           ^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::slice::from_raw_parts` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:62:24
+   |
+62 |     let header_bytes = std::slice::from_raw_parts(arpi_header, 78);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:63:19
+   |
+63 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:85:25
+   |
+85 |     let key_str = match CStr::from_ptr(key).to_str() {
+   |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/ffi.rs:78:1
+   |
+78 | / pub unsafe extern "C" fn edisondb_query(
+79 | |     db: *mut DbHandle,
+80 | |     key: *const c_char,
+81 | | ) -> *mut c_char {
+   | |________________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+  --> src/mobile/ffi.rs:89:19
+   |
+89 |     let handle = &*db;
+   |                   ^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:112:25
+    |
+112 |     let key_str = match CStr::from_ptr(key).to_str() {
+    |                         ^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:105:1
+    |
+105 | / pub unsafe extern "C" fn edisondb_delete(
+106 | |     db: *mut DbHandle,
+107 | |     key: *const c_char,
+108 | | ) -> i32 {
+    | |________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: dereference of raw pointer is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:116:19
+    |
+116 |     let handle = &*db;
+    |                   ^^^ dereference of raw pointer
+    |
+    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::boxed::Box::<T>::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:132:14
+    |
+132 |         drop(Box::from_raw(db));
+    |              ^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:130:1
+    |
+130 | pub unsafe extern "C" fn edisondb_close(db: *mut DbHandle) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CString::from_raw` is unsafe and requires unsafe block
+   --> src/mobile/ffi.rs:140:14
+    |
+140 |         drop(CString::from_raw(s));
+    |              ^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/ffi.rs:138:1
+    |
+138 | pub unsafe extern "C" fn edisondb_free_string(s: *mut c_char) {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_open` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:38:5
+   |
+38 |     edisondb_open(c_path.as_ptr()) as jlong
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:25:1
+   |
+25 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeOpen(
+26 | |     mut env: JNIEnv,
+27 | |     _class: JClass,
+28 | |     path: JString,
+29 | | ) -> jlong {
+   | |__________^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_close` is unsafe and requires unsafe block
+  --> src/mobile/jni_bridge.rs:48:5
+   |
+48 |     edisondb_close(handle as *mut super::ffi::DbHandle);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> src/mobile/jni_bridge.rs:43:1
+   |
+43 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeClose(
+44 | |     _env: JNIEnv,
+45 | |     _class: JClass,
+46 | |     handle: jlong,
+47 | | ) {
+   | |_^
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_insert` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:112:5
+    |
+112 |     edisondb_insert(db, c_key.as_ptr(), c_val.as_ptr(), arpi_u8.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:73:1
+    |
+ 73 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeInsert(
+ 74 | |     mut env: JNIEnv,
+ 75 | |     _class: JClass,
+ 76 | |     handle: jlong,
+...   |
+ 79 | |     arpi: JByteArray,
+ 80 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_query` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:132:15
+    |
+132 |     let raw = edisondb_query(db, c_key.as_ptr());
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:117:1
+    |
+117 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeQuery(
+118 | |     mut env: JNIEnv,
+119 | |     _class: JClass,
+120 | |     handle: jlong,
+121 | |     key: JString,
+122 | | ) -> jstring {
+    | |____________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `std::ffi::CStr::from_ptr` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:136:22
+    |
+136 |     let result_str = std::ffi::CStr::from_ptr(raw)
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_free_string` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:142:5
+    |
+142 |     edisondb_free_string(raw);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning[E0133]: call to unsafe function `mobile::ffi::edisondb_delete` is unsafe and requires unsafe block
+   --> src/mobile/jni_bridge.rs:163:5
+    |
+163 |     edisondb_delete(db, c_key.as_ptr())
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    |
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+   --> src/mobile/jni_bridge.rs:148:1
+    |
+148 | / pub unsafe extern "system" fn Java_com_aieonyx_edisondb_EdisonDbAndroid_nativeDelete(
+149 | |     mut env: JNIEnv,
+150 | |     _class: JClass,
+151 | |     handle: jlong,
+152 | |     key: JString,
+153 | | ) -> jint {
+    | |_________^
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+
+warning: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+   --> src/migration.rs:221:27
+    |
+221 | pub fn transform(records: &mut Vec<EdmRecord>, opts: &TransformOptions) {
+    |                           ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#ptr_arg
+    = note: `#[warn(clippy::ptr_arg)]` on by default
+help: change this to
+    |
+221 - pub fn transform(records: &mut Vec<EdmRecord>, opts: &TransformOptions) {
+221 + pub fn transform(records: &mut [EdmRecord], opts: &TransformOptions) {
+    |
+
+warning: this `if` statement can be collapsed
+   --> src/migration.rs:232:9
+    |
+232 | /         if let Some(strip) = &opts.strip_id_prefix {
+233 | |             if r.id.starts_with(strip.as_str()) {
+234 | |                 r.id = r.id[strip.len()..].to_string();
+235 | |             }
+236 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#collapsible_if
+    = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+    |
+232 ~         if let Some(strip) = &opts.strip_id_prefix
+233 ~             && r.id.starts_with(strip.as_str()) {
+234 |                 r.id = r.id[strip.len()..].to_string();
+235 ~             }
+    |
+
+warning: manual implementation of `.is_multiple_of()`
+   --> src/migration.rs:323:8
+    |
+323 |     if s.len() % 2 != 0 { return None; }
+    |        ^^^^^^^^^^^^^^^^ help: replace with: `!s.len().is_multiple_of(2)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_is_multiple_of
+    = note: `#[warn(clippy::manual_is_multiple_of)]` on by default
+
+warning: method `from_str` can be confused for the standard trait method `std::str::FromStr::from_str`
+   --> src/migration.rs:332:5
+    |
+332 | /     pub fn from_str(s: &str) -> Option<Self> {
+333 | |         match s {
+334 | |             "critical" => Some(Self::Critical),
+335 | |             "personal" => Some(Self::Personal),
+...   |
+339 | |     }
+    | |_____^
+    |
+    = help: consider implementing the trait `std::str::FromStr` or choosing a less ambiguous method name
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#should_implement_trait
+    = note: `#[warn(clippy::should_implement_trait)]` on by default
+
+warning: method `from_str` can be confused for the standard trait method `std::str::FromStr::from_str`
+  --> src/policy.rs:25:5
+   |
+25 | /     pub fn from_str(s: &str) -> Option<Self> {
+26 | |         match s {
+27 | |             "read" => Some(Self::Read),
+28 | |             "write" => Some(Self::Write),
+...  |
+35 | |     }
+   | |_____^
+   |
+   = help: consider implementing the trait `std::str::FromStr` or choosing a less ambiguous method name
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#should_implement_trait
+
+warning: method `from_str` can be confused for the standard trait method `std::str::FromStr::from_str`
+   --> src/policy.rs:94:5
+    |
+ 94 | /     pub fn from_str(s: &str) -> Option<Self> {
+ 95 | |         match s {
+ 96 | |             "owner" => Some(Self::Owner),
+ 97 | |             "reader" => Some(Self::Reader),
+...   |
+103 | |     }
+    | |_____^
+    |
+    = help: consider implementing the trait `std::str::FromStr` or choosing a less ambiguous method name
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#should_implement_trait
+
+warning: this `if` statement can be collapsed
+   --> src/policy.rs:304:13
+    |
+304 | /             if rule.matches(subject, resource, action) {
+305 | |                 if matches!(rule.effect, RuleEffect::Deny) {
+306 | |                     return AccessDecision::Deny(format!(
+307 | |                         "explicit deny rule: {}/{}",
+...   |
+311 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+304 ~             if rule.matches(subject, resource, action)
+305 ~                 && matches!(rule.effect, RuleEffect::Deny) {
+306 |                     return AccessDecision::Deny(format!(
+...
+309 |                     ));
+310 ~                 }
+    |
+
+warning: this `if` statement can be collapsed
+   --> src/policy.rs:339:13
+    |
+339 | /             if rule.matches(subject, resource, action) {
+340 | |                 if matches!(rule.effect, RuleEffect::Allow) {
+341 | |                     return AccessDecision::Permit(format!(
+342 | |                         "allow rule: {}/{}",
+...   |
+346 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+339 ~             if rule.matches(subject, resource, action)
+340 ~                 && matches!(rule.effect, RuleEffect::Allow) {
+341 |                     return AccessDecision::Permit(format!(
+...
+344 |                     ));
+345 ~                 }
+    |
+
+warning: the loop variable `d` is used to index `proj`
+  --> src/sovereign_embed.rs:98:14
+   |
+98 |     for d in 0..dim {
+   |              ^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_range_loop
+   = note: `#[warn(clippy::needless_range_loop)]` on by default
+help: consider using an iterator and enumerate()
+   |
+98 -     for d in 0..dim {
+98 +     for (d, <item>) in proj.iter_mut().enumerate().take(dim) {
+   |
+
+warning: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+   --> src/sovereign_embed.rs:117:20
+    |
+117 | fn l2_normalize(v: &mut Vec<f32>) {
+    |                    ^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#ptr_arg
+help: change this to
+    |
+117 - fn l2_normalize(v: &mut Vec<f32>) {
+117 + fn l2_normalize(v: &mut [f32]) {
+    |
+
+warning: the borrowed expression implements the required traits
+   --> src/mobile/mod.rs:181:40
+    |
+181 |             .insert(WRITE_COUNTER_KEY, &self.write_counter.to_le_bytes())
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `self.write_counter.to_le_bytes()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrows_for_generic_args
+    = note: `#[warn(clippy::needless_borrows_for_generic_args)]` on by default
+
+For more information about this error, try `rustc --explain E0133`.
+warning: `edisondb` (lib) generated 29 warnings (run `cargo clippy --fix --lib -p edisondb -- ` to apply 16 suggestions)
+warning: manual `RangeInclusive::contains` implementation
+  --> tests/p3m4_embed_tests.rs:96:21
+   |
+96 | ...   assert!(s >= -1.001 && s <= 1.001, "sim out of bounds: {} vs {}: {}", texts[i], texts[j], s);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `(-1.001..=1.001).contains(&s)`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_range_contains
+   = note: `#[warn(clippy::manual_range_contains)]` on by default
+
+warning: `edisondb` (test "p3m4_embed_tests") generated 1 warning (run `cargo clippy --fix --test "p3m4_embed_tests" -p edisondb -- ` to apply 1 suggestion)
+warning: `edisondb` (lib test) generated 29 warnings (29 duplicates)
+warning: manual implementation of `.is_multiple_of()`
+   --> src/grpc.rs:233:12
+    |
+233 |         if req.query_vec.len() % 4 != 0 {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `!req.query_vec.len().is_multiple_of(4)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#manual_is_multiple_of
+    = note: `#[warn(clippy::manual_is_multiple_of)]` on by default
+
+warning: `edisondb` (bin "edisondb-server") generated 1 warning (run `cargo clippy --fix --bin "edisondb-server" -p edisondb -- ` to apply 1 suggestion)
+warning: `edisondb` (bin "edisondb-server" test) generated 1 warning (1 duplicate)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 30.44s

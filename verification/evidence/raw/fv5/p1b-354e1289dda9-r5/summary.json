@@ -1,0 +1,100 @@
+{
+  "cargo_lock_sha256": "9b33517f58b16900e774e26132fbbb7a48179f121d2795365c9608d45bc19c8b",
+  "clippy": "pass",
+  "commit": "354e1289dda9ff3bc15f41afc0242d7a8c5731a3",
+  "compile": "pass",
+  "compile_fail": {
+    "contract": "public Record cannot implement external serde_json reconstruction",
+    "golden_diagnostic": "Record does not implement Deserialize",
+    "log_sha256": "ad4eeba0c0d2979c1ad6d45caa76f0b0a70c334cc8efc222638f31b1b7a1a1d5",
+    "status": "pass",
+    "trybuild_exit_code": 0
+  },
+  "dynamic_tests": {
+    "failed": 0,
+    "ignored": 0,
+    "passed": 263,
+    "targets": 15
+  },
+  "environment": {
+    "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+    "kani": "cargo-kani 0.67.0",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)"
+  },
+  "kani": {
+    "checks": 852,
+    "details": {
+      "kani_audit_chain_tail_drop_checkpoint_rejected": {
+        "checks": 90,
+        "failed": 0,
+        "sha256": "8253ac8398ec5590ad40df57b8ef9c7e9591ac8aabc6919e3b140bdc05cebdab",
+        "unreachable": 0,
+        "unsupported_notice": false
+      },
+      "kani_owner_nonempty_invariant": {
+        "checks": 76,
+        "failed": 0,
+        "sha256": "d1476259c95ca562adfba32e5a4ffee72d09f7e9f905799deb49bc86f087cae5",
+        "unreachable": 0,
+        "unsupported_notice": false
+      },
+      "kani_persisted_created_at_validation": {
+        "checks": 215,
+        "failed": 0,
+        "sha256": "7c19dd5377237a2da0e6fd3856eab4711660a36737f75f380d247a376c1b23ed",
+        "unreachable": 5,
+        "unsupported_notice": true
+      },
+      "kani_persisted_record_metadata": {
+        "checks": 363,
+        "failed": 0,
+        "sha256": "038af9b44f56bfaa64862f72fd6d7968b016ed3e270e6d60076334a22b2ad9e7",
+        "unreachable": 5,
+        "unsupported_notice": true
+      },
+      "kani_policy_tier_ceiling": {
+        "checks": 23,
+        "failed": 0,
+        "sha256": "9ee0945dc9c41c2787f3c2b1f4480ab86f9cb90830051464655a1658c1b97df6",
+        "unreachable": 0,
+        "unsupported_notice": false
+      },
+      "kani_record_identity_validation": {
+        "checks": 77,
+        "failed": 0,
+        "sha256": "d20a03e1d93f90c5bbf8ca9ce531ccf1a47d84701b9b4b230b2b900563f04d05",
+        "unreachable": 0,
+        "unsupported_notice": false
+      },
+      "kani_storage_id_immutability": {
+        "checks": 8,
+        "failed": 0,
+        "sha256": "b998f251a7959cfb4fa147af45e86b46570183ae25ceb1b3c94f6b6067893c50",
+        "unreachable": 0,
+        "unsupported_notice": false
+      }
+    },
+    "failed": 0,
+    "harnesses": 7,
+    "unreachable": 10
+  },
+  "logs": {
+    "cargo-check.log": "732186322402325172940531d8d6d7cfac85dc902585b2bef6715ad6839dacfd",
+    "cargo-clippy.log": "0b53209db424367e80c52cd8cde8b75e37af110438a0efde777104a1463956de",
+    "cargo-tests.log": "e3ac4ce4eceb55ca5847da3073557584d1fd908ab59c6c8cfdfdb988a834d4a0",
+    "kani/kani_audit_chain_tail_drop_checkpoint_rejected.log": "8253ac8398ec5590ad40df57b8ef9c7e9591ac8aabc6919e3b140bdc05cebdab",
+    "kani/kani_owner_nonempty_invariant.log": "d1476259c95ca562adfba32e5a4ffee72d09f7e9f905799deb49bc86f087cae5",
+    "kani/kani_persisted_created_at_validation.log": "7c19dd5377237a2da0e6fd3856eab4711660a36737f75f380d247a376c1b23ed",
+    "kani/kani_persisted_record_metadata.log": "038af9b44f56bfaa64862f72fd6d7968b016ed3e270e6d60076334a22b2ad9e7",
+    "kani/kani_policy_tier_ceiling.log": "9ee0945dc9c41c2787f3c2b1f4480ab86f9cb90830051464655a1658c1b97df6",
+    "kani/kani_record_identity_validation.log": "d20a03e1d93f90c5bbf8ca9ce531ccf1a47d84701b9b4b230b2b900563f04d05",
+    "kani/kani_storage_id_immutability.log": "b998f251a7959cfb4fa147af45e86b46570183ae25ceb1b3c94f6b6067893c50",
+    "trybuild.log": "ad4eeba0c0d2979c1ad6d45caa76f0b0a70c334cc8efc222638f31b1b7a1a1d5"
+  },
+  "parent": "81782052fb4ad1c73aeb51df0a72973318f4fa7c",
+  "phase": "FV-5 P1b",
+  "source_tree_manifest_sha256": "2455a3827fb12b419406aab2aa1eaafe9dabac7d2bd3ce2e4dec5c962d758fd4",
+  "status": "commit-bound verification passed",
+  "subject": "FV-5 P1b: validate persisted record reconstruction",
+  "tree": "f55ef22d87f07fb7e5821b9d68ffa32c4ac17b6f"
+}

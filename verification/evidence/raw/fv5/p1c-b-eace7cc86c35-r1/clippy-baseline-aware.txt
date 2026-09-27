@@ -1,0 +1,8 @@
+baseline_commit=dba00ea58cd160a69c9a4fc6bb041e361fa40e47
+current_commit=eace7cc86c354481c100ccf88b8f5d4bda33d898
+baseline_exit_code=0
+current_exit_code=0
+baseline_diagnostics=23
+current_diagnostics=23
+new_diagnostics=0
+result=PASS: no new Clippy diagnostics relative to P1c-A baseline

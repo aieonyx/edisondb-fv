@@ -30,13 +30,17 @@ use proto::{
 
 pub struct EdisonDbGrpc {
     db_path: String,
+    // Database-global checkpoint authority, distinct from x-password.
+    // FV-5 P4 owns long-lived secret zeroization.
+    store_secret: String,
     operation_lock: Mutex<()>,
 }
 
 impl EdisonDbGrpc {
-    pub fn new(db_path: String) -> Self {
+    pub fn new(db_path: String, store_secret: String) -> Self {
         Self {
             db_path,
+            store_secret,
             operation_lock: Mutex::new(()),
         }
     }
@@ -56,8 +60,13 @@ impl EdisonDbGrpc {
         owner_id: &str,
         password: &str,
     ) -> Result<EdisonDB, Status> {
-        EdisonDB::connect(&self.db_path, owner_id, password)
-            .map_err(|e| Status::unauthenticated(e.to_string()))
+        EdisonDB::connect_authenticated(
+            &self.db_path,
+            owner_id,
+            password,
+            &self.store_secret,
+        )
+        .map_err(|e| Status::unauthenticated(e.to_string()))
     }
 }
 
@@ -249,12 +258,16 @@ impl EdisonDb for EdisonDbGrpc {
 
 // ── Server entrypoint ─────────────────────────────────────────────────────────
 
-pub async fn serve_grpc(db_path: String, port: u16) {
+pub async fn serve_grpc(
+    db_path: String,
+    store_secret: String,
+    port: u16,
+) {
     let addr = format!("0.0.0.0:{}", port)
         .parse()
         .expect("grpc: invalid bind address");
 
-    let svc = EdisonDbGrpc::new(db_path);
+    let svc = EdisonDbGrpc::new(db_path, store_secret);
 
     println!("  gRPC     : grpc://0.0.0.0:{}", port);
 

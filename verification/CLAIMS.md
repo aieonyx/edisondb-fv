@@ -608,6 +608,470 @@ checkpoint remains deferred to FV-5.
 
 The original intermediate local logs are retained as development evidence. Final commit-bound local and CI evidence is now archived under `verification/evidence/raw/fv4b/final-5c63ac45289e/` and is bound to reviewed source commit `5c63ac45289e876eb563f1752eb796a19b553534`.
 
+## FV-5 — Encryption and Secret Boundaries
+
+### CLAIM-FV5-001 — Persisted reconstruction authority
+
+**Status:** `COMMIT-BOUND VERIFICATION PASS`
+
+FV-5 P1b removes public Serde reconstruction authority from `Record` and
+routes persisted record decoding through a crate-private validated
+reconstruction boundary.
+
+Verified source commit:
+
+`354e1289dda9ff3bc15f41afc0242d7a8c5731a3`
+
+Commit-bound R5 evidence records:
+
+- `263 passed / 0 failed / 0 ignored` dynamic tests;
+- `7` Kani harnesses;
+- `852` Kani checks;
+- `0` failed Kani checks;
+- `10` unreachable Kani checks;
+- passing external `Record` deserialization compile-fail enforcement.
+
+The two persisted-record Kani runs contain retained unsupported-construct
+notices. Their raw logs remain archived and the notices are explicitly
+disclosed; they are not interpreted as proof of unsupported behavior.
+
+Evidence:
+
+`verification/evidence/FV-5-P1B-PERSISTENCE-BOUNDARY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p1b-354e1289dda9-r5/`
+
+`LIMIT-011` is closed for the P1b reconstruction scope. `LIMIT-009`,
+`LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` has source-level
+remediation from P1a but remains part of the wider FV-5 phase accounting.
+
+
+### CLAIM-FV5-002 — Versioned encrypted payload persistence boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `BASELINE-CONSTRAINED / RESOURCE EXHAUSTION / NOT GREEN`
+
+FV-5 P1c-B completes the production persistence migration to the
+versioned `EncryptedPayload` boundary introduced in P1c-A.
+
+Verified source commit:
+
+`eace7cc86c354481c100ccf88b8f5d4bda33d898`
+
+Commit-bound evidence records:
+
+- `271 passed / 0 failed / 0 ignored` dynamic tests across `15` targets;
+- baseline-aware Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- `3` targeted Kani harnesses;
+- `1514` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `21` unreachable targeted Kani checks;
+- persisted fail-closed rejection of unmarked legacy payloads;
+- persisted fail-closed rejection of unknown payload versions;
+- persisted fail-closed rejection of truncated current envelopes;
+- successful reconstruction of a structurally valid current-version
+  persisted envelope.
+
+The complete Kani suite is not represented as green. Audit-related
+harnesses encounter a reproduced P1c-A baseline CBMC resource ceiling.
+The archived baseline attempt contains an explicit out-of-memory
+diagnostic and no observed assertion `Status: FAILURE`.
+
+The named audit verification/digest/hash boundary diff between P1c-A and
+P1c-B is empty.
+
+Kani unsupported-construct notices are retained and disclosed.
+
+This claim does not formally verify AES-GCM. Structural encrypted-envelope
+validity is not equivalent to cryptographic authenticity.
+
+Unmarked legacy payloads are not silently adopted or automatically
+migrated.
+
+Evidence:
+
+`verification/evidence/FV-5-P1C-B-PAYLOAD-ENVELOPE.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p1c-b-eace7cc86c35-r1/`
+
+`LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010`
+remains source-remediated with wider FV-5 phase closure pending.
+
+### CLAIM-FV5-003 — AAD metadata authority boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P2 hardens authority over the existing record ID and tier AES-GCM
+associated-data boundary.
+
+Verified source commit:
+
+`6793c15c77b07c8f8cdbb51934bf4be1eee5e883`
+
+Commit-bound evidence records:
+
+- `273 passed / 0 failed / 0 ignored` dynamic tests across `16` test-result
+  summaries;
+- passing compile-fail enforcement preventing external mutation of
+  `Record.id` and `Record.tier`;
+- baseline-aware Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `500` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `7` unreachable targeted Kani checks;
+- successful preservation of selected record ID and tier through the modeled
+  production construction seam;
+- dynamic authenticated-decryption failure when either ID or tier context is
+  substituted.
+
+The public `Record::new` constructor now owns encryption of plaintext using
+the same ID and tier stored in the record. External callers cannot supply
+ciphertext independently from those metadata values through that public
+construction seam.
+
+Kani unsupported-construct notices are retained and disclosed.
+
+This claim does not formally verify AES-GCM. The targeted Kani proof covers
+metadata preservation through the named construction seam; the cryptographic
+AAD mismatch behavior is supported by dynamic regression tests.
+
+The complete Kani suite was not rerun for P2. The previously documented
+audit-related verifier resource ceiling remains classified as a tool/resource
+constraint rather than a property failure.
+
+Evidence:
+
+`verification/evidence/FV-5-P2-AAD-METADATA-AUTHORITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p2-6793c15c77b0-r1/`
+
+`LIMIT-009`, `LIMIT-012`, and `LIMIT-013` remain open. `LIMIT-010` remains
+source-remediated with wider FV-5 phase closure pending.
+
+### CLAIM-FV5-004 — Mobile write-counter monotonicity boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P3 hardens mobile write-counter state validation and the arithmetic
+monotonic transition boundary.
+
+Verified source commit:
+
+`d041b9ffe45e20849d6afbbdcd01b3a4954f9c89`
+
+Commit-bound evidence records:
+
+- `273 passed / 0 failed / 0 ignored` default dynamic tests;
+- `84 passed / 0 failed / 0 ignored` mobile-library dynamic tests;
+- fail-closed rejection of malformed persisted counter state;
+- propagated Fjall counter-read errors rather than silent reset to zero;
+- counter recovery across reopen followed by continued monotonic advance;
+- rejection of `u64::MAX` exhaustion without wraparound or record write;
+- baseline-aware default Clippy with `10` baseline diagnostics, `10` current
+  diagnostics, and `0` new diagnostics;
+- baseline-aware mobile Clippy with `21` baseline diagnostics, `21` current
+  diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `38` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- successful proof that the production counter transition advances by exactly
+  one for every non-exhausted `u64` value and rejects the exhausted value.
+
+The targeted formal result is limited to the arithmetic transition. It does
+not prove persistence atomicity, crash consistency, replay protection,
+anti-rollback behavior, deployed mobile provenance enforcement, or Fjall
+internals.
+
+`LIMIT-005` remains open. P3 records the required FV-5 source-level witness:
+mobile record persistence and write-counter persistence remain separate
+operations. Crash-consistent atomic remediation remains assigned to FV-6.
+
+`LIMIT-004` also remains open and assigned to FV-5; P3 does not claim deployed
+mobile provenance/content enforcement.
+
+Evidence:
+
+`verification/evidence/FV-5-P3-MOBILE-COUNTER-MONOTONICITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p3-d041b9ffe45e-r1/`
+
+
+### CLAIM-FV5-005 — Authenticated audit checkpoint sealing boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 P3.5 adds a keyed authenticated audit-checkpoint mode over the local
+expected audit-entry count and expected terminal audit hash.
+
+Verified source commit:
+
+`f5e14886304dc57895d7f988e56883a9b394e189`
+
+Commit-bound evidence records:
+
+- `297 passed / 0 failed / 0 ignored`
+  aggregate default dynamic tests;
+- `105 passed / 0 failed / 0 ignored`
+  mobile-library tests;
+- `23` focused P3.5 dynamic passes;
+- authenticated Redb and Fjall open/save persistence;
+- authenticated Fjall write, granted-read, denied-read, and delete checkpoint
+  persistence;
+- strict rejection of authenticated checkpoints by the legacy parser;
+- strict rejection of nonempty legacy checkpoints by authenticated open;
+- fail-closed wrong-store-secret behavior;
+- multi-owner operation with distinct owner passwords and one shared
+  database-global store secret;
+- preserved non-owner Critical access denial;
+- required `EDISONDB_STORE_SECRET` server startup authority;
+- baseline-aware default Clippy with
+  `23` baseline diagnostics,
+  `23` current diagnostics, and
+  `0` new diagnostics;
+- baseline-aware mobile Clippy with
+  `29` baseline diagnostics,
+  `29` current diagnostics, and
+  `0` new diagnostics;
+- `1` targeted Kani harness;
+- `381` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `7` unreachable targeted Kani checks.
+
+The targeted Kani harness proves only the canonical checkpoint MAC-input byte
+layout:
+
+`domain || big-endian expected_count || expected_head`
+
+It does not prove BLAKE3, Argon2, MAC unforgeability, cryptographic strength,
+constant-time execution, OS secret handling, or anti-rollback behavior.
+
+The authenticated checkpoint authority is distinct from the per-owner record
+password. Possession of `store_secret` does not bypass Critical/Personal
+record authorization or provide the owner password required for payload
+decryption.
+
+Authenticated mode does not silently migrate or adopt a nonempty legacy
+checkpoint.
+
+Legacy construction APIs remain available for compatibility and are outside
+this authenticated-checkpoint claim. The P3.5 production server path requires
+the authenticated store-secret authority and does not silently fall back to
+legacy mode.
+
+The checkpoint authenticates local audit continuity against a holder of the
+store secret but does not provide a monotonic external freshness anchor.
+Replay of an older complete, internally valid authenticated state is not
+claimed to be detected.
+
+Total destruction or replacement of all Edison-owned local state remains the
+separate `LIMIT-008` trust boundary.
+
+Evidence:
+
+`verification/evidence/FV-5-P3.5-AUTHENTICATED-AUDIT-CHECKPOINT.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/p35-f5e14886304d-r1/`
+
+At the P3.5 verified source boundary, `LIMIT-004`, `LIMIT-005`, and
+`LIMIT-012` remained open within their documented boundaries. `LIMIT-004` is
+subsequently closed by `CLAIM-FV5-006`; `LIMIT-005` and `LIMIT-012` remain
+open.
+
+
+### CLAIM-FV5-006 — Mobile fail-closed provenance validation boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+**Physical Android runtime:** `PASS — PRODUCTION JNI/RUST PATH EXERCISED`
+
+**Full Kani status:** `NOT RERUN / PREVIOUSLY CHARACTERIZED RESOURCE CEILING REMAINS`
+
+FV-5 LIMIT-004 hardens and verifies the bounded mobile write-provenance
+validation boundary.
+
+Verified final source commit:
+
+`bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3`
+
+Initial production-remediation commit:
+
+`2f3c8fca6860e9f97e79e799a9e8050de38012e0`
+
+Commit-bound evidence records:
+
+- `296 passed / 0 failed / 0 ignored` aggregate default dynamic tests across
+  `17` test-result summaries;
+- `106 passed / 0 failed / 0 ignored` mobile-library tests;
+- `5 passed / 0 failed / 0 ignored` focused LIMIT-004 integration tests;
+- `1 passed / 0 failed / 0 ignored` rejected-provenance state-invariance
+  regression;
+- successful default and mobile Cargo checks;
+- baseline-aware default Clippy with `23` baseline diagnostics, `23` current
+  diagnostics, and `0` new diagnostics;
+- baseline-aware server-plus-mobile test-surface Clippy with `60` baseline
+  diagnostics, `60` current diagnostics, and `0` new diagnostics;
+- `1` targeted Kani harness;
+- `158` targeted Kani checks;
+- `0` failed targeted Kani checks;
+- `4` unreachable targeted Kani checks;
+- parser structural fail-closed enforcement for exact 78-byte length, `ARPi`
+  magic, tier range, and zero reserved bytes;
+- dynamic rejection of mismatched BLAKE3 content provenance before the
+  monotonic counter transition;
+- regression evidence that rejected mismatched provenance does not advance or
+  persist the mobile counter in the exercised path;
+- Android API-26 cross-builds for `arm64-v8a` and `x86_64`;
+- exported production `nativeBlake3` and `nativeInsert` JNI symbols on both
+  Android artifacts;
+- physical Android 11 / API-30 / `arm64-v8a` execution of the production
+  JNI/Rust path;
+- physical-runtime rejection of mismatched content, invalid tier, nonzero
+  reserved bytes, and both 77-byte and 79-byte JNI headers;
+- successful valid write after the physical-runtime rejection cases.
+
+The targeted Kani result proves only the deterministic structural parser
+acceptance relation. It does not formally verify BLAKE3 or any other
+cryptographic primitive.
+
+The physical Android result exercises a temporary Java harness against the
+production EdisonDB JNI exports. It does not establish full production Kotlin
+application execution or formally verify JNI, JVM, Android, Java, or Kotlin.
+
+The direct C FFI remains an exactly-78-byte caller pointer contract; arbitrary
+C-caller length validation is not claimed.
+
+This claim does not establish crash consistency, replay resistance,
+anti-rollback, timestamp freshness, node-id authenticity, verified-kernel
+integration, or complete production ARPi integration.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-004-MOBILE-PROVENANCE.md`
+
+Raw passing evidence:
+
+`verification/evidence/raw/fv5/limit004-bc60c1da1584-r2/`
+
+Preserved failed-methodology evidence:
+
+`verification/evidence/raw/fv5/limit004-2f3c8fca6860-r1/`
+
+`LIMIT-004` is closed for this bounded provenance-validation scope.
+`LIMIT-002`, `LIMIT-003`, and `LIMIT-005` remain open within their separately
+documented boundaries.
+
+
+### CLAIM-FV5-007 — Persisted `created_at` authenticated-checkpoint boundary
+
+**Status:** `COMMIT-BOUND TARGETED VERIFICATION PASS`
+
+FV-5 LIMIT-012 authenticates the persisted association between record identity
+and nonzero `created_at` metadata in authenticated checkpoint version 2.
+
+Verified source commit:
+
+`e1cb11dcbcfb0913ce4f61c8c00be019527fb1fa`
+
+Commit-bound evidence records:
+
+- default and mobile Cargo checks: `PASS`;
+- aggregate default dynamic tests:
+  `301 passed / 0 failed / 0 ignored`;
+- aggregate mobile dynamic tests:
+  `311 passed / 0 failed / 0 ignored`;
+- focused core LIMIT-012 regressions: `2 passed / 0 failed`;
+- focused Redb/Fjall tamper regressions: `2 passed / 0 failed`;
+- baseline/current Clippy diagnostics: `36 / 36`;
+- new Clippy diagnostics: `0`;
+- targeted Kani: `395` checks, `0` failed,
+  `7` unreachable, `1` verified harness.
+
+Authenticated checkpoint v2 binds a deterministic commitment over current
+record `id -> created_at` state into the checkpoint MAC input. Record state is
+canonicalized independently of backend iteration order.
+
+Authenticated Redb and Fjall reopen fail closed when a persisted nonzero
+`created_at` value is modified without corresponding authenticated checkpoint
+authority.
+
+Authenticated checkpoint-v1 shape is rejected rather than silently migrated
+or upgraded into version 2.
+
+The targeted Kani harness proves only structural checkpoint MAC-input layout.
+It does not formally prove BLAKE3 or other cryptographic primitives.
+
+This claim does not establish wall-clock correctness, timestamp freshness,
+external anti-rollback, metadata confidentiality, or detection of replay of
+an older complete internally valid authenticated state.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-012-CREATED-AT-AUTHENTICITY.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/limit012-e1cb11dcbcfb-r1/`
+
+`LIMIT-012` is closed for this bounded authenticated persisted-`created_at`
+authenticity scope. `LIMIT-008`, `LIMIT-009`, `LIMIT-013`, and other separately
+registered boundaries remain governed by their own claims and limitations.
+
+
+### FV-5 phase closure — Encryption and Secret Boundaries
+
+**Status:** `COMMIT-BOUND PHASE ACCOUNTING COMPLETE`
+
+Final reviewed FV-5 head before the phase-closure record:
+
+`aff67ac84012e32f1bbfd4d4976e176d1d0241e2`
+
+FV-5 records seven bounded claims, `CLAIM-FV5-001` through
+`CLAIM-FV5-007`.
+
+Final phase accounting confirms:
+
+- `LIMIT-010` source remediation remains effective in the final FV-5 tree and
+  is closed for the bounded public record-salt mutation authority;
+- `LIMIT-005` has completed its required FV-5 witness, with crash-consistent
+  remediation assigned to FV-6;
+- `LIMIT-002` and `LIMIT-003` remain assigned to FV-7;
+- `LIMIT-008` remains an explicit trust boundary;
+- `LIMIT-009` remains an explicit metadata-confidentiality nonclaim;
+- `LIMIT-013` remains a separate local-clock anomaly boundary.
+
+FV-5 phase closure does not claim complete formal verification, crash
+consistency, external anti-rollback, timestamp freshness, general metadata
+confidentiality, verified-kernel integration, or complete ARPi production
+integration.
+
+Evidence:
+
+`verification/evidence/FV-5-PHASE-CLOSURE.md`
+
+Raw evidence:
+
+`verification/evidence/raw/fv5/phase-closure-aff67ac84012-r1/`
+
+
 ## Registered Limitations
 
 #### FV-4b commit-bound closure
@@ -669,7 +1133,7 @@ persisted expected entry count or expected terminal hash.
 
 **FV-4b local remediation**
 
-The local persisted-storage model now enforces:
+The local persisted-storage model enforces:
 
 - an audit checkpoint containing expected entry count and terminal hash;
 - checkpoint validation on Redb and Fjall open paths;
@@ -686,18 +1150,50 @@ The checkpoint tail-drop count mismatch is covered by a successful production
 checkpoint-validation Kani harness. Storage and lineage composition are also
 covered dynamically.
 
+**FV-5 P3.5 authenticated sealing**
+
+Source commit `f5e14886304dc57895d7f988e56883a9b394e189` adds an authenticated checkpoint mode whose
+expected count and expected terminal hash are sealed under a key derived from
+a distinct database-global `store_secret`.
+
+Authenticated open fails closed on:
+
+- wrong store secret;
+- MAC tampering;
+- count or head tampering;
+- salt tampering;
+- unsupported checkpoint version;
+- nonempty legacy checkpoint state.
+
+Legacy parsing also rejects the authenticated representation rather than
+silently accepting it as the older checkpoint type.
+
+The store checkpoint authority is separate from owner record passwords and
+does not bypass record authorization.
+
 **Local remediation status:** `REMEDIATED / CURRENT`
 
-This status does not claim protection against an attacker capable of rewriting
-the complete audit history and the checkpoint together. The checkpoint is not
-yet independently authenticated.
+For authenticated mode, an attacker who modifies local audit history cannot
+simply recompute a matching checkpoint without the external store authority.
 
-Authenticated checkpoint sealing remains assigned to the encryption and
-secret-boundary phase. Total destruction or replacement of all Edison-owned
-local state remains a separate trust-boundary limitation.
+This status does not claim:
 
-**Assigned phase:** local truncation and re-anchoring remediation completed in
-FV-4b; authenticated checkpoint sealing deferred to FV-5.
+- global anti-rollback protection;
+- freshness against replay of an older complete valid authenticated state;
+- protection after compromise of `store_secret`;
+- protection against total destruction or replacement of all Edison-owned
+  local state;
+- formal verification of BLAKE3 or Argon2.
+
+Legacy compatibility APIs remain outside the P3.5 authenticated-sealing
+claim.
+
+Total Edison-owned local-state destruction/replacement remains recorded
+separately under `LIMIT-008`.
+
+**Assigned phases:** local truncation and re-anchoring remediation completed
+in FV-4b; authenticated checkpoint sealing completed for authenticated mode
+in FV-5 P3.5.
 
 ### LIMIT-002 — ARPi production integration
 
@@ -715,10 +1211,35 @@ storage and policy chokepoint as the core Store path.
 
 ### LIMIT-004 — Mobile fail-closed provenance validation
 
-Mobile provenance/content verification requires fail-closed on-device
-enforcement on the deployed target.
+**Status:** `CLOSED — FV-5 / CLAIM-FV5-006`
+
+The bounded mobile provenance-validation property is closed by commit-bound
+FV-5 evidence at:
+
+`bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3`
+
+The verified boundary includes:
+
+- exact 78-byte mobile ARPi structural validation;
+- fail-closed `ARPi` magic, tier, and reserved-byte validation;
+- BLAKE3 content recomputation with mismatch rejection;
+- rejection before local monotonic-counter advancement;
+- regression evidence that rejected mismatched provenance does not advance or
+  persist the counter in the exercised path;
+- exact-length enforcement at the Android JNI insertion boundary;
+- Android API-26 `arm64-v8a` and `x86_64` cross-build evidence;
+- physical Android execution of the production JNI/Rust provenance path.
+
+Closure is limited to `CLAIM-FV5-006`.
+
+It does not claim formal verification of BLAKE3, JNI/JVM/Android/Kotlin/Java,
+full Kotlin application deployment, arbitrary direct-C caller length
+validation, crash consistency, anti-rollback, timestamp freshness, node-id
+authenticity, `LIMIT-002`, `LIMIT-003`, or `LIMIT-005`.
 
 **Assigned phase:** FV-5.
+
+**Closed by:** `CLAIM-FV5-006`.
 
 ### LIMIT-005 — Mobile counter crash consistency
 
@@ -836,6 +1357,105 @@ Closing this limitation would require continuity evidence anchored outside the
 simultaneously erasable Edison-owned local state. FV-4b makes no such claim.
 
 **Status in FV-4b:** retained as an explicit residual trust boundary.
+
+### LIMIT-009 — Persisted metadata confidentiality
+
+Record payload protection does not conceal the existence of a record or
+clear persisted metadata such as owner and tier.
+
+**Status:** `OPEN`.
+
+Payload confidentiality and metadata confidentiality are distinct
+properties. FV-5 must not claim that encrypting payload bytes conceals
+record metadata.
+
+### LIMIT-010 — Public salt mutation boundary
+
+The FV-5 audit identified direct public mutation authority over record
+salt state.
+
+P1a source commit
+`81782052fb4ad1c73aeb51df0a72973318f4fa7c` makes the salt field private and exposes only read-only access.
+
+Final FV-5 authority verification against
+`aff67ac84012e32f1bbfd4d4976e176d1d0241e2` confirms that `Record.salt` remains private, the public accessor is
+read-only, no public salt mutator or mutable salt reference is exposed, and no
+direct production `.salt = ...` assignment exists.
+
+**Status:** `CLOSED FOR FV-5 PUBLIC SALT MUTATION SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-PHASE-CLOSURE.md`
+
+This closure is limited to the public record-salt mutation authority identified
+by the FV-5 audit. It does not establish broader metadata confidentiality or
+cryptographic primitive verification.
+
+### LIMIT-011 — Persisted reconstruction validation bypass
+
+Before P1b, persisted records could deserialize directly into public
+`Record`, allowing persisted reconstruction to bypass the validated
+construction boundary.
+
+P1b source commit
+`354e1289dda9ff3bc15f41afc0242d7a8c5731a3` removes `Record: Deserialize`, introduces the
+crate-private persisted DTO, routes all five persisted decoding sites and
+migration reconstruction through validation, and makes Fjall listing
+fail closed on malformed or invalid persisted data.
+
+Commit-bound R5 evidence records `263` passing dynamic tests and `852`
+Kani checks with zero failures.
+
+**Status:** `CLOSED FOR P1B SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-P1B-PERSISTENCE-BOUNDARY.md`
+
+### LIMIT-012 — Persisted created_at authenticity
+
+The original FV-5 finding was that persisted `created_at` could be modified
+to another nonzero value without invalidating the authenticated checkpoint.
+P1b's nonzero reconstruction rule provided structural validation but not
+timestamp authenticity.
+
+Authenticated checkpoint version 2 now binds a deterministic commitment over
+the current record `id -> created_at` state into the checkpoint MAC boundary.
+
+Verified source commit:
+
+`e1cb11dcbcfb0913ce4f61c8c00be019527fb1fa`
+
+Authenticated Redb and Fjall fail closed when the exercised persisted nonzero
+`created_at` value is modified without corresponding authenticated checkpoint
+authority.
+
+**Status:** `CLOSED FOR FV-5 AUTHENTICATED CHECKPOINT-V2 SCOPE`.
+
+Evidence:
+
+`verification/evidence/FV-5-LIMIT-012-CREATED-AT-AUTHENTICITY.md`
+
+This closure does not claim timestamp freshness, wall-clock correctness,
+external anti-rollback, BLAKE3 formal verification, or general metadata
+confidentiality. `LIMIT-013` remains separate.
+
+### LIMIT-013 — Local zero-timestamp clock anomaly
+
+`Record::new()` obtains `created_at` from the local system clock. The
+current clock helper can fall back to zero on a pre-Unix-epoch or clock
+duration anomaly.
+
+P1b intentionally preserves a stricter reconstruction rule: persisted
+`created_at == 0` is rejected. Therefore an in-process record created
+during such a clock anomaly may be persistable but fail reconstruction
+after reopen.
+
+The reconstruction rule must not be weakened merely to hide this
+distinction.
+
+**Status:** `OPEN`.
 
 ## Standing Assumptions
 

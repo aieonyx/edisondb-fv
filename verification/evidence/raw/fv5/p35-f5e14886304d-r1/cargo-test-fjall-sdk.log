@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running tests/sdk_tests.rs (target/debug/deps/sdk_tests-63d3b3eaff0eeaa2)
+
+running 1 test
+test p35_sdk_authenticated_store_secret_is_independent_of_owner_password ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 4.22s
+

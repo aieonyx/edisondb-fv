@@ -1,0 +1,9 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running unittests src/lib.rs (target/debug/deps/edisondb-1124a2dc5f7f3630)
+
+running 2 tests
+test tests::limit012_authenticated_checkpoint_v1_shape_fails_closed ... ok
+test tests::limit012_record_created_at_commitment_is_canonical_and_timestamp_sensitive ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 101 filtered out; finished in 0.00s
+

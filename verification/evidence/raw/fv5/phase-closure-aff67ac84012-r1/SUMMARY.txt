@@ -1,0 +1,11 @@
+FV-5 phase-closure evidence classification
+limit010_current_authority=PASS
+limit005_fv5_witness=COMPLETE
+limit005_remediation=DEFERRED FV-6
+limit002=DEFERRED FV-7
+limit003=DEFERRED FV-7
+limit008=OPEN TRUST BOUNDARY
+limit009=OPEN EXPLICIT NONCLAIM
+limit013=OPEN SEPARATE BOUNDARY
+local_remote_binding=PASS
+phase_closure_accounting=PASS

@@ -1,0 +1,7 @@
+### CLAIM-FV5-001 — Persisted reconstruction authority
+### CLAIM-FV5-002 — Versioned encrypted payload persistence boundary
+### CLAIM-FV5-003 — AAD metadata authority boundary
+### CLAIM-FV5-004 — Mobile write-counter monotonicity boundary
+### CLAIM-FV5-005 — Authenticated audit checkpoint sealing boundary
+### CLAIM-FV5-006 — Mobile fail-closed provenance validation boundary
+### CLAIM-FV5-007 — Persisted `created_at` authenticated-checkpoint boundary

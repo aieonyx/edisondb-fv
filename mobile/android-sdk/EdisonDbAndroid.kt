@@ -67,6 +67,15 @@ object EdisonDbAndroid {
         return insert(key, value, header)
     }
 
+    internal fun blake3Hash(value: String): ByteArray {
+        val hash = nativeBlake3(value)
+            ?: error("EdisonDB native BLAKE3 generation failed")
+        check(hash.size == 32) {
+            "EdisonDB native BLAKE3 returned invalid digest length"
+        }
+        return hash
+    }
+
     fun query(key: String): String? {
         checkOpen()
         return nativeQuery(dbHandle, key)
@@ -89,6 +98,7 @@ object EdisonDbAndroid {
 
     private external fun nativeOpen(path: String): Long
     private external fun nativeClose(handle: Long)
+    private external fun nativeBlake3(value: String): ByteArray?
     private external fun nativeInsert(handle: Long, key: String, value: String, arpi: ByteArray): Int
     private external fun nativeQuery(handle: Long, key: String): String?
     private external fun nativeDelete(handle: Long, key: String): Int

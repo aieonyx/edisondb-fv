@@ -1,0 +1,8 @@
+target_kind=physical-android
+manufacturer=samsung
+model=SM-G988U
+android_release=11
+sdk=30
+primary_abi=arm64-v8a
+supported_abis=arm64-v8a,armeabi-v7a,armeabi
+device_serial_retained=false

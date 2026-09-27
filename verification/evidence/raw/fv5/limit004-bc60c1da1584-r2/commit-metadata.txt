@@ -1,0 +1,11 @@
+claim_slice=FV-5 LIMIT-004
+baseline_commit=2726c316051bdebe6c1d04c53200327746bf0c9b
+implementation_commit=2f3c8fca6860e9f97e79e799a9e8050de38012e0
+source_commit=bc60c1da158466c90ce2c0dd96e60e3e7c7f71b3
+implementation_parent=2726c316051bdebe6c1d04c53200327746bf0c9b
+source_parent=2f3c8fca6860e9f97e79e799a9e8050de38012e0
+source_tree=06f287d08d75043cb7d86faf6de7531cec85ceaf
+branch=fv/5-encryption-boundaries
+source_subject=FV-5 LIMIT-004: prove rejected provenance preserves counter
+implementation_subject=FV-5 LIMIT-004: enforce fail-closed mobile provenance
+captured_utc=2026-09-13T01:04:54Z

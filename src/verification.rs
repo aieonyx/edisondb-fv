@@ -216,24 +216,16 @@ mod kani_harnesses {
     use crate::policy::{PolicyPrecheck, policy_precheck};
     use crate::{
         AuditAction, AuditEntry, EdisonError, ensure_new_record_id,
-        validate_persisted_record_metadata, verify_audit_entries,
+        validate_persisted_record_metadata, validate_record_identity, verify_audit_entries,
     };
 
     #[kani::proof]
     #[kani::unwind(16)]
     fn kani_owner_nonempty_invariant() {
         let owner_empty: bool = kani::any();
+        let owner_id = if owner_empty { "" } else { "owner" };
 
-        let record = Record {
-            id: "rec:1".into(),
-            tier: DataTier::Noise,
-            owner_id: if owner_empty { "" } else { "owner" }.into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
-
-        let result = record.validate();
+        let result = validate_record_identity("rec:1", owner_id);
 
         if owner_empty {
             assert_eq!(result, Err(EdisonError::NoOwner));
@@ -246,19 +238,14 @@ mod kani_harnesses {
     fn kani_tier_gate_critical() {
         let requester_is_owner: bool = kani::any();
 
-        let record = Record {
-            id: "rec:1".into(),
-            tier: DataTier::Critical,
-            owner_id: "owner".into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
+        // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
+        let record =
+            Record::new_with_created_at("rec:1", DataTier::Critical, "owner", crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(), [0u8; 32], 1)
+                .unwrap();
 
         let requester = if requester_is_owner { "owner" } else { "other" };
 
         let result = invariant_tier_gate(&record, requester);
-
         assert_eq!(result, requester_is_owner);
     }
 
@@ -315,16 +302,18 @@ mod kani_harnesses {
         let id_empty: bool = kani::any();
         let owner_empty: bool = kani::any();
 
-        let record = Record {
-            id: if id_empty { "" } else { "rec:1" }.into(),
-            tier: DataTier::Personal,
-            owner_id: if owner_empty { "" } else { "owner" }.into(),
-            payload: vec![],
-            salt: [0u8; 32],
-            created_at: 0,
-        };
+        let id = if id_empty { "" } else { "rec:1" };
+        let owner_id = if owner_empty { "" } else { "owner" };
 
-        assert_eq!(record.validate().is_ok(), !id_empty && !owner_empty);
+        let result = validate_record_identity(id, owner_id);
+
+        assert_eq!(result.is_ok(), !id_empty && !owner_empty);
+
+        if owner_empty {
+            assert_eq!(result, Err(EdisonError::NoOwner));
+        } else if id_empty {
+            assert_eq!(result, Err(EdisonError::EmptyRecordId));
+        }
     }
 
     #[kani::proof]
@@ -649,6 +638,152 @@ mod kani_harnesses {
         );
     }
 
+    /// FV-5 P2: construction preserves the selected AAD-authority metadata.
+    ///
+    /// This proves the Record construction seam preserves the immutable
+    /// identifier and tier selected by the caller. It does not prove AES-GCM
+    /// or cryptographic authentication behavior.
+    #[kani::proof]
+    #[kani::unwind(16)]
+    fn kani_p2_record_metadata_authority() {
+        let use_first_id: bool = kani::any();
+        let tier_selector: u8 = kani::any();
+
+        kani::assume(tier_selector < 3);
+
+        let id = if use_first_id {
+            "rec:p2-a"
+        } else {
+            "rec:p2-b"
+        };
+
+        let tier = match tier_selector {
+            0 => DataTier::Critical,
+            1 => DataTier::Personal,
+            _ => DataTier::Noise,
+        };
+
+        let expected_tier = tier.clone();
+
+        let payload = crate::EncryptedPayload::from_ciphertext_parts(
+            [0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
+            vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
+        )
+        .unwrap();
+
+        let record = Record::new_with_created_at(
+            id,
+            tier,
+            "owner",
+            payload,
+            [0u8; 32],
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(record.id(), id);
+        assert_eq!(record.tier(), &expected_tier);
+
+        if use_first_id {
+            assert_ne!(record.id(), "rec:p2-b");
+        } else {
+            assert_ne!(record.id(), "rec:p2-a");
+        }
+    }
+
+    /// FV-5 P3.5 + LIMIT-012: authenticated checkpoint MAC input has one
+    /// canonical byte layout: domain || big-endian count || checkpoint head
+    /// || record-created-at commitment.
+    ///
+    /// Symbolic indices cover every byte position in each component.
+    /// This proves only structural encoding. It does not prove BLAKE3,
+    /// Argon2, MAC unforgeability, constant-time execution, or anti-rollback.
+    #[kani::proof]
+    fn kani_p35_checkpoint_mac_input_canonical_layout() {
+        let expected_count: u64 = kani::any();
+        let expected_head: [u8; 32] = kani::any();
+        let record_created_at_commitment: [u8; 32] = kani::any();
+
+        let input = crate::checkpoint_mac_input(
+            expected_count,
+            &expected_head,
+            &record_created_at_commitment,
+        );
+        let domain = crate::CHECKPOINT_MAC_DOMAIN;
+        let domain_len = domain.len();
+        let count_bytes = expected_count.to_be_bytes();
+
+        assert_eq!(
+            input.len(),
+            domain_len
+                + count_bytes.len()
+                + expected_head.len()
+                + record_created_at_commitment.len()
+        );
+
+        let domain_index: u8 = kani::any();
+        kani::assume((domain_index as usize) < domain_len);
+        let domain_index = domain_index as usize;
+        assert_eq!(
+            input[domain_index],
+            domain[domain_index]
+        );
+
+        let count_index: u8 = kani::any();
+        kani::assume((count_index as usize) < count_bytes.len());
+        let count_index = count_index as usize;
+        assert_eq!(
+            input[domain_len + count_index],
+            count_bytes[count_index]
+        );
+
+        let head_index: u8 = kani::any();
+        kani::assume((head_index as usize) < expected_head.len());
+        let head_index = head_index as usize;
+        assert_eq!(
+            input[domain_len + count_bytes.len() + head_index],
+            expected_head[head_index]
+        );
+
+        let commitment_index: u8 = kani::any();
+        kani::assume(
+            (commitment_index as usize)
+                < record_created_at_commitment.len(),
+        );
+        let commitment_index = commitment_index as usize;
+
+        assert_eq!(
+            input[
+                domain_len
+                    + count_bytes.len()
+                    + expected_head.len()
+                    + commitment_index
+            ],
+            record_created_at_commitment[commitment_index]
+        );
+    }
+
+    /// FV-5 P3: the mobile write-counter transition is strictly monotonic
+    /// until the `u64` domain is exhausted.
+    ///
+    /// This proves only the arithmetic transition used by the mobile counter.
+    /// It does not prove record/counter persistence atomicity, crash
+    /// consistency, replay protection, or deployed mobile provenance behavior.
+    #[cfg(feature = "mobile")]
+    #[kani::proof]
+    fn kani_p3_mobile_counter_monotonic_transition() {
+        let current: u64 = kani::any();
+        let result = crate::mobile::next_write_counter(current);
+
+        if current == u64::MAX {
+            assert_eq!(result, None);
+        } else {
+            let next = result.expect("non-exhausted counter must advance");
+            assert_eq!(next, current + 1);
+            assert!(next > current);
+        }
+    }
+
     #[kani::proof]
     #[kani::unwind(16)]
     fn kani_persisted_record_metadata() {
@@ -658,18 +793,16 @@ mod kani_harnesses {
 
         kani::assume(tier_selector < 3);
 
-        let record = Record {
-            id: "rec:fv3".to_string(),
-            tier: match tier_selector {
-                0 => DataTier::Critical,
-                1 => DataTier::Personal,
-                _ => DataTier::Noise,
-            },
-            owner_id: "owner".to_string(),
-            payload: Vec::new(),
-            salt: [0u8; 32],
-            created_at: 0,
+        let tier = match tier_selector {
+            0 => DataTier::Critical,
+            1 => DataTier::Personal,
+            _ => DataTier::Noise,
         };
+
+        // Timestamp 1 is arbitrary; timestamp semantics are out of scope here.
+        let record =
+            Record::new_with_created_at("rec:fv3", tier, "owner", crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(), [0u8; 32], 1)
+                .unwrap();
 
         let expected_tier = DataTier::Personal;
         let persisted_key: &[u8] = if use_matching_key {
@@ -706,5 +839,92 @@ mod kani_harnesses {
         if persisted_key == record.id.as_bytes() && record.tier == expected_tier && id_is_unique {
             assert!(result.is_ok());
         }
+    }
+
+    /// FV-5 P1b: persisted timestamps are reconstruction data.
+    /// Zero is rejected as invalid persisted state. A concrete nonzero
+    /// timestamp is preserved. Wall-clock semantics are outside this proof.
+    #[kani::proof]
+    fn kani_persisted_created_at_validation() {
+        let persisted_zero: bool = kani::any();
+        let created_at = if persisted_zero { 0 } else { 1 };
+
+        let persisted = crate::PersistedRecord::from_parts(
+            "rec:p1b-created-at".to_string(),
+            crate::DataTier::Personal,
+            "owner".to_string(),
+            crate::EncryptedPayload::from_ciphertext_parts([0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN], vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN]).unwrap(),
+            [0u8; 32],
+            created_at,
+        );
+
+        let result = persisted.into_validated_record();
+
+        if persisted_zero {
+            assert!(matches!(result, Err(crate::EdisonError::InvalidCreatedAt)));
+        } else {
+            let record = result.unwrap();
+            assert_eq!(record.created_at, 1);
+        }
+    }
+}
+
+
+// FV-5 LIMIT-004 — mobile ARPi structural provenance boundary.
+//
+// This harness proves only the deterministic structural acceptance relation
+// implemented by mobile::ArpiHeader::from_bytes. It does not formally verify
+// BLAKE3, JNI/Kotlin execution, cryptographic collision resistance, deployed
+// Android behavior, persistence atomicity, replay resistance, or anti-rollback.
+#[cfg(all(kani, feature = "mobile"))]
+#[allow(unexpected_cfgs)]
+mod kani_limit004_mobile_provenance {
+    use crate::mobile::ArpiHeader;
+
+    #[kani::proof]
+    fn kani_limit004_mobile_arpi_fail_closed_structure() {
+        let bytes: [u8; ArpiHeader::SIZE] = kani::any();
+
+        let expected_valid =
+            bytes[0] == b'A'
+                && bytes[1] == b'R'
+                && bytes[2] == b'P'
+                && bytes[3] == b'i'
+                && bytes[20] <= 2
+                && bytes[21] == 0
+                && bytes[22] == 0
+                && bytes[23] == 0;
+
+        let parsed = ArpiHeader::from_bytes(&bytes);
+
+        // For an exactly 78-byte candidate, acceptance is equivalent to the
+        // production structural predicates: magic, known tier, zero reserved.
+        assert_eq!(parsed.is_some(), expected_valid);
+
+        if let Some(header) = parsed {
+            assert_eq!(header.magic, *b"ARPi");
+            assert!(header.tier <= 2);
+            assert_eq!(header.reserved, [0u8; 3]);
+
+            let expected_counter = u64::from_le_bytes([
+                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[8], bytes[9], bytes[10], bytes[11],
+            ]);
+            let expected_timestamp = u64::from_le_bytes([
+                bytes[12], bytes[13], bytes[14], bytes[15],
+                bytes[16], bytes[17], bytes[18], bytes[19],
+            ]);
+
+            assert_eq!(header.write_counter, expected_counter);
+            assert_eq!(header.timestamp_us, expected_timestamp);
+            assert_eq!(header.tier, bytes[20]);
+        }
+
+        // Length is also part of the fail-closed production contract.
+        let short: [u8; ArpiHeader::SIZE - 1] = kani::any();
+        let long: [u8; ArpiHeader::SIZE + 1] = kani::any();
+
+        assert!(ArpiHeader::from_bytes(&short).is_none());
+        assert!(ArpiHeader::from_bytes(&long).is_none());
     }
 }

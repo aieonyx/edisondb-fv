@@ -1,0 +1,7 @@
+commit 354e1289dda9ff3bc15f41afc0242d7a8c5731a3
+Author:     Ed <aieonyx.eu@gmail.com>
+AuthorDate: Mon Aug 24 05:13:12 2026 +0200
+Commit:     Ed <aieonyx.eu@gmail.com>
+CommitDate: Mon Aug 24 05:13:12 2026 +0200
+
+    FV-5 P1b: validate persisted record reconstruction

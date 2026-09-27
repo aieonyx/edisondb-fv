@@ -30,6 +30,7 @@ pub mod edisondb {
 const GRPC_ADDR: &str = "http://127.0.0.1:50051";
 const OWNER_ID:  &str = "test-owner";
 const PASSWORD:  &str = "test-password-secure-123";
+const STORE_SECRET: &str = "test-database-store-secret-p35";
 
 static GRPC_TEST_LOCK: Mutex<()> = Mutex::const_new(());
 
@@ -55,6 +56,7 @@ fn spawn_server() -> TestServer {
     let child = Command::new(env!("CARGO_BIN_EXE_edisondb-server"))
         .arg("--db")
         .arg(&db_path)
+        .env("EDISONDB_STORE_SECRET", STORE_SECRET)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -87,6 +89,40 @@ fn auth_request<T>(msg: T) -> Request<T> {
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn p35_server_requires_store_secret_at_startup() {
+    let _guard = test_lock().await;
+
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+
+    let db_path = format!(
+        "/tmp/edisondb-grpc-no-store-secret-{}-{nanos}.redb",
+        std::process::id()
+    );
+
+    let status = Command::new(env!("CARGO_BIN_EXE_edisondb-server"))
+        .arg("--db")
+        .arg(&db_path)
+        .env_remove("EDISONDB_STORE_SECRET")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("Failed to execute EdisonDB server");
+
+    assert!(
+        !status.success(),
+        "server must fail closed without EDISONDB_STORE_SECRET"
+    );
+
+    assert!(
+        !std::path::Path::new(&db_path).exists(),
+        "missing store authority must fail before database creation"
+    );
+}
 
 /// Test 1: Write a Critical record and verify it is readable via gRPC Read
 #[tokio::test]

@@ -1,3 +1,6 @@
+mod common;
+use common::record_new;
+
 // Copyright (c) 2026 Edison Lepiten / AIEONYX
 // EdisonDB P3-M7 — Migration toolkit tests (20 tests)
 
@@ -9,15 +12,11 @@ use edisondb::migration::{
     MigrationError,
 };
 
+
 fn make_record(id: &str, tier: DataTier, owner: &str, payload: &[u8]) -> Record {
-    Record {
-        id: id.to_string(),
-        tier,
-        owner_id: owner.to_string(),
-        payload: payload.to_vec(),
-        salt: [0u8; 32],
-        created_at: 1000,
-    }
+    let mut record = record_new(id, tier, owner, payload.to_vec(), [0u8; 32]).unwrap();
+    record.created_at = 1000;
+    record
 }
 
 // ── T1: export produces valid .edm ───────────────────────────────────────────
@@ -95,11 +94,11 @@ fn t8_edm_record_roundtrip() {
     let r = make_record("rec:1", DataTier::Critical, "owner1", b"data");
     let edm = EdmRecord::from_record(&r);
     let r2 = edm.to_record().unwrap();
-    assert_eq!(r2.id, r.id);
-    assert_eq!(r2.tier, r.tier);
+    assert_eq!(r2.id(), r.id());
+    assert_eq!(r2.tier(), r.tier());
     assert_eq!(r2.owner_id, r.owner_id);
-    assert_eq!(r2.payload, r.payload);
-    assert_eq!(r2.salt, r.salt);
+    assert_eq!(r2.payload(), r.payload());
+    assert_eq!(r2.salt(), r.salt());
 }
 
 // ── T9: import no conflicts ───────────────────────────────────────────────────
@@ -112,7 +111,7 @@ fn t9_import_clean() {
     assert_eq!(result.imported, 1);
     assert_eq!(result.skipped, 0);
     assert!(result.errors.is_empty());
-    assert_eq!(records[0].id, "rec:1");
+    assert_eq!(records[0].id(), "rec:1");
 }
 
 // ── T10: import skip conflict ─────────────────────────────────────────────────
@@ -140,7 +139,7 @@ fn t11_import_overwrite_conflict() {
     let (records, result) = import(&edm_records, &existing, ConflictStrategy::Overwrite);
     assert_eq!(result.imported, 1);
     assert_eq!(result.skipped, 0);
-    assert_eq!(records[0].id, "rec:1");
+    assert_eq!(records[0].id(), "rec:1");
 }
 
 // ── T12: import error conflict ────────────────────────────────────────────────
@@ -209,9 +208,14 @@ fn t16_transform_strip_prefix() {
 fn t17_manifest_counts() {
     let r1 = make_record("rec:1", DataTier::Critical, "owner1", b"abc");
     let r2 = make_record("rec:2", DataTier::Noise,    "owner1", b"de");
+
+    // The manifest counts the stored encrypted payload representation, not
+    // the pre-encryption plaintext length.
+    let expected_payload_bytes = r1.payload().len() + r2.payload().len();
+
     let manifest = build_manifest(&[r1, r2]);
     assert_eq!(manifest.record_count, 2);
-    assert_eq!(manifest.total_payload_bytes, 5);
+    assert_eq!(manifest.total_payload_bytes, expected_payload_bytes);
     assert_eq!(manifest.tier_counts["critical"], 1);
     assert_eq!(manifest.tier_counts["noise"],    1);
 }
@@ -266,7 +270,7 @@ fn t20_full_pipeline() {
     // Verify all owners changed
     for r in &records {
         assert_eq!(r.owner_id, "new_owner");
-        assert!(r.id.starts_with("migrated:"));
+        assert!(r.id().starts_with("migrated:"));
     }
 
     // Manifest check: payload bytes preserved

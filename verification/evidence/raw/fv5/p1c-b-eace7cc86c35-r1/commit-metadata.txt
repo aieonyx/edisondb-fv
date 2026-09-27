@@ -1,0 +1,7 @@
+commit eace7cc86c354481c100ccf88b8f5d4bda33d898
+Author:     Ed <aieonyx.eu@gmail.com>
+AuthorDate: Sun Aug 30 17:04:47 2026 +0200
+Commit:     Ed <aieonyx.eu@gmail.com>
+CommitDate: Sun Aug 30 17:04:47 2026 +0200
+
+    FV-5 P1c-B: migrate persisted payloads to encrypted envelopes

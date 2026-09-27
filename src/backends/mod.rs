@@ -10,7 +10,7 @@ use crate::{Record, AuditEntry, EdisonError};
 pub trait StorageBackend: Send {
     fn write(&mut self, record: Record) -> Result<(), EdisonError>;
     fn read(&mut self, id: &str, requester_id: &str) -> Result<Record, EdisonError>;
-    fn list_by_owner(&self, owner_id: &str) -> Vec<Record>;
+    fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError>;
     fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError>;
     fn audit_entries(&self) -> Vec<AuditEntry>;
     fn audit_count(&self) -> usize;
@@ -31,7 +31,7 @@ impl Router {
     pub fn backend_name(&self) -> &'static str { self.backend.backend_name() }
     pub fn write(&mut self, record: Record) -> Result<(), EdisonError> { self.backend.write(record) }
     pub fn read(&mut self, id: &str, requester_id: &str) -> Result<Record, EdisonError> { self.backend.read(id, requester_id) }
-    pub fn list_by_owner(&self, owner_id: &str) -> Vec<Record> { self.backend.list_by_owner(owner_id) }
+    pub fn list_by_owner(&self, owner_id: &str) -> Result<Vec<Record>, EdisonError> { self.backend.list_by_owner(owner_id) }
     pub fn delete(&mut self, id: &str, requester_id: &str) -> Result<(), EdisonError> { self.backend.delete(id, requester_id) }
     pub fn audit_entries(&self) -> Vec<AuditEntry> { self.backend.audit_entries() }
     pub fn audit_count(&self) -> usize { self.backend.audit_count() }

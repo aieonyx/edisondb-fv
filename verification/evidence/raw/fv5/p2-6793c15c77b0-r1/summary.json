@@ -1,0 +1,48 @@
+{
+  "phase": "FV-5 P2",
+  "source_commit": "6793c15c77b07c8f8cdbb51934bf4be1eee5e883",
+  "parent_commit": "b082d11824efcab8330df804d5556601ca673d82",
+  "scope": "ID+tier AAD metadata authority hardening",
+  "cargo_check": {
+    "result": "PASS",
+    "all_targets": true,
+    "locked": true
+  },
+  "dynamic_tests": {
+    "result": "PASS",
+    "passed": 273,
+    "failed": 0,
+    "ignored": 0,
+    "test_summaries": 16
+  },
+  "clippy": {
+    "result": "PASS",
+    "baseline_commit": "dba00ea58cd160a69c9a4fc6bb041e361fa40e47",
+    "baseline_diagnostics": 23,
+    "current_diagnostics": 23,
+    "new_diagnostics": 0,
+    "removed_diagnostics": 0
+  },
+  "targeted_kani": {
+    "result": "PASS_WITH_DISCLOSED_LIMITATIONS",
+    "harness": "kani_p2_record_metadata_authority",
+    "checks": 500,
+    "failed": 0,
+    "unreachable": 7,
+    "unsupported_construct_classes": [
+      "caller_location",
+      "foreign function"
+    ]
+  },
+  "claims": {
+    "proves": [
+      "Record construction preserves selected immutable identifier metadata",
+      "Record construction preserves selected immutable tier metadata"
+    ],
+    "does_not_prove": [
+      "AES-GCM cryptographic correctness",
+      "AES-GCM authenticity security",
+      "cryptographic strength of the underlying cipher implementation"
+    ]
+  }
+}

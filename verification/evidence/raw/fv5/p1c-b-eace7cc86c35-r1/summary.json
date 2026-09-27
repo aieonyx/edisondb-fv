@@ -1,0 +1,90 @@
+{
+  "phase": "FV-5 P1c-B",
+  "status": "commit-bound targeted verification passed; full Kani baseline-constrained by verifier resource exhaustion",
+  "commit": "eace7cc86c354481c100ccf88b8f5d4bda33d898",
+  "parent": "dba00ea58cd160a69c9a4fc6bb041e361fa40e47",
+  "tree": "6ec6861fbfef69ab7a424bab616dc7cd1755ce5c",
+  "subject": "FV-5 P1c-B: migrate persisted payloads to encrypted envelopes",
+  "cargo_lock_sha256": "9b33517f58b16900e774e26132fbbb7a48179f121d2795365c9608d45bc19c8b",
+  "source_tree_manifest_sha256": "57ec38708204264c453bca8d4c5b4657a04521d2409d350960746524635a1460",
+  "compile": "pass",
+  "dynamic_tests": {
+    "targets": 15,
+    "passed": 271,
+    "failed": 0,
+    "ignored": 0,
+    "required_p1c_persistence_regressions": [
+      "p1c_persisted_unmarked_legacy_payload_fails_closed",
+      "p1c_persisted_unknown_version_fails_closed",
+      "p1c_persisted_truncated_current_envelope_fails_closed",
+      "p1c_valid_versioned_persisted_payload_reconstructs"
+    ]
+  },
+  "clippy": {
+    "baseline_commit": "dba00ea58cd160a69c9a4fc6bb041e361fa40e47",
+    "baseline_exit_code": 0,
+    "current_exit_code": 0,
+    "baseline_diagnostics": 23,
+    "current_diagnostics": 23,
+    "new_diagnostics": 0,
+    "status": "pass",
+    "classification": "no new diagnostics relative to P1c-A baseline"
+  },
+  "kani_targeted": {
+    "harnesses": 3,
+    "checks": 1514,
+    "failed": 0,
+    "unreachable": 21,
+    "details": {
+      "kani_tier_gate_critical": {
+        "checks": 455,
+        "failed": 0,
+        "unreachable": 7,
+        "unsupported_notice": true,
+        "sha256": "373470f088c55d18992144c8e474801326f48496652e59998fb3489d18bb8681"
+      },
+      "kani_persisted_record_metadata": {
+        "checks": 607,
+        "failed": 0,
+        "unreachable": 7,
+        "unsupported_notice": true,
+        "sha256": "011e79da1308a06f64ac96ac33c54e509c02e419ce6fb860fd4d9840ce730aff"
+      },
+      "kani_persisted_created_at_validation": {
+        "checks": 452,
+        "failed": 0,
+        "unreachable": 7,
+        "unsupported_notice": true,
+        "sha256": "fbc4552cef5d94e2bbb5e67c378375f72ff2dc41d2cab14c2d13e691682280b3"
+      }
+    },
+    "classification": "targeted commit-bound verification pass"
+  },
+  "kani_full_suite": {
+    "status": "not green",
+    "classification": "baseline-constrained verifier resource exhaustion",
+    "baseline_evidence": {
+      "baseline_commit": "dba00ea58cd160a69c9a4fc6bb041e361fa40e47",
+      "classification": "baseline verifier resource exhaustion; not an assertion failure",
+      "harnesses_reached": 5,
+      "successful_verification_summaries": 3,
+      "failed_verification_summaries": 1,
+      "oom_diagnostics": 1,
+      "assertion_failure_statuses": 0,
+      "last_harness_reached": "verification::kani_harnesses::kani_audit_chain_interior_drop_rejected"
+    },
+    "named_audit_boundary_diff_from_p1ca": "none",
+    "assertion_counterexample_observed_in_baseline_attempt": false
+  },
+  "assurance_limits": {
+    "unsupported_kani_constructs_disclosed": true,
+    "aes_gcm_formally_verified": false,
+    "structural_envelope_validity_is_authenticity": false,
+    "automatic_legacy_payload_adoption": false
+  },
+  "environment": {
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+    "kani": "cargo-kani 0.67.0"
+  }
+}

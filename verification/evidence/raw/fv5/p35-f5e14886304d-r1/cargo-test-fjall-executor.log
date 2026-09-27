@@ -1,0 +1,98 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running unittests src/lib.rs (target/debug/deps/edisondb-1124a2dc5f7f3630)
+
+running 1 test
+test executor::tests::p35_authenticated_store_secret_is_independent_of_owner_password ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; finished in 4.04s
+
+     Running unittests src/main.rs (target/debug/deps/edisondb-6f0020cfb2595d38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/server.rs (target/debug/deps/edisondb_server-b8e7ee92a26cb2d1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fv3_storage_invariants_tests.rs (target/debug/deps/fv3_storage_invariants_tests-df891f2c5ee3992c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running tests/fv4_audit_integrity_tests.rs (target/debug/deps/fv4_audit_integrity_tests-c9c9c58d19d01b7b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/fv4b_checkpoint_tests.rs (target/debug/deps/fv4b_checkpoint_tests-5bcde320254b56cb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/grpc_tests.rs (target/debug/deps/grpc_tests-8a15931716207b7b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/p1b_compile_fail.rs (target/debug/deps/p1b_compile_fail-0a008278a7187858)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/p2_compile_fail.rs (target/debug/deps/p2_compile_fail-f42016e145a32ae8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/p3m4_embed_tests.rs (target/debug/deps/p3m4_embed_tests-8039c114fefe8d15)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/p3m5_arpi_tests.rs (target/debug/deps/p3m5_arpi_tests-7f8d52e2ec25c020)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/p3m6_policy_tests.rs (target/debug/deps/p3m6_policy_tests-c703d0df6e6b9a85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 22 filtered out; finished in 0.00s
+
+     Running tests/p3m7_migration_tests.rs (target/debug/deps/p3m7_migration_tests-6d2f16f212054603)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/p3m8_verification_tests.rs (target/debug/deps/p3m8_verification_tests-509abd7d668b290b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/p3m9_compliance_tests.rs (target/debug/deps/p3m9_compliance_tests-be713df18d901751)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running tests/sdk_tests.rs (target/debug/deps/sdk_tests-63d3b3eaff0eeaa2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+

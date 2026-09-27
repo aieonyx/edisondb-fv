@@ -1,0 +1,385 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running unittests src/lib.rs (target/debug/deps/edisondb-1124a2dc5f7f3630)
+
+running 80 tests
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_count_mismatch ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_head_mismatch ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_malformed ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_missing ... ok
+test backends::fjall::checkpoint_state_tests::checkpoint_state_reports_unanchored_records ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_empty_record_id_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_invalid_created_at_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_preserves_no_owner_error ... ok
+test backends::fjall::checkpoint_state_tests::p1b_list_rejects_malformed_persisted_json ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_truncated_current_envelope_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_unknown_version_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_persisted_unmarked_legacy_payload_fails_closed ... ok
+test backends::fjall::checkpoint_state_tests::p1c_valid_versioned_persisted_payload_reconstructs ... ok
+test embedding::tests::embedding_client_returns_vec ... ok
+test embedding::tests::embedding_client_unavailable ... ok
+test eql::parser::tests::parse_audit_global ... ok
+test eql::parser::tests::parse_audit_specific ... ok
+test eql::parser::tests::parse_case_insensitive ... ok
+test eql::parser::tests::parse_delete_stmt ... ok
+test eql::parser::tests::parse_empty_fails ... ok
+test eql::parser::tests::parse_list_all ... ok
+test eql::parser::tests::parse_list_tier ... ok
+test eql::parser::tests::parse_read ... ok
+test eql::parser::tests::parse_unknown_tier_fails ... ok
+test eql::parser::tests::parse_write_critical ... ok
+test eql::parser::tests::parse_write_noise ... ok
+test eql::parser::tests::parse_write_personal ... ok
+test executor::tests::eql_audit_captures_operations ... ok
+test executor::tests::eql_delete_removes_record ... ok
+test executor::tests::eql_duplicate_id_rejected ... ok
+test executor::tests::eql_list_all ... ok
+test executor::tests::eql_list_tier_filter ... ok
+test executor::tests::eql_read_nonexistent_fails ... ok
+test executor::tests::eql_write_and_read_critical ... ok
+test executor::tests::eql_write_and_read_noise ... ok
+test executor::tests::eql_write_and_read_personal ... ok
+test executor::tests::eql_wrong_password_fails ... ok
+test executor::tests::vector_empty_returns_empty ... ok
+test executor::tests::vector_eql_embed_and_search ... ok
+test executor::tests::vector_similarity_threshold ... ok
+test tests::aad_mismatch_fails_decryption ... ok
+test tests::aad_tier_mismatch_fails_decryption ... ok
+test tests::admin_cannot_read_critical ... ok
+test tests::attacker_cannot_read_stored_record ... ok
+test tests::audit_chain_detects_tampering ... ok
+test tests::audit_chain_is_valid ... ok
+test tests::audit_log_persists ... ok
+test tests::denied_read_is_audited ... ok
+test tests::different_password_different_key ... ok
+test tests::duplicate_id_rejected ... ok
+test tests::granted_read_is_audited ... ok
+test tests::list_returns_owner_records_only ... ok
+test tests::multiple_writes_all_audited ... ok
+test tests::noise_readable_by_anyone ... ok
+test tests::non_owner_cannot_delete_record ... ok
+test tests::non_owner_cannot_read_critical ... ok
+test tests::owner_can_delete_own_record ... ok
+test tests::owner_can_read_critical ... ok
+test tests::owner_can_read_stored_record ... ok
+test tests::p1b_construction_zero_timestamp_remains_allowed ... ok
+test tests::p1b_persisted_zero_timestamp_fails_closed ... ok
+test tests::p1c_encryption_emits_versioned_envelope_and_round_trips ... ok
+test tests::p1c_pre_p1b_record_json_fails_closed_as_legacy ... ok
+test tests::p1c_truncated_current_envelope_fails_closed ... ok
+test tests::p1c_unknown_payload_version_fails_closed ... ok
+test tests::p1c_unmarked_legacy_payload_fails_closed ... ok
+test tests::p2_record_constructor_binds_payload_to_immutable_id_and_tier ... ok
+test tests::payload_encrypts_and_decrypts ... ok
+test tests::record_has_timestamp ... ok
+test tests::record_identity_both_empty_preserves_no_owner_precedence ... ok
+test tests::record_without_owner_rejected ... ok
+test tests::same_password_same_key ... ok
+test tests::store_saves_and_loads ... ok
+test tests::write_creates_audit_entry ... ok
+test vector::tests::vector_empty_search ... ok
+test vector::tests::vector_index_is_send ... ok
+test vector::tests::vector_insert_and_search ... ok
+test vector::tests::vector_persists_and_loads ... ok
+test vector::tests::vector_remove ... ok
+test vector::tests::vector_search_respects_k ... ok
+
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.41s
+
+     Running unittests src/main.rs (target/debug/deps/edisondb-6f0020cfb2595d38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/server.rs (target/debug/deps/edisondb_server-b8e7ee92a26cb2d1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fv3_storage_invariants_tests.rs (target/debug/deps/fv3_storage_invariants_tests-df891f2c5ee3992c)
+
+running 12 tests
+test constructor_rejects_empty_record_id_before_fjall_mutation ... ok
+test constructor_rejects_empty_record_id_before_store_mutation ... ok
+test fjall_enforces_global_id_immutability_across_tiers ... ok
+test fjall_open_rejects_cross_tier_duplicate_ids ... ok
+test fjall_open_rejects_invalid_persisted_record ... ok
+test fjall_open_rejects_key_id_mismatch ... ok
+test fjall_open_rejects_tier_keyspace_mismatch ... ok
+test fjall_rejects_empty_owner_without_mutation ... ok
+test store_load_rejects_invalid_record ... ok
+test store_load_rejects_key_id_mismatch ... ok
+test store_rejects_empty_owner_without_mutation ... ok
+test store_rejects_invalid_record_before_save ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s
+
+     Running tests/fv4_audit_integrity_tests.rs (target/debug/deps/fv4_audit_integrity_tests-c9c9c58d19d01b7b)
+
+running 18 tests
+test audit_hash_known_answer_v1 ... ok
+test audit_sha256_distinct_record_identity_separates_entries ... ok
+test audit_sha256_prev_hash_single_bit_tamper_changes_digest ... ok
+test audit_sha256_timestamp_single_bit_tamper_changes_digest ... ok
+test fjall_open_rejects_audit_sequence_gap ... ok
+test fjall_open_rejects_broken_audit_chain ... ok
+test fjall_open_rejects_malformed_audit_entry ... ok
+test fjall_open_rejects_noncanonical_audit_key ... ok
+test fjall_open_rejects_tampered_final_audit_entry ... ok
+test redb_load_rejects_broken_audit_chain ... ok
+test redb_load_rejects_malformed_audit_entry ... ok
+test redb_load_rejects_noncanonical_audit_key ... ok
+test redb_load_rejects_persisted_content_tamper ... ok
+test redb_save_allows_same_lineage_resave_and_extension ... ok
+test redb_save_rejects_divergent_stale_writer ... ok
+test redb_save_rejects_stale_snapshot_after_history_extension ... ok
+test redb_save_rejects_unrelated_history_replacement ... ok
+test redb_save_uses_canonical_audit_keys ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.48s
+
+     Running tests/fv4b_checkpoint_tests.rs (target/debug/deps/fv4b_checkpoint_tests-5bcde320254b56cb)
+
+running 22 tests
+test fjall_fresh_open_persists_genesis_checkpoint ... ok
+test fjall_open_rejects_checkpoint_count_mismatch ... ok
+test fjall_open_rejects_checkpoint_head_mismatch ... ok
+test fjall_open_rejects_existing_records_without_checkpoint ... ok
+test fjall_open_rejects_final_audit_row_deletion_against_checkpoint ... ok
+test fjall_open_rejects_malformed_checkpoint ... ok
+test fjall_open_rejects_unanchored_records_with_valid_checkpoint ... ok
+test fjall_reopen_after_delete_preserves_checkpoint_coherence ... ok
+test fjall_reopen_after_read_denied_preserves_checkpoint_coherence ... ok
+test fjall_reopen_after_read_granted_preserves_checkpoint_coherence ... ok
+test fjall_reopen_after_write_preserves_checkpoint_coherence ... ok
+test redb_fresh_open_persists_genesis_checkpoint ... ok
+test redb_open_rejects_checkpoint_count_mismatch ... ok
+test redb_open_rejects_checkpoint_head_mismatch ... ok
+test redb_open_rejects_existing_records_without_checkpoint ... ok
+test redb_open_rejects_final_audit_row_deletion_against_checkpoint ... ok
+test redb_open_rejects_malformed_checkpoint ... ok
+test redb_open_rejects_unanchored_records_with_valid_checkpoint ... ok
+test redb_reopen_after_delete_save_preserves_checkpoint_coherence ... ok
+test redb_reopen_after_read_denied_save_preserves_checkpoint_coherence ... ok
+test redb_reopen_after_read_granted_save_preserves_checkpoint_coherence ... ok
+test redb_reopen_after_write_save_preserves_checkpoint_coherence ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.68s
+
+     Running tests/grpc_tests.rs (target/debug/deps/grpc_tests-8a15931716207b7b)
+
+running 8 tests
+test test_grpc_audit_history ... ok
+test test_grpc_concurrent_writes ... ok
+test test_grpc_delete_removes_record ... ok
+test test_grpc_list_by_tier ... ok
+test test_grpc_no_password_rejected ... ok
+test test_grpc_read_not_found ... ok
+test test_grpc_write_critical ... ok
+test test_grpc_wrong_owner_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.69s
+
+     Running tests/p1b_compile_fail.rs (target/debug/deps/p1b_compile_fail-0a008278a7187858)
+
+running 1 test
+test public_record_cannot_be_deserialized ...     Checking edisondb-tests v0.0.0 (/home/edisonbl/Documents/AIEONYX/edisondb-fv/target/tests/trybuild/edisondb)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.39s
+
+
+test [0m[1mtests/ui/p1b_record_deserialize.rs[0m ... [0m[32mok
+[0m
+
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s
+
+     Running tests/p2_compile_fail.rs (target/debug/deps/p2_compile_fail-f42016e145a32ae8)
+
+running 1 test
+test aad_bound_record_fields_are_not_publicly_mutable ...     Checking edisondb-tests v0.0.0 (/home/edisonbl/Documents/AIEONYX/edisondb-fv/target/tests/trybuild/edisondb)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.34s
+
+
+test [0m[1mtests/ui/p2_record_id_mutation.rs[0m ... [0m[32mok
+[0mtest [0m[1mtests/ui/p2_record_tier_mutation.rs[0m ... [0m[32mok
+[0m
+
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+
+     Running tests/p3m4_embed_tests.rs (target/debug/deps/p3m4_embed_tests-8039c114fefe8d15)
+
+running 20 tests
+test t10_custom_dim ... ok
+test t11_seed_independence ... ok
+test t12_single_char_filtered ... ok
+test t13_sovereign_backend_available ... ok
+test t14_sovereign_backend_embed ... ok
+test t15_backend_dim ... ok
+test t16_auto_fallback ... ok
+test t17_bigrams_affect_embedding ... ok
+test t18_long_text ... ok
+test t19_numeric_text ... ok
+test t1_embed_dim ... ok
+test t20_round_trip_identity ... ok
+test t2_embed_deterministic ... ok
+test t3_embed_normalized ... ok
+test t4_embed_empty ... ok
+test t5_embed_distinct ... ok
+test t6_embed_similarity_order ... ok
+test t7_self_similarity ... ok
+test t8_similarity_symmetric ... ok
+test t9_similarity_bounds ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/p3m5_arpi_tests.rs (target/debug/deps/p3m5_arpi_tests-7f8d52e2ec25c020)
+
+running 20 tests
+test t10_header_invalid_tier ... ok
+test t11_response_verify ... ok
+test t12_response_roundtrip ... ok
+test t13_response_truncated ... ok
+test t14_requires_auth ... ok
+test t15_validate_ok ... ok
+test t16_validate_tampered ... ok
+test t17_last_audit_hash_empty ... ok
+test t18_last_audit_hash_entries ... ok
+test t19_sha256_empty ... ok
+test t1_tier_from_data_tier ... ok
+test t20_from_audit ... ok
+test t2_tier_u8_roundtrip ... ok
+test t3_tier_invalid_u8 ... ok
+test t4_tier_labels ... ok
+test t5_header_verify ... ok
+test t6_header_tamper ... ok
+test t7_header_size ... ok
+test t8_header_roundtrip ... ok
+test t9_header_wrong_version ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/p3m6_policy_tests.rs (target/debug/deps/p3m6_policy_tests-c703d0df6e6b9a85)
+
+running 22 tests
+test t10_delegation_grants_access ... ok
+test t11_delegation_no_exceed ... ok
+test t12_expired_delegation ... ok
+test t13_allow_rule ... ok
+test t14_deny_overrides_allow ... ok
+test t15_wildcard_subject ... ok
+test t16_reader_no_critical_via_delegation ... ok
+test t17_admin_no_grant ... ok
+test t18_writer_personal_write ... ok
+test t19_counts ... ok
+test t1_action_from_str ... ok
+test t20_delegation_isolation ... ok
+test t21_admin_cannot_access_critical ... ok
+test t22_allow_rule_cannot_access_critical ... ok
+test t2_role_from_str ... ok
+test t3_owner_role_all_actions ... ok
+test t4_reader_no_critical ... ok
+test t5_reader_noise_personal ... ok
+test t6_auditor_only_audit ... ok
+test t7_delegation_expiry ... ok
+test t8_owner_bypass ... ok
+test t9_default_deny ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/p3m7_migration_tests.rs (target/debug/deps/p3m7_migration_tests-6d2f16f212054603)
+
+running 20 tests
+test t10_import_skip_conflict ... ok
+test t11_import_overwrite_conflict ... ok
+test t12_import_error_conflict ... ok
+test t13_transform_owner ... ok
+test t14_transform_tier ... ok
+test t15_transform_id_prefix ... ok
+test t16_transform_strip_prefix ... ok
+test t17_manifest_counts ... ok
+test t18_verify_manifests_match ... ok
+test t19_verify_manifests_mismatch ... ok
+test t1_export_basic ... ok
+test t20_full_pipeline ... ok
+test t2_export_count ... ok
+test t3_export_owner_filter ... ok
+test t4_export_tier_filter ... ok
+test t5_parse_edm_roundtrip ... ok
+test t6_parse_wrong_version ... ok
+test t7_parse_empty ... ok
+test t8_edm_record_roundtrip ... ok
+test t9_import_clean ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/p3m8_verification_tests.rs (target/debug/deps/p3m8_verification_tests-509abd7d668b290b)
+
+running 20 tests
+test t10_audit_chain_noself ... ok
+test t11_owner_always_permit ... ok
+test t12_noise_readable ... ok
+test t13_pre_write_valid ... ok
+test t14_pre_write_empty_owner ... ok
+test t15_empty_id_rejected_at_record_construction ... ok
+test t16_post_write ... ok
+test t17_post_delete ... ok
+test t18_witness_noise_open ... ok
+test t19_witness_critical_owner_only ... ok
+test t1_owner_nonempty_valid ... ok
+test t20_write_read_consistency ... ok
+test t2_owner_nonempty_empty ... ok
+test t3_store_owners_nonempty ... ok
+test t4_tier_gate_critical_owner ... ok
+test t5_tier_gate_critical_nonowner ... ok
+test t6_tier_gate_noise_open ... ok
+test t7_audit_monotonic_ok ... ok
+test t8_audit_monotonic_equal ... ok
+test t9_audit_monotonic_fail ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/p3m9_compliance_tests.rs (target/debug/deps/p3m9_compliance_tests-be713df18d901751)
+
+running 20 tests
+test t10_erasure_report_unknown ... ok
+test t11_report_compliant ... ok
+test t12_report_retention_violation ... ok
+test t13_report_missing_owner ... ok
+test t14_report_audit_gap ... ok
+test t15_report_no_audit_gap ... ok
+test t16_report_owner_counts ... ok
+test t17_report_tier_summary ... ok
+test t18_report_audit_summary ... ok
+test t19_multiple_violations ... ok
+test t1_retention_sovereign_default ... ok
+test t20_full_compliance_pipeline ... ok
+test t2_retention_not_expired ... ok
+test t3_retention_expired ... ok
+test t4_retention_no_limit ... ok
+test t5_tier_summary ... ok
+test t6_tier_summary_payload ... ok
+test t7_audit_summary ... ok
+test t8_audit_summary_empty ... ok
+test t9_erasure_report ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/sdk_tests.rs (target/debug/deps/sdk_tests-63d3b3eaff0eeaa2)
+
+running 9 tests
+test sdk_backend_is_redb ... ok
+test sdk_delete_removes_record ... ok
+test sdk_duplicate_write_fails ... ok
+test sdk_list_returns_all_records ... ok
+test sdk_list_tier_filter ... ok
+test sdk_read_nonexistent_returns_none ... ok
+test sdk_status_counts_tiers ... ok
+test sdk_verify_chain_passes ... ok
+test sdk_write_and_read ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.03s
+

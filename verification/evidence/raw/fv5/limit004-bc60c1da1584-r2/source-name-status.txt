@@ -1,0 +1,8 @@
+M	Cargo.toml
+M	MOBILE.md
+M	mobile/android-sdk/ArpiHeader.kt
+M	mobile/android-sdk/EdisonDbAndroid.kt
+M	src/mobile/jni_bridge.rs
+M	src/mobile/mod.rs
+M	src/verification.rs
+A	tests/fv5_mobile_provenance_tests.rs

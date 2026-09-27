@@ -1,0 +1,15 @@
+ benches/edisondb_bench.rs               |  6 +--
+ src/executor.rs                         | 15 ++++--
+ src/lib.rs                              | 86 ++++++++++++++++++++++++++++++---
+ src/verification.rs                     | 53 ++++++++++++++++++++
+ tests/common/mod.rs                     |  6 +--
+ tests/fv3_storage_invariants_tests.rs   | 35 +++++++++-----
+ tests/fv4b_checkpoint_tests.rs          | 26 +++++-----
+ tests/p2_compile_fail.rs                |  8 +++
+ tests/p3m7_migration_tests.rs           | 10 ++--
+ tests/p3m8_verification_tests.rs        | 19 +++++---
+ tests/ui/p2_record_id_mutation.rs       |  9 ++++
+ tests/ui/p2_record_id_mutation.stderr   |  5 ++
+ tests/ui/p2_record_tier_mutation.rs     |  9 ++++
+ tests/ui/p2_record_tier_mutation.stderr |  5 ++
+ 14 files changed, 237 insertions(+), 55 deletions(-)

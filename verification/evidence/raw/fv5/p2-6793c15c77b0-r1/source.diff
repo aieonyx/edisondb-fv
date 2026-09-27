@@ -1,0 +1,618 @@
+diff --git a/benches/edisondb_bench.rs b/benches/edisondb_bench.rs
+index 2bd1e2e..674d14b 100644
+--- a/benches/edisondb_bench.rs
++++ b/benches/edisondb_bench.rs
+@@ -10,14 +10,12 @@ fn bench_record(
+ ) -> Record {
+     let key = [0x5au8; 32];
+ 
+-    let encrypted =
+-        encrypt_payload(payload, &key, id, &tier).unwrap();
+-
+     Record::new(
+         id,
+         tier,
+         owner,
+-        encrypted,
++        payload,
++        &key,
+         [0u8; 32],
+     )
+     .unwrap()
+diff --git a/src/executor.rs b/src/executor.rs
+index 7010275..a074616 100644
+--- a/src/executor.rs
++++ b/src/executor.rs
+@@ -2,7 +2,7 @@ use rand::RngCore;
+ 
+ use crate::{
+     DataTier, EdisonError, EncryptedPayload, Record,
+-    decrypt_payload, derive_key, encrypt_payload,
++    decrypt_payload, derive_key,
+ };
+ use crate::backends::{RedbBackend, FjallBackend, Router};
+ use crate::eql::{Statement, Tier};
+@@ -133,9 +133,16 @@ impl EqlExecutor {
+         let mut salt  = [0u8; 32];
+         rand::thread_rng().fill_bytes(&mut salt);
+         let key       = derive_key(&self.password, &salt)?;
+-        // AAD bound to id + tier — transplant attacks impossible
+-        let encrypted = encrypt_payload(payload.as_bytes(), &key, &id, &data_tier)?;
+-        let record    = Record::new(&id, data_tier, &self.owner_id, encrypted, salt)?;
++        // Record construction owns encryption so AAD and immutable metadata
++        // cannot be supplied independently.
++        let record = Record::new(
++            &id,
++            data_tier,
++            &self.owner_id,
++            payload.as_bytes(),
++            &key,
++            salt,
++        )?;
+         self.router.write(record)?;
+         self.router.save()?;
+         if auto_embed {
+diff --git a/src/lib.rs b/src/lib.rs
+index fb3b8be..9413d7d 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -181,8 +181,8 @@ impl<'de> Deserialize<'de> for EncryptedPayload {
+ 
+ #[derive(Debug, Clone, PartialEq, Serialize)]
+ pub struct Record {
+-    pub id: String,
+-    pub tier: DataTier,
++    id: String,
++    tier: DataTier,
+     pub owner_id: String,
+     payload: EncryptedPayload,
+     salt: [u8; 32],
+@@ -262,13 +262,21 @@ pub(crate) fn validate_record_identity(
+ }
+ 
+ impl Record {
++    /// Construct a record from plaintext using the supplied encryption key.
++    ///
++    /// Encryption is performed inside this constructor so the ciphertext's
++    /// AES-GCM associated data is necessarily bound to this record's immutable
++    /// identifier and tier.
+     pub fn new(
+         id: &str,
+         tier: DataTier,
+         owner_id: &str,
+-        payload: EncryptedPayload,
++        data: &[u8],
++        key: &[u8; 32],
+         salt: [u8; 32],
+     ) -> Result<Self, EdisonError> {
++        let payload = encrypt_payload(data, key, id, &tier)?;
++
+         Self::new_with_created_at(
+             id,
+             tier,
+@@ -308,6 +316,22 @@ impl Record {
+         Ok(record)
+     }
+ 
++    /// Immutable record identifier.
++    ///
++    /// The identifier is part of the AES-GCM associated-data boundary and
++    /// cannot be changed independently of the encrypted payload.
++    pub fn id(&self) -> &str {
++        &self.id
++    }
++
++    /// Immutable data tier.
++    ///
++    /// The tier is part of the AES-GCM associated-data boundary and cannot be
++    /// changed independently of the encrypted payload.
++    pub fn tier(&self) -> &DataTier {
++        &self.tier
++    }
++
+     pub fn payload(&self) -> &[u8] {
+         self.payload.as_bytes()
+     }
+@@ -1244,14 +1268,14 @@ mod tests {
+         payload: Vec<u8>,
+         salt: [u8; 32],
+     ) -> Result<Record, EdisonError> {
+-        let encrypted =
+-            test_encrypted_payload(id, &tier, &payload);
++        let key = [0x5au8; 32];
+ 
+         Record::new(
+             id,
+             tier,
+             owner_id,
+-            encrypted,
++            &payload,
++            &key,
+             salt,
+         )
+     }
+@@ -1456,6 +1480,56 @@ mod tests {
+         assert_eq!(decrypted, original);
+     }
+ 
++    #[test]
++    fn p2_record_constructor_binds_payload_to_immutable_id_and_tier() {
++        let key = [0x33u8; 32];
++        let salt = [0x44u8; 32];
++        let plaintext = b"p2 constructor-bound payload";
++
++        let record = Record::new(
++            "rec:p2-bound",
++            DataTier::Critical,
++            "alice",
++            plaintext,
++            &key,
++            salt,
++        )
++        .unwrap();
++
++        assert_eq!(record.id(), "rec:p2-bound");
++        assert_eq!(record.tier(), &DataTier::Critical);
++
++        let decrypted = decrypt_payload(
++            record.encrypted_payload(),
++            &key,
++            record.id(),
++            record.tier(),
++        )
++        .unwrap();
++
++        assert_eq!(decrypted, plaintext);
++
++        assert_eq!(
++            decrypt_payload(
++                record.encrypted_payload(),
++                &key,
++                "rec:p2-transplanted",
++                record.tier(),
++            ),
++            Err(EdisonError::DecryptionFailed)
++        );
++
++        assert_eq!(
++            decrypt_payload(
++                record.encrypted_payload(),
++                &key,
++                record.id(),
++                &DataTier::Personal,
++            ),
++            Err(EdisonError::DecryptionFailed)
++        );
++    }
++
+     #[test]
+     fn aad_mismatch_fails_decryption() {
+         let key = [0u8; 32];
+diff --git a/src/verification.rs b/src/verification.rs
+index b2f29a3..1347cce 100644
+--- a/src/verification.rs
++++ b/src/verification.rs
+@@ -638,6 +638,59 @@ mod kani_harnesses {
+         );
+     }
+ 
++    /// FV-5 P2: construction preserves the selected AAD-authority metadata.
++    ///
++    /// This proves the Record construction seam preserves the immutable
++    /// identifier and tier selected by the caller. It does not prove AES-GCM
++    /// or cryptographic authentication behavior.
++    #[kani::proof]
++    #[kani::unwind(16)]
++    fn kani_p2_record_metadata_authority() {
++        let use_first_id: bool = kani::any();
++        let tier_selector: u8 = kani::any();
++
++        kani::assume(tier_selector < 3);
++
++        let id = if use_first_id {
++            "rec:p2-a"
++        } else {
++            "rec:p2-b"
++        };
++
++        let tier = match tier_selector {
++            0 => DataTier::Critical,
++            1 => DataTier::Personal,
++            _ => DataTier::Noise,
++        };
++
++        let expected_tier = tier.clone();
++
++        let payload = crate::EncryptedPayload::from_ciphertext_parts(
++            [0u8; crate::ENCRYPTED_PAYLOAD_NONCE_LEN],
++            vec![0u8; crate::ENCRYPTED_PAYLOAD_TAG_LEN],
++        )
++        .unwrap();
++
++        let record = Record::new_with_created_at(
++            id,
++            tier,
++            "owner",
++            payload,
++            [0u8; 32],
++            1,
++        )
++        .unwrap();
++
++        assert_eq!(record.id(), id);
++        assert_eq!(record.tier(), &expected_tier);
++
++        if use_first_id {
++            assert_ne!(record.id(), "rec:p2-b");
++        } else {
++            assert_ne!(record.id(), "rec:p2-a");
++        }
++    }
++
+     #[kani::proof]
+     #[kani::unwind(16)]
+     fn kani_persisted_record_metadata() {
+diff --git a/tests/common/mod.rs b/tests/common/mod.rs
+index 6f772c1..675f445 100644
+--- a/tests/common/mod.rs
++++ b/tests/common/mod.rs
+@@ -9,14 +9,12 @@ pub fn record_new(
+ ) -> Result<edisondb::Record, edisondb::EdisonError> {
+     let key = [0x5au8; 32];
+ 
+-    let encrypted =
+-        edisondb::encrypt_payload(&payload, &key, id, &tier)?;
+-
+     edisondb::Record::new(
+         id,
+         tier,
+         owner_id,
+-        encrypted,
++        &payload,
++        &key,
+         salt,
+     )
+ }
+diff --git a/tests/fv3_storage_invariants_tests.rs b/tests/fv3_storage_invariants_tests.rs
+index 544597c..1afc196 100644
+--- a/tests/fv3_storage_invariants_tests.rs
++++ b/tests/fv3_storage_invariants_tests.rs
+@@ -11,10 +11,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
+ 
+ 
+ fn raw_record(id: &str, tier: DataTier, owner_id: &str, payload: Vec<u8>) -> Record {
+-    let safe_id = if id.is_empty() { "fv3:test-id" } else { id };
+     let safe_owner = if owner_id.is_empty() { "fv3:test-owner" } else { owner_id };
+-    let mut record = record_new(safe_id, tier, safe_owner, payload, [0u8; 32]).unwrap();
+-    record.id = id.to_string();
++    let mut record = record_new(id, tier, safe_owner, payload, [0u8; 32]).unwrap();
+     record.owner_id = owner_id.to_string();
+     record.created_at = 1;
+     record
+@@ -55,11 +53,18 @@ fn store_rejects_empty_owner_without_mutation() {
+ }
+ 
+ #[test]
+-fn store_rejects_empty_record_id_without_mutation() {
+-    let mut store = Store::new();
+-    let record = raw_record("", DataTier::Noise, "alice", vec![1]);
++fn constructor_rejects_empty_record_id_before_store_mutation() {
++    let store = Store::new();
++
++    let result = record_new(
++        "",
++        DataTier::Noise,
++        "alice",
++        vec![1],
++        [0u8; 32],
++    );
+ 
+-    assert!(store.write(record).is_err());
++    assert_eq!(result, Err(EdisonError::EmptyRecordId));
+     assert_eq!(store.record_count(), 0);
+     assert_eq!(store.audit_count(), 0);
+ }
+@@ -124,13 +129,19 @@ fn fjall_rejects_empty_owner_without_mutation() {
+ }
+ 
+ #[test]
+-fn fjall_rejects_empty_record_id_without_mutation() {
++fn constructor_rejects_empty_record_id_before_fjall_mutation() {
+     let path = temp_path("fjall-empty-id");
+-    let mut backend = FjallBackend::open(&path).unwrap();
++    let backend = FjallBackend::open(&path).unwrap();
+ 
+-    let record = raw_record("", DataTier::Noise, "alice", vec![1]);
++    let result = record_new(
++        "",
++        DataTier::Noise,
++        "alice",
++        vec![1],
++        [0u8; 32],
++    );
+ 
+-    assert!(backend.write(record).is_err());
++    assert_eq!(result, Err(EdisonError::EmptyRecordId));
+     assert_eq!(backend.audit_count(), 0);
+ 
+     drop(backend);
+@@ -155,7 +166,7 @@ fn fjall_enforces_global_id_immutability_across_tiers() {
+     assert_eq!(backend.audit_count(), 1);
+ 
+     let stored = backend.read("rec:global", "alice").unwrap();
+-    assert_eq!(stored.tier, DataTier::Critical);
++    assert_eq!(stored.tier(), &DataTier::Critical);
+     assert_eq!(stored.payload(), original_payload.as_slice());
+ 
+     drop(backend);
+diff --git a/tests/fv4b_checkpoint_tests.rs b/tests/fv4b_checkpoint_tests.rs
+index 9717a9b..44f3e99 100644
+--- a/tests/fv4b_checkpoint_tests.rs
++++ b/tests/fv4b_checkpoint_tests.rs
+@@ -85,7 +85,7 @@ fn fjall_open_rejects_existing_records_without_checkpoint() {
+ 
+     let json = serde_json::to_vec(&record).unwrap();
+ 
+-    personal.insert(record.id.as_bytes(), json).unwrap();
++    personal.insert(record.id().as_bytes(), json).unwrap();
+ 
+     drop(personal);
+     drop(db);
+@@ -134,7 +134,7 @@ fn fjall_open_rejects_unanchored_records_with_valid_checkpoint() {
+ 
+     let record_json = serde_json::to_vec(&record).unwrap();
+ 
+-    personal.insert(record.id.as_bytes(), record_json).unwrap();
++    personal.insert(record.id().as_bytes(), record_json).unwrap();
+ 
+     let genesis_checkpoint = serde_json::json!({
+         "expected_count": 0,
+@@ -370,7 +370,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
+         .read("rec:checkpoint-read-granted", "owner")
+         .unwrap();
+ 
+-    assert_eq!(returned.id, "rec:checkpoint-read-granted");
++    assert_eq!(returned.id(), "rec:checkpoint-read-granted");
+ 
+     let cached_count = backend.audit_count();
+     let cached_head = backend
+@@ -392,7 +392,7 @@ fn fjall_reopen_after_read_granted_preserves_checkpoint_coherence() {
+     assert!(
+         records
+             .iter()
+-            .any(|record| record.id == "rec:checkpoint-read-granted")
++            .any(|record| record.id() == "rec:checkpoint-read-granted")
+     );
+ 
+     let reopened_head = reopened
+@@ -484,7 +484,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
+     assert!(
+         records
+             .iter()
+-            .any(|record| record.id == "rec:checkpoint-read-denied")
++            .any(|record| record.id() == "rec:checkpoint-read-denied")
+     );
+ 
+     drop(backend);
+@@ -498,7 +498,7 @@ fn fjall_reopen_after_read_denied_preserves_checkpoint_coherence() {
+     assert!(
+         reopened_records
+             .iter()
+-            .any(|record| record.id == "rec:checkpoint-read-denied")
++            .any(|record| record.id() == "rec:checkpoint-read-denied")
+     );
+ 
+     let reopened_head = reopened
+@@ -633,7 +633,7 @@ fn redb_open_rejects_existing_records_without_checkpoint() {
+ 
+             let json = serde_json::to_string(&record).unwrap();
+ 
+-            table.insert(record.id.as_str(), json.as_str()).unwrap();
++            table.insert(record.id(), json.as_str()).unwrap();
+         }
+ 
+         txn.commit().unwrap();
+@@ -685,7 +685,7 @@ fn redb_open_rejects_unanchored_records_with_valid_checkpoint() {
+ 
+             let json = serde_json::to_string(&record).unwrap();
+ 
+-            table.insert(record.id.as_str(), json.as_str()).unwrap();
++            table.insert(record.id(), json.as_str()).unwrap();
+         }
+ 
+         {
+@@ -764,7 +764,7 @@ fn redb_reopen_after_write_save_preserves_checkpoint_coherence() {
+     assert!(
+         records
+             .iter()
+-            .any(|record| record.id == "rec:redb-checkpoint-write")
++            .any(|record| record.id() == "rec:redb-checkpoint-write")
+     );
+ 
+     let reopened_entries = reopened.audit_entries();
+@@ -954,7 +954,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
+         .read("rec:redb-checkpoint-read-granted", "owner")
+         .unwrap();
+ 
+-    assert_eq!(returned.id, "rec:redb-checkpoint-read-granted");
++    assert_eq!(returned.id(), "rec:redb-checkpoint-read-granted");
+ 
+     let cached_count = backend.audit_count();
+ 
+@@ -979,7 +979,7 @@ fn redb_reopen_after_read_granted_save_preserves_checkpoint_coherence() {
+     assert!(
+         records
+             .iter()
+-            .any(|record| { record.id == "rec:redb-checkpoint-read-granted" })
++            .any(|record| { record.id() == "rec:redb-checkpoint-read-granted" })
+     );
+ 
+     let reopened_head = reopened
+@@ -1075,7 +1075,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
+     assert!(
+         records
+             .iter()
+-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
++            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
+     );
+ 
+     backend.save().unwrap();
+@@ -1091,7 +1091,7 @@ fn redb_reopen_after_read_denied_save_preserves_checkpoint_coherence() {
+     assert!(
+         reopened_records
+             .iter()
+-            .any(|record| { record.id == "rec:redb-checkpoint-read-denied" })
++            .any(|record| { record.id() == "rec:redb-checkpoint-read-denied" })
+     );
+ 
+     let reopened_head = reopened
+diff --git a/tests/p2_compile_fail.rs b/tests/p2_compile_fail.rs
+new file mode 100644
+index 0000000..a407bf1
+--- /dev/null
++++ b/tests/p2_compile_fail.rs
+@@ -0,0 +1,8 @@
++// Copyright (c) 2026 Edison Lepiten / AIEONYX
++
++#[test]
++fn aad_bound_record_fields_are_not_publicly_mutable() {
++    let cases = trybuild::TestCases::new();
++    cases.compile_fail("tests/ui/p2_record_id_mutation.rs");
++    cases.compile_fail("tests/ui/p2_record_tier_mutation.rs");
++}
+diff --git a/tests/p3m7_migration_tests.rs b/tests/p3m7_migration_tests.rs
+index 7abcdc1..5451ea0 100644
+--- a/tests/p3m7_migration_tests.rs
++++ b/tests/p3m7_migration_tests.rs
+@@ -94,8 +94,8 @@ fn t8_edm_record_roundtrip() {
+     let r = make_record("rec:1", DataTier::Critical, "owner1", b"data");
+     let edm = EdmRecord::from_record(&r);
+     let r2 = edm.to_record().unwrap();
+-    assert_eq!(r2.id, r.id);
+-    assert_eq!(r2.tier, r.tier);
++    assert_eq!(r2.id(), r.id());
++    assert_eq!(r2.tier(), r.tier());
+     assert_eq!(r2.owner_id, r.owner_id);
+     assert_eq!(r2.payload(), r.payload());
+     assert_eq!(r2.salt(), r.salt());
+@@ -111,7 +111,7 @@ fn t9_import_clean() {
+     assert_eq!(result.imported, 1);
+     assert_eq!(result.skipped, 0);
+     assert!(result.errors.is_empty());
+-    assert_eq!(records[0].id, "rec:1");
++    assert_eq!(records[0].id(), "rec:1");
+ }
+ 
+ // ── T10: import skip conflict ─────────────────────────────────────────────────
+@@ -139,7 +139,7 @@ fn t11_import_overwrite_conflict() {
+     let (records, result) = import(&edm_records, &existing, ConflictStrategy::Overwrite);
+     assert_eq!(result.imported, 1);
+     assert_eq!(result.skipped, 0);
+-    assert_eq!(records[0].id, "rec:1");
++    assert_eq!(records[0].id(), "rec:1");
+ }
+ 
+ // ── T12: import error conflict ────────────────────────────────────────────────
+@@ -270,7 +270,7 @@ fn t20_full_pipeline() {
+     // Verify all owners changed
+     for r in &records {
+         assert_eq!(r.owner_id, "new_owner");
+-        assert!(r.id.starts_with("migrated:"));
++        assert!(r.id().starts_with("migrated:"));
+     }
+ 
+     // Manifest check: payload bytes preserved
+diff --git a/tests/p3m8_verification_tests.rs b/tests/p3m8_verification_tests.rs
+index 06ea3e6..ad86224 100644
+--- a/tests/p3m8_verification_tests.rs
++++ b/tests/p3m8_verification_tests.rs
+@@ -6,15 +6,13 @@ use common::record_new;
+ 
+ use edisondb::policy::PolicyEngine;
+ use edisondb::verification::*;
+-use edisondb::{AuditAction, AuditEntry, DataTier, Record, Store};
++use edisondb::{AuditAction, AuditEntry, DataTier, EdisonError, Record, Store};
+ 
+ 
+ fn make_record(id: &str, tier: DataTier, owner: &str) -> Record {
+-    let safe_id = if id.is_empty() { "verification:test-id" } else { id };
+     let safe_owner = if owner.is_empty() { "verification:test-owner" } else { owner };
+     let mut record =
+-        record_new(safe_id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
+-    record.id = id.to_string();
++        record_new(id, tier, safe_owner, b"data".to_vec(), [0u8; 32]).unwrap();
+     record.owner_id = owner.to_string();
+     record.created_at = 1000;
+     record
+@@ -140,9 +138,16 @@ fn t14_pre_write_empty_owner() {
+ 
+ // ── T15: pre_write empty id fails ────────────────────────────────────────────
+ #[test]
+-fn t15_pre_write_empty_id() {
+-    let r = make_record("", DataTier::Noise, "owner1");
+-    assert!(pre_write(&r).is_err());
++fn t15_empty_id_rejected_at_record_construction() {
++    let result = record_new(
++        "",
++        DataTier::Noise,
++        "owner1",
++        b"data".to_vec(),
++        [0u8; 32],
++    );
++
++    assert_eq!(result, Err(EdisonError::EmptyRecordId));
+ }
+ 
+ // ── T16: post_write count tracking ───────────────────────────────────────────
+diff --git a/tests/ui/p2_record_id_mutation.rs b/tests/ui/p2_record_id_mutation.rs
+new file mode 100644
+index 0000000..e8098b6
+--- /dev/null
++++ b/tests/ui/p2_record_id_mutation.rs
+@@ -0,0 +1,9 @@
++// Copyright (c) 2026 Edison Lepiten / AIEONYX
++
++use edisondb::Record;
++
++fn mutate(record: &mut Record) {
++    record.id = "rec:transplanted".to_string();
++}
++
++fn main() {}
+diff --git a/tests/ui/p2_record_id_mutation.stderr b/tests/ui/p2_record_id_mutation.stderr
+new file mode 100644
+index 0000000..03154f4
+--- /dev/null
++++ b/tests/ui/p2_record_id_mutation.stderr
+@@ -0,0 +1,5 @@
++error[E0616]: field `id` of struct `Record` is private
++ --> tests/ui/p2_record_id_mutation.rs:6:12
++  |
++6 |     record.id = "rec:transplanted".to_string();
++  |            ^^ private field
+diff --git a/tests/ui/p2_record_tier_mutation.rs b/tests/ui/p2_record_tier_mutation.rs
+new file mode 100644
+index 0000000..2fe9b0b
+--- /dev/null
++++ b/tests/ui/p2_record_tier_mutation.rs
+@@ -0,0 +1,9 @@
++// Copyright (c) 2026 Edison Lepiten / AIEONYX
++
++use edisondb::{DataTier, Record};
++
++fn mutate(record: &mut Record) {
++    record.tier = DataTier::Noise;
++}
++
++fn main() {}
+diff --git a/tests/ui/p2_record_tier_mutation.stderr b/tests/ui/p2_record_tier_mutation.stderr
+new file mode 100644
+index 0000000..f4cc539
+--- /dev/null
++++ b/tests/ui/p2_record_tier_mutation.stderr
+@@ -0,0 +1,5 @@
++error[E0616]: field `tier` of struct `Record` is private
++ --> tests/ui/p2_record_tier_mutation.rs:6:12
++  |
++6 |     record.tier = DataTier::Noise;
++  |            ^^^^ private field

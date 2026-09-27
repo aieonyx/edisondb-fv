@@ -1,0 +1,1852 @@
+diff --git a/src/backends/fjall.rs b/src/backends/fjall.rs
+index 62a685d..76511ea 100644
+--- a/src/backends/fjall.rs
++++ b/src/backends/fjall.rs
+@@ -22,10 +22,35 @@ pub struct FjallBackend {
+     audit_checkpoint: fjall::Keyspace,
+     audit_len: usize,
+     audit_tail: [u8; 32],
++    // P3.5 authenticated checkpoint authority.
++    //
++    // Authenticated mode retains only the derived checkpoint context rather
++    // than the original store secret. FV-5 P4 owns secret-key zeroization.
++    checkpoint_auth: Option<crate::CheckpointAuthContext>,
+ }
+ 
+ impl FjallBackend {
+     pub fn open(path: &str) -> Result<Self, EdisonError> {
++        Self::open_impl(path, None)
++    }
++
++    /// Open or create a Fjall backend whose audit checkpoint is controlled
++    /// by `store_secret`.
++    ///
++    /// Legacy checkpoints are rejected rather than implicitly upgraded.
++    /// Conversely, `open()` rejects authenticated checkpoints because strict
++    /// legacy parsing does not accept authentication fields.
++    pub fn open_authenticated(
++        path: &str,
++        store_secret: &str,
++    ) -> Result<Self, EdisonError> {
++        Self::open_impl(path, Some(store_secret))
++    }
++
++    fn open_impl(
++        path: &str,
++        store_secret: Option<&str>,
++    ) -> Result<Self, EdisonError> {
+         let db = Database::builder(path)
+             .open()
+             .map_err(|_| EdisonError::LoadFailed)?;
+@@ -65,26 +90,43 @@ impl FjallBackend {
+ 
+         let actual_count = u64::try_from(audit_len).map_err(|_| EdisonError::AuditChainBroken)?;
+ 
+-        let checkpoint_state = classify_checkpoint_state(
+-            checkpoint_bytes,
+-            audit_entries.is_empty(),
+-            records_empty,
+-            actual_count,
+-            audit_tail,
+-        )
+-        .map_err(checkpoint_error)?;
+-
+-        if checkpoint_state == CheckpointOpenState::Genesis {
+-            let checkpoint = AuditCheckpoint {
+-                expected_count: 0,
+-                expected_head: [0u8; 32],
++        let (checkpoint_state, checkpoint_auth) =
++            if let Some(store_secret) = store_secret {
++                let (state, context) =
++                    crate::classify_authenticated_checkpoint_state(
++                        checkpoint_bytes,
++                        audit_entries.is_empty(),
++                        records_empty,
++                        actual_count,
++                        audit_tail,
++                        store_secret,
++                    )?;
++                (state, Some(context))
++            } else {
++                let state = classify_checkpoint_state(
++                    checkpoint_bytes,
++                    audit_entries.is_empty(),
++                    records_empty,
++                    actual_count,
++                    audit_tail,
++                )
++                .map_err(checkpoint_error)?;
++                (state, None)
+             };
+ 
+-            let checkpoint_json =
+-                serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
++        if checkpoint_state == CheckpointOpenState::Genesis {
++            let checkpoint_json = Self::serialize_checkpoint(
++                0,
++                [0u8; 32],
++                checkpoint_auth.as_ref(),
++            )?;
+ 
+             let mut batch = db.batch();
+-            batch.insert(&audit_checkpoint, AUDIT_CHECKPOINT_KEY, checkpoint_json);
++            batch.insert(
++                &audit_checkpoint,
++                AUDIT_CHECKPOINT_KEY,
++                checkpoint_json,
++            );
+             batch.commit().map_err(|_| EdisonError::SaveFailed)?;
+         }
+ 
+@@ -97,12 +139,51 @@ impl FjallBackend {
+             audit_checkpoint,
+             audit_len,
+             audit_tail,
++            checkpoint_auth,
+         };
+ 
+         backend.validate_persisted_records()?;
+         Ok(backend)
+     }
+ 
++    fn serialize_checkpoint(
++        expected_count: u64,
++        expected_head: [u8; 32],
++        checkpoint_auth: Option<&crate::CheckpointAuthContext>,
++    ) -> Result<Vec<u8>, EdisonError> {
++        if let Some(context) = checkpoint_auth {
++            let checkpoint =
++                crate::authenticated_audit_checkpoint_from_context(
++                    expected_count,
++                    expected_head,
++                    context,
++                );
++
++            serde_json::to_vec(&checkpoint)
++                .map_err(|_| EdisonError::SaveFailed)
++        } else {
++            let checkpoint = AuditCheckpoint {
++                expected_count,
++                expected_head,
++            };
++
++            serde_json::to_vec(&checkpoint)
++                .map_err(|_| EdisonError::SaveFailed)
++        }
++    }
++
++    fn checkpoint_bytes(
++        &self,
++        expected_count: u64,
++        expected_head: [u8; 32],
++    ) -> Result<Vec<u8>, EdisonError> {
++        Self::serialize_checkpoint(
++            expected_count,
++            expected_head,
++            self.checkpoint_auth.as_ref(),
++        )
++    }
++
+     fn validate_persisted_records(&self) -> Result<(), EdisonError> {
+         let mut record_ids = HashSet::new();
+ 
+@@ -184,13 +265,8 @@ impl FjallBackend {
+ 
+         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+ 
+-        let checkpoint = AuditCheckpoint {
+-            expected_count: checkpoint_count,
+-            expected_head: entry.entry_hash,
+-        };
+-
+         let checkpoint_json =
+-            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
++            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
+ 
+         let key = format!("{:020}", self.audit_len);
+ 
+@@ -249,13 +325,8 @@ impl StorageBackend for FjallBackend {
+ 
+         let checkpoint_count = u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+ 
+-        let checkpoint = AuditCheckpoint {
+-            expected_count: checkpoint_count,
+-            expected_head: entry.entry_hash,
+-        };
+-
+         let checkpoint_json =
+-            serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
++            self.checkpoint_bytes(checkpoint_count, entry.entry_hash)?;
+ 
+         let audit_key = format!("{:020}", self.audit_len);
+         let record_keyspace = self.tier_ks(&record.tier).clone();
+@@ -369,13 +440,11 @@ impl StorageBackend for FjallBackend {
+                 let checkpoint_count =
+                     u64::try_from(next_len).map_err(|_| EdisonError::SaveFailed)?;
+ 
+-                let checkpoint = AuditCheckpoint {
+-                    expected_count: checkpoint_count,
+-                    expected_head: entry.entry_hash,
+-                };
+-
+                 let checkpoint_json =
+-                    serde_json::to_vec(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
++                    self.checkpoint_bytes(
++                        checkpoint_count,
++                        entry.entry_hash,
++                    )?;
+ 
+                 let audit_key = format!("{:020}", self.audit_len);
+ 
+@@ -420,6 +489,306 @@ impl StorageBackend for FjallBackend {
+     }
+ }
+ 
++#[cfg(test)]
++mod p35_authenticated_backend_tests {
++    use super::*;
++
++    fn path(label: &str) -> String {
++        format!(
++            "/tmp/edisondb-p35-fjall-{}-{}-{}",
++            label,
++            std::process::id(),
++            rand::random::<u64>(),
++        )
++    }
++
++    fn cleanup(path: &str) {
++        let _ = std::fs::remove_dir_all(path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_open_and_reopen() {
++        let path = path("round-trip");
++        cleanup(&path);
++
++        let backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        drop(backend);
++
++        let reopened =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        assert_eq!(reopened.backend_name(), "fjall");
++
++        drop(reopened);
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_write_preserves_authenticated_checkpoint() {
++        let path = path("write");
++        cleanup(&path);
++
++        let mut backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        let record = Record::new(
++            "rec:p35-fjall",
++            DataTier::Critical,
++            "owner",
++            b"authenticated checkpoint",
++            &[0x42u8; 32],
++            [0x24u8; 32],
++        )
++        .unwrap();
++
++        backend.write(record).unwrap();
++        drop(backend);
++
++        let reopened =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        assert_eq!(reopened.audit_count(), 1);
++
++        drop(reopened);
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_read_granted_preserves_checkpoint() {
++        let path = path("read-granted");
++        cleanup(&path);
++
++        let mut backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        let record = Record::new(
++            "rec:p35-read-granted",
++            DataTier::Critical,
++            "owner",
++            b"authenticated read granted",
++            &[0x42u8; 32],
++            [0x24u8; 32],
++        )
++        .unwrap();
++
++        backend.write(record).unwrap();
++        backend
++            .read("rec:p35-read-granted", "owner")
++            .unwrap();
++
++        drop(backend);
++
++        let reopened =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        assert_eq!(
++            reopened.audit_count(),
++            2,
++            "write + granted read must both remain checkpoint-anchored",
++        );
++
++        drop(reopened);
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_read_denied_preserves_checkpoint() {
++        let path = path("read-denied");
++        cleanup(&path);
++
++        let mut backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        let record = Record::new(
++            "rec:p35-read-denied",
++            DataTier::Critical,
++            "owner",
++            b"authenticated read denied",
++            &[0x43u8; 32],
++            [0x25u8; 32],
++        )
++        .unwrap();
++
++        backend.write(record).unwrap();
++
++        assert!(matches!(
++            backend.read(
++                "rec:p35-read-denied",
++                "non-owner",
++            ),
++            Err(EdisonError::AccessDenied)
++        ));
++
++        drop(backend);
++
++        let reopened =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        assert_eq!(
++            reopened.audit_count(),
++            2,
++            "write + denied read must both remain checkpoint-anchored",
++        );
++
++        drop(reopened);
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_delete_preserves_checkpoint() {
++        let path = path("delete");
++        cleanup(&path);
++
++        let mut backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        let record = Record::new(
++            "rec:p35-delete",
++            DataTier::Critical,
++            "owner",
++            b"authenticated delete",
++            &[0x44u8; 32],
++            [0x26u8; 32],
++        )
++        .unwrap();
++
++        backend.write(record).unwrap();
++        backend
++            .delete("rec:p35-delete", "owner")
++            .unwrap();
++
++        drop(backend);
++
++        let mut reopened =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        assert_eq!(
++            reopened.audit_count(),
++            2,
++            "write + delete must both remain checkpoint-anchored",
++        );
++
++        assert!(matches!(
++            reopened.read(
++                "rec:p35-delete",
++                "owner",
++            ),
++            Err(EdisonError::NotFound)
++        ));
++
++        drop(reopened);
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_open_rejects_wrong_store_secret() {
++        let path = path("wrong-store-secret");
++        cleanup(&path);
++
++        let backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        drop(backend);
++
++        assert!(matches!(
++            FjallBackend::open_authenticated(
++                &path,
++                "wrong-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_legacy_open_rejects_authenticated_checkpoint() {
++        let path = path("legacy-downgrade");
++        cleanup(&path);
++
++        let backend =
++            FjallBackend::open_authenticated(
++                &path,
++                "correct-store-secret",
++            )
++            .unwrap();
++
++        drop(backend);
++
++        assert!(matches!(
++            FjallBackend::open(&path),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        cleanup(&path);
++    }
++
++    #[test]
++    fn p35_fjall_authenticated_open_rejects_legacy_checkpoint() {
++        let path = path("legacy-upgrade");
++        cleanup(&path);
++
++        let backend = FjallBackend::open(&path).unwrap();
++        drop(backend);
++
++        assert!(matches!(
++            FjallBackend::open_authenticated(
++                &path,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        cleanup(&path);
++    }
++}
++
+ #[cfg(test)]
+ mod checkpoint_state_tests {
+     use super::*;
+diff --git a/src/backends/redb.rs b/src/backends/redb.rs
+index 6f2371a..bb387a3 100644
+--- a/src/backends/redb.rs
++++ b/src/backends/redb.rs
+@@ -6,6 +6,13 @@ use crate::{AuditEntry, EdisonError, Record, Store};
+ pub struct RedbBackend {
+     store: Store,
+     path: String,
++    // P3.5 authenticated checkpoint mode.
++    //
++    // The store secret is retained only so the existing keyless
++    // StorageBackend `save()` trait method can continue persisting
++    // authenticated checkpoints after an authenticated open.
++    // FV-5 P4 owns secret zeroization.
++    store_secret: Option<String>,
+ }
+ 
+ impl RedbBackend {
+@@ -17,9 +24,36 @@ impl RedbBackend {
+             store.save(path)?;
+             store
+         };
++
++        Ok(Self {
++            store,
++            path: path.to_string(),
++            store_secret: None,
++        })
++    }
++
++    /// Open or create a Redb backend whose audit checkpoint is controlled
++    /// by `store_secret`.
++    ///
++    /// Legacy checkpoints are rejected rather than implicitly upgraded.
++    /// Conversely, `open()` rejects authenticated checkpoints because strict
++    /// legacy checkpoint parsing does not accept authentication fields.
++    pub fn open_authenticated(
++        path: &str,
++        store_secret: &str,
++    ) -> Result<Self, EdisonError> {
++        let store = if std::path::Path::new(path).exists() {
++            Store::load_authenticated(path, store_secret)?
++        } else {
++            let store = Store::new();
++            store.save_authenticated(path, store_secret)?;
++            store
++        };
++
+         Ok(Self {
+             store,
+             path: path.to_string(),
++            store_secret: Some(store_secret.to_string()),
+         })
+     }
+ }
+@@ -63,7 +97,12 @@ impl StorageBackend for RedbBackend {
+     }
+ 
+     fn save(&self) -> Result<(), EdisonError> {
+-        self.store.save(&self.path)
++        match self.store_secret.as_deref() {
++            Some(store_secret) => {
++                self.store.save_authenticated(&self.path, store_secret)
++            }
++            None => self.store.save(&self.path),
++        }
+     }
+ 
+     fn backend_name(&self) -> &'static str {
+@@ -71,6 +110,7 @@ impl StorageBackend for RedbBackend {
+     }
+ }
+ 
++
+ // ── Router ────────────────────────────────────────────────────────────────────
+ // The router holds the active backend and delegates all operations to it.
+ // In Phase 1, always routes to RedbBackend.
+@@ -120,3 +160,93 @@ impl Router {
+         self.backend.save()
+     }
+ }
++
++#[cfg(test)]
++mod p35_authenticated_backend_tests {
++    use super::*;
++
++    fn path(label: &str) -> String {
++        format!(
++            "/tmp/edisondb-p35-redb-{}-{}-{}.redb",
++            label,
++            std::process::id(),
++            rand::random::<u64>(),
++        )
++    }
++
++    #[test]
++    fn p35_redb_authenticated_open_save_and_reopen() {
++        let path = path("round-trip");
++        let _ = std::fs::remove_file(&path);
++
++        let backend =
++            RedbBackend::open_authenticated(&path, "correct-store-secret")
++                .unwrap();
++
++        backend.save().unwrap();
++        drop(backend);
++
++        let reopened =
++            RedbBackend::open_authenticated(&path, "correct-store-secret")
++                .unwrap();
++
++        assert_eq!(reopened.backend_name(), "redb");
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_redb_authenticated_open_rejects_wrong_store_secret() {
++        let path = path("wrong-store-secret");
++        let _ = std::fs::remove_file(&path);
++
++        let backend =
++            RedbBackend::open_authenticated(&path, "correct-store-secret")
++                .unwrap();
++        drop(backend);
++
++        assert!(matches!(
++            RedbBackend::open_authenticated(&path, "wrong-store-secret"),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_redb_legacy_open_rejects_authenticated_checkpoint() {
++        let path = path("legacy-downgrade");
++        let _ = std::fs::remove_file(&path);
++
++        let backend =
++            RedbBackend::open_authenticated(&path, "correct-store-secret")
++                .unwrap();
++        drop(backend);
++
++        assert!(matches!(
++            RedbBackend::open(&path),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_redb_authenticated_open_rejects_legacy_checkpoint() {
++        let path = path("legacy-upgrade");
++        let _ = std::fs::remove_file(&path);
++
++        let backend = RedbBackend::open(&path).unwrap();
++        drop(backend);
++
++        assert!(matches!(
++            RedbBackend::open_authenticated(
++                &path,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++}
+diff --git a/src/executor.rs b/src/executor.rs
+index a074616..1731d9d 100644
+--- a/src/executor.rs
++++ b/src/executor.rs
+@@ -86,12 +86,63 @@ pub struct EqlExecutor {
+ }
+ 
+ impl EqlExecutor {
+-    pub fn open(path: &str, owner_id: &str, password: &str) -> Result<Self, EdisonError> {
++    pub fn open(
++        path: &str,
++        owner_id: &str,
++        password: &str,
++    ) -> Result<Self, EdisonError> {
++        Self::open_impl(path, owner_id, password, None)
++    }
++
++    /// Open or create an EdisonDB executor with an authenticated audit
++    /// checkpoint controlled by a database-global store secret.
++    ///
++    /// `password` remains the owner's record-encryption credential.
++    /// `store_secret` is a distinct host-supplied authority shared by all
++    /// owners that legitimately open the same authenticated database.
++    ///
++    /// Legacy checkpoints are rejected by the authenticated backend seam;
++    /// no implicit migration is performed.
++    pub fn open_authenticated(
++        path: &str,
++        owner_id: &str,
++        password: &str,
++        store_secret: &str,
++    ) -> Result<Self, EdisonError> {
++        Self::open_impl(
++            path,
++            owner_id,
++            password,
++            Some(store_secret),
++        )
++    }
++
++    fn open_impl(
++        path: &str,
++        owner_id: &str,
++        password: &str,
++        store_secret: Option<&str>,
++    ) -> Result<Self, EdisonError> {
+         let backend_type = std::env::var("EDISONDB_BACKEND")
+             .unwrap_or_else(|_| "redb".to_string());
++
+         let router = match backend_type.to_lowercase().as_str() {
+-            "fjall" => Router::new(Box::new(FjallBackend::open(path)?)),
+-            _       => Router::new(Box::new(RedbBackend::open(path)?)),
++            "fjall" => match store_secret {
++                Some(secret) => Router::new(Box::new(
++                    FjallBackend::open_authenticated(path, secret)?,
++                )),
++                None => Router::new(Box::new(
++                    FjallBackend::open(path)?,
++                )),
++            },
++            _ => match store_secret {
++                Some(secret) => Router::new(Box::new(
++                    RedbBackend::open_authenticated(path, secret)?,
++                )),
++                None => Router::new(Box::new(
++                    RedbBackend::open(path)?,
++                )),
++            },
+         };
+         let vector_path = format!("{}.vectors", path);
+         let vector_index = if std::path::Path::new(&vector_path).exists() {
+@@ -386,6 +437,92 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn p35_authenticated_store_secret_is_independent_of_owner_password() {
++        let path = "/tmp/eql_p35_store_secret.redb";
++        let _ = std::fs::remove_file(path);
++        let _ = std::fs::remove_dir_all(path);
++        let _ = std::fs::remove_file(format!("{}.vectors", path));
++
++        {
++            let mut alice = EqlExecutor::open_authenticated(
++                path,
++                "alice",
++                "alice-password",
++                "shared-store-secret",
++            )
++            .unwrap();
++
++            alice
++                .execute(
++                    parse(
++                        "WRITE p35:alice TIER CRITICAL alice secret",
++                    )
++                    .unwrap(),
++                )
++                .unwrap();
++        }
++
++        {
++            let mut bob = EqlExecutor::open_authenticated(
++                path,
++                "bob",
++                "bob-password",
++                "shared-store-secret",
++            )
++            .unwrap();
++
++            assert!(matches!(
++                bob.execute(parse("READ p35:alice").unwrap()),
++                Err(EdisonError::AccessDenied)
++            ));
++
++            bob.execute(
++                parse(
++                    "WRITE p35:bob TIER CRITICAL bob secret",
++                )
++                .unwrap(),
++            )
++            .unwrap();
++        }
++
++        {
++            let mut alice = EqlExecutor::open_authenticated(
++                path,
++                "alice",
++                "alice-password",
++                "shared-store-secret",
++            )
++            .unwrap();
++
++            match alice
++                .execute(parse("READ p35:alice").unwrap())
++                .unwrap()
++            {
++                EqlResult::Read { payload, .. } => {
++                    assert_eq!(payload, "alice secret");
++                }
++                other => panic!(
++                    "unexpected authenticated read result: {other:?}"
++                ),
++            }
++        }
++
++        assert!(matches!(
++            EqlExecutor::open_authenticated(
++                path,
++                "alice",
++                "alice-password",
++                "wrong-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(path);
++        let _ = std::fs::remove_dir_all(path);
++        let _ = std::fs::remove_file(format!("{}.vectors", path));
++    }
++
+     #[test]
+     fn eql_wrong_password_fails() {
+         let path = "/tmp/eql_ex_4.redb";
+diff --git a/src/grpc.rs b/src/grpc.rs
+index a4f1214..7be26f3 100644
+--- a/src/grpc.rs
++++ b/src/grpc.rs
+@@ -30,13 +30,17 @@ use proto::{
+ 
+ pub struct EdisonDbGrpc {
+     db_path: String,
++    // Database-global checkpoint authority, distinct from x-password.
++    // FV-5 P4 owns long-lived secret zeroization.
++    store_secret: String,
+     operation_lock: Mutex<()>,
+ }
+ 
+ impl EdisonDbGrpc {
+-    pub fn new(db_path: String) -> Self {
++    pub fn new(db_path: String, store_secret: String) -> Self {
+         Self {
+             db_path,
++            store_secret,
+             operation_lock: Mutex::new(()),
+         }
+     }
+@@ -56,8 +60,13 @@ impl EdisonDbGrpc {
+         owner_id: &str,
+         password: &str,
+     ) -> Result<EdisonDB, Status> {
+-        EdisonDB::connect(&self.db_path, owner_id, password)
+-            .map_err(|e| Status::unauthenticated(e.to_string()))
++        EdisonDB::connect_authenticated(
++            &self.db_path,
++            owner_id,
++            password,
++            &self.store_secret,
++        )
++        .map_err(|e| Status::unauthenticated(e.to_string()))
+     }
+ }
+ 
+@@ -249,12 +258,16 @@ impl EdisonDb for EdisonDbGrpc {
+ 
+ // ── Server entrypoint ─────────────────────────────────────────────────────────
+ 
+-pub async fn serve_grpc(db_path: String, port: u16) {
++pub async fn serve_grpc(
++    db_path: String,
++    store_secret: String,
++    port: u16,
++) {
+     let addr = format!("0.0.0.0:{}", port)
+         .parse()
+         .expect("grpc: invalid bind address");
+ 
+-    let svc = EdisonDbGrpc::new(db_path);
++    let svc = EdisonDbGrpc::new(db_path, store_secret);
+ 
+     println!("  gRPC     : grpc://0.0.0.0:{}", port);
+ 
+diff --git a/src/lib.rs b/src/lib.rs
+index 9413d7d..8dba22f 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -641,12 +641,215 @@ impl AuditEntry {
+     }
+ }
+ 
++const AUTHENTICATED_AUDIT_CHECKPOINT_VERSION: u8 = 1;
++const CHECKPOINT_STORE_SALT_LEN: usize = 32;
++const CHECKPOINT_MAC_DOMAIN: &[u8] = b"EDISONDB-AUDIT-CHECKPOINT-V1";
++const CHECKPOINT_MAC_KEY_CONTEXT: &str =
++    "AIEONYX EdisonDB audit checkpoint MAC key v1";
++
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
++#[serde(deny_unknown_fields)]
+ pub(crate) struct AuditCheckpoint {
+     pub(crate) expected_count: u64,
+     pub(crate) expected_head: [u8; 32],
+ }
+ 
++/// Versioned authenticated audit checkpoint.
++///
++/// `store_salt` is a database-level KDF salt, distinct from per-record salts.
++/// `mac` authenticates the canonical `(expected_count, expected_head)`
++/// checkpoint tuple under a domain-separated key derived from the store key.
++#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
++#[serde(deny_unknown_fields)]
++pub(crate) struct AuthenticatedAuditCheckpoint {
++    pub(crate) version: u8,
++    pub(crate) expected_count: u64,
++    pub(crate) expected_head: [u8; 32],
++    pub(crate) store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
++    pub(crate) mac: [u8; 32],
++}
++
++fn checkpoint_mac_input(
++    expected_count: u64,
++    expected_head: &[u8; 32],
++) -> Vec<u8> {
++    let mut input =
++        Vec::with_capacity(CHECKPOINT_MAC_DOMAIN.len() + 8 + expected_head.len());
++    input.extend_from_slice(CHECKPOINT_MAC_DOMAIN);
++    input.extend_from_slice(&expected_count.to_be_bytes());
++    input.extend_from_slice(expected_head);
++    input
++}
++
++fn derive_checkpoint_mac_key(
++    store_secret: &str,
++    store_salt: &[u8; CHECKPOINT_STORE_SALT_LEN],
++) -> Result<[u8; 32], EdisonError> {
++    let store_key = derive_key(store_secret, store_salt)?;
++    Ok(blake3::derive_key(
++        CHECKPOINT_MAC_KEY_CONTEXT,
++        &store_key,
++    ))
++}
++
++fn checkpoint_mac(
++    mac_key: &[u8; 32],
++    expected_count: u64,
++    expected_head: &[u8; 32],
++) -> [u8; 32] {
++    let input = checkpoint_mac_input(expected_count, expected_head);
++    *blake3::keyed_hash(mac_key, &input).as_bytes()
++}
++
++#[derive(Debug, Clone, PartialEq, Eq)]
++pub(crate) struct CheckpointAuthContext {
++    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
++    mac_key: [u8; 32],
++}
++
++fn checkpoint_auth_context(
++    store_secret: &str,
++    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
++) -> Result<CheckpointAuthContext, EdisonError> {
++    let mac_key = derive_checkpoint_mac_key(store_secret, &store_salt)?;
++    Ok(CheckpointAuthContext {
++        store_salt,
++        mac_key,
++    })
++}
++
++pub(crate) fn authenticated_audit_checkpoint_from_context(
++    expected_count: u64,
++    expected_head: [u8; 32],
++    context: &CheckpointAuthContext,
++) -> AuthenticatedAuditCheckpoint {
++    let mac = checkpoint_mac(
++        &context.mac_key,
++        expected_count,
++        &expected_head,
++    );
++
++    AuthenticatedAuditCheckpoint {
++        version: AUTHENTICATED_AUDIT_CHECKPOINT_VERSION,
++        expected_count,
++        expected_head,
++        store_salt: context.store_salt,
++        mac,
++    }
++}
++
++fn verify_authenticated_audit_checkpoint_with_context(
++    checkpoint: &AuthenticatedAuditCheckpoint,
++    context: &CheckpointAuthContext,
++) -> Result<(), EdisonError> {
++    if checkpoint.version != AUTHENTICATED_AUDIT_CHECKPOINT_VERSION
++        || checkpoint.store_salt != context.store_salt
++    {
++        return Err(EdisonError::AuditChainBroken);
++    }
++
++    let expected_mac = checkpoint_mac(
++        &context.mac_key,
++        checkpoint.expected_count,
++        &checkpoint.expected_head,
++    );
++
++    // Equality is accumulated over the complete fixed-size MAC. No
++    // constant-time execution claim is made here.
++    let difference = checkpoint
++        .mac
++        .iter()
++        .zip(expected_mac.iter())
++        .fold(0u8, |acc, (left, right)| acc | (left ^ right));
++
++    if difference != 0 {
++        return Err(EdisonError::AuditChainBroken);
++    }
++
++    Ok(())
++}
++
++#[cfg(test)]
++pub(crate) fn authenticate_audit_checkpoint(
++    expected_count: u64,
++    expected_head: [u8; 32],
++    store_secret: &str,
++    store_salt: [u8; CHECKPOINT_STORE_SALT_LEN],
++) -> Result<AuthenticatedAuditCheckpoint, EdisonError> {
++    let context = checkpoint_auth_context(store_secret, store_salt)?;
++    Ok(authenticated_audit_checkpoint_from_context(
++        expected_count,
++        expected_head,
++        &context,
++    ))
++}
++
++#[cfg(test)]
++pub(crate) fn verify_authenticated_audit_checkpoint_mac(
++    checkpoint: &AuthenticatedAuditCheckpoint,
++    store_secret: &str,
++) -> Result<(), EdisonError> {
++    let context =
++        checkpoint_auth_context(store_secret, checkpoint.store_salt)?;
++    verify_authenticated_audit_checkpoint_with_context(
++        checkpoint,
++        &context,
++    )
++}
++
++pub(crate) fn classify_authenticated_checkpoint_state(
++    checkpoint_bytes: Option<&[u8]>,
++    audit_empty: bool,
++    records_empty: bool,
++    actual_count: u64,
++    actual_head: [u8; 32],
++    store_secret: &str,
++) -> Result<(CheckpointOpenState, CheckpointAuthContext), EdisonError> {
++    match checkpoint_bytes {
++        Some(bytes) => {
++            let checkpoint: AuthenticatedAuditCheckpoint =
++                serde_json::from_slice(bytes)
++                    .map_err(|_| EdisonError::AuditChainBroken)?;
++
++            let context =
++                checkpoint_auth_context(store_secret, checkpoint.store_salt)?;
++
++            verify_authenticated_audit_checkpoint_with_context(
++                &checkpoint,
++                &context,
++            )?;
++
++            validate_audit_checkpoint(
++                &AuditCheckpoint {
++                    expected_count: checkpoint.expected_count,
++                    expected_head: checkpoint.expected_head,
++                },
++                actual_count,
++                actual_head,
++            )?;
++
++            if audit_empty && !records_empty {
++                return Err(EdisonError::AuditChainBroken);
++            }
++
++            Ok((CheckpointOpenState::Existing, context))
++        }
++        None => {
++            if !audit_empty || !records_empty {
++                return Err(EdisonError::AuditChainBroken);
++            }
++
++            let mut store_salt = [0u8; CHECKPOINT_STORE_SALT_LEN];
++            rand::thread_rng().fill_bytes(&mut store_salt);
++
++            let context =
++                checkpoint_auth_context(store_secret, store_salt)?;
++
++            Ok((CheckpointOpenState::Genesis, context))
++        }
++    }
++}
++
+ pub(crate) fn validate_audit_checkpoint(
+     checkpoint: &AuditCheckpoint,
+     actual_count: u64,
+@@ -863,6 +1066,26 @@ impl Store {
+     }
+ 
+     pub fn save(&self, path: &str) -> Result<(), EdisonError> {
++        self.save_impl(path, None)
++    }
++
++    /// Persist using an audit checkpoint controlled by `store_secret`.
++    ///
++    /// Existing legacy checkpoints are rejected rather than automatically
++    /// upgraded so authenticated callers cannot silently accept a downgrade.
++    pub fn save_authenticated(
++        &self,
++        path: &str,
++        store_secret: &str,
++    ) -> Result<(), EdisonError> {
++        self.save_impl(path, Some(store_secret))
++    }
++
++    fn save_impl(
++        &self,
++        path: &str,
++        store_secret: Option<&str>,
++    ) -> Result<(), EdisonError> {
+         for (id, record) in &self.records {
+             record.validate()?;
+             if id != &record.id {
+@@ -954,14 +1177,27 @@ impl Store {
+             .map(|entry| entry.entry_hash)
+             .unwrap_or([0u8; 32]);
+ 
+-        classify_checkpoint_state(
+-            persisted_checkpoint.as_deref().map(str::as_bytes),
+-            persisted_audit.is_empty(),
+-            persisted_records_empty,
+-            persisted_count,
+-            persisted_head,
+-        )
+-        .map_err(checkpoint_error)?;
++        let checkpoint_auth = if let Some(store_secret) = store_secret {
++            let (_, context) = classify_authenticated_checkpoint_state(
++                persisted_checkpoint.as_deref().map(str::as_bytes),
++                persisted_audit.is_empty(),
++                persisted_records_empty,
++                persisted_count,
++                persisted_head,
++                store_secret,
++            )?;
++            Some(context)
++        } else {
++            classify_checkpoint_state(
++                persisted_checkpoint.as_deref().map(str::as_bytes),
++                persisted_audit.is_empty(),
++                persisted_records_empty,
++                persisted_count,
++                persisted_head,
++            )
++            .map_err(checkpoint_error)?;
++            None
++        };
+ 
+         if !audit_history_is_prefix(&persisted_audit, &self.audit_log) {
+             return Err(EdisonError::AuditChainBroken);
+@@ -1019,15 +1255,26 @@ impl Store {
+         {
+             let checkpoint_count =
+                 u64::try_from(self.audit_log.len()).map_err(|_| EdisonError::SaveFailed)?;
+-
+-            let checkpoint = AuditCheckpoint {
+-                expected_count: checkpoint_count,
+-                expected_head: self.last_chain_hash(),
++            let checkpoint_head = self.last_chain_hash();
++
++            let checkpoint_json = if let Some(context) = checkpoint_auth.as_ref() {
++                let checkpoint =
++                    authenticated_audit_checkpoint_from_context(
++                        checkpoint_count,
++                        checkpoint_head,
++                        context,
++                    );
++                serde_json::to_string(&checkpoint)
++                    .map_err(|_| EdisonError::SaveFailed)?
++            } else {
++                let checkpoint = AuditCheckpoint {
++                    expected_count: checkpoint_count,
++                    expected_head: checkpoint_head,
++                };
++                serde_json::to_string(&checkpoint)
++                    .map_err(|_| EdisonError::SaveFailed)?
+             };
+ 
+-            let checkpoint_json =
+-                serde_json::to_string(&checkpoint).map_err(|_| EdisonError::SaveFailed)?;
+-
+             let mut table = write_txn
+                 .open_table(AUDIT_CHECKPOINT_TABLE)
+                 .map_err(|_| EdisonError::SaveFailed)?;
+@@ -1042,6 +1289,24 @@ impl Store {
+     }
+ 
+     pub fn load(path: &str) -> Result<Self, EdisonError> {
++        Self::load_impl(path, None)
++    }
++
++    /// Load a store whose audit checkpoint is controlled by `store_secret`.
++    ///
++    /// A legacy two-field checkpoint is rejected. Migration into the
++    /// authenticated format must be an explicit operation.
++    pub fn load_authenticated(
++        path: &str,
++        store_secret: &str,
++    ) -> Result<Self, EdisonError> {
++        Self::load_impl(path, Some(store_secret))
++    }
++
++    fn load_impl(
++        path: &str,
++        store_secret: Option<&str>,
++    ) -> Result<Self, EdisonError> {
+         let db = Database::open(path).map_err(|_| EdisonError::LoadFailed)?;
+         let write_txn = db.begin_write().map_err(|_| EdisonError::LoadFailed)?;
+ 
+@@ -1132,29 +1397,67 @@ impl Store {
+                 .as_ref()
+                 .map(|value| value.value().as_bytes());
+ 
+-            let checkpoint_state = classify_checkpoint_state(
+-                checkpoint_bytes,
+-                audit_empty,
+-                records_empty,
+-                actual_count,
+-                actual_head,
+-            )
+-            .map_err(checkpoint_error)?;
+-
+-            drop(checkpoint_value);
+-
+-            if checkpoint_state == CheckpointOpenState::Genesis {
+-                let checkpoint = AuditCheckpoint {
+-                    expected_count: 0,
+-                    expected_head: [0u8; 32],
+-                };
+-
+-                let checkpoint_json =
+-                    serde_json::to_string(&checkpoint).map_err(|_| EdisonError::LoadFailed)?;
+-
+-                table
+-                    .insert(AUDIT_CHECKPOINT_KEY, checkpoint_json.as_str())
+-                    .map_err(|_| EdisonError::LoadFailed)?;
++            if let Some(store_secret) = store_secret {
++                let (checkpoint_state, context) =
++                    classify_authenticated_checkpoint_state(
++                        checkpoint_bytes,
++                        audit_empty,
++                        records_empty,
++                        actual_count,
++                        actual_head,
++                        store_secret,
++                    )?;
++
++                drop(checkpoint_value);
++
++                if checkpoint_state == CheckpointOpenState::Genesis {
++                    let checkpoint =
++                        authenticated_audit_checkpoint_from_context(
++                            0,
++                            [0u8; 32],
++                            &context,
++                        );
++
++                    let checkpoint_json =
++                        serde_json::to_string(&checkpoint)
++                            .map_err(|_| EdisonError::LoadFailed)?;
++
++                    table
++                        .insert(
++                            AUDIT_CHECKPOINT_KEY,
++                            checkpoint_json.as_str(),
++                        )
++                        .map_err(|_| EdisonError::LoadFailed)?;
++                }
++            } else {
++                let checkpoint_state = classify_checkpoint_state(
++                    checkpoint_bytes,
++                    audit_empty,
++                    records_empty,
++                    actual_count,
++                    actual_head,
++                )
++                .map_err(checkpoint_error)?;
++
++                drop(checkpoint_value);
++
++                if checkpoint_state == CheckpointOpenState::Genesis {
++                    let checkpoint = AuditCheckpoint {
++                        expected_count: 0,
++                        expected_head: [0u8; 32],
++                    };
++
++                    let checkpoint_json =
++                        serde_json::to_string(&checkpoint)
++                            .map_err(|_| EdisonError::LoadFailed)?;
++
++                    table
++                        .insert(
++                            AUDIT_CHECKPOINT_KEY,
++                            checkpoint_json.as_str(),
++                        )
++                        .map_err(|_| EdisonError::LoadFailed)?;
++                }
+             }
+         }
+ 
+@@ -1695,6 +1998,208 @@ mod tests {
+         assert_eq!(loaded.audit_count(), 2);
+     }
+ 
++    fn p35_store_path(label: &str) -> String {
++        format!(
++            "/tmp/edisondb-p35-{}-{}-{}.redb",
++            label,
++            std::process::id(),
++            rand::random::<u64>(),
++        )
++    }
++
++    #[test]
++    fn p35_store_authenticated_round_trip_and_legacy_load_rejects() {
++        let path = p35_store_path("round-trip");
++        let _ = std::fs::remove_file(&path);
++
++        let store = Store::new();
++        store
++            .save_authenticated(&path, "correct-store-secret")
++            .unwrap();
++
++        let loaded =
++            Store::load_authenticated(&path, "correct-store-secret").unwrap();
++
++        assert_eq!(loaded.record_count(), 0);
++        assert_eq!(loaded.audit_count(), 0);
++        assert!(matches!(
++            Store::load(&path),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_store_authenticated_load_rejects_wrong_store_secret() {
++        let path = p35_store_path("wrong-store-secret");
++        let _ = std::fs::remove_file(&path);
++
++        Store::new()
++            .save_authenticated(&path, "correct-store-secret")
++            .unwrap();
++
++        assert!(matches!(
++            Store::load_authenticated(&path, "wrong-store-secret"),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_store_authenticated_load_rejects_legacy_checkpoint() {
++        let path = p35_store_path("legacy-reject");
++        let _ = std::fs::remove_file(&path);
++
++        Store::new().save(&path).unwrap();
++
++        assert!(matches!(
++            Store::load_authenticated(&path, "checkpoint-store-secret"),
++            Err(EdisonError::AuditChainBroken)
++        ));
++
++        let _ = std::fs::remove_file(&path);
++    }
++
++    #[test]
++    fn p35_checkpoint_mac_round_trips() {
++        let salt = [0x35u8; CHECKPOINT_STORE_SALT_LEN];
++        let checkpoint = authenticate_audit_checkpoint(
++            7,
++            [0xA5u8; 32],
++            "checkpoint-store-secret",
++            salt,
++        )
++        .unwrap();
++
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &checkpoint,
++                "checkpoint-store-secret",
++            ),
++            Ok(())
++        );
++    }
++
++    #[test]
++    fn p35_checkpoint_mac_rejects_count_head_and_mac_tamper() {
++        let salt = [0x51u8; CHECKPOINT_STORE_SALT_LEN];
++        let checkpoint = authenticate_audit_checkpoint(
++            11,
++            [0xB6u8; 32],
++            "checkpoint-store-secret",
++            salt,
++        )
++        .unwrap();
++
++        let mut count_tampered = checkpoint;
++        count_tampered.expected_count += 1;
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &count_tampered,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++
++        let mut head_tampered = checkpoint;
++        head_tampered.expected_head[0] ^= 1;
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &head_tampered,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++
++        let mut mac_tampered = checkpoint;
++        mac_tampered.mac[31] ^= 1;
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &mac_tampered,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++    }
++
++    #[test]
++    fn p35_checkpoint_mac_rejects_wrong_store_secret_and_salt_tamper() {
++        let salt = [0x62u8; CHECKPOINT_STORE_SALT_LEN];
++        let checkpoint = authenticate_audit_checkpoint(
++            3,
++            [0xC7u8; 32],
++            "correct-store-secret",
++            salt,
++        )
++        .unwrap();
++
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &checkpoint,
++                "wrong-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++
++        let mut salt_tampered = checkpoint;
++        salt_tampered.store_salt[0] ^= 1;
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &salt_tampered,
++                "correct-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++    }
++
++    #[test]
++    fn p35_checkpoint_mac_rejects_unknown_version() {
++        let mut checkpoint = authenticate_audit_checkpoint(
++            1,
++            [0xD8u8; 32],
++            "checkpoint-store-secret",
++            [0x73u8; CHECKPOINT_STORE_SALT_LEN],
++        )
++        .unwrap();
++
++        checkpoint.version =
++            AUTHENTICATED_AUDIT_CHECKPOINT_VERSION.wrapping_add(1);
++
++        assert_eq!(
++            verify_authenticated_audit_checkpoint_mac(
++                &checkpoint,
++                "checkpoint-store-secret",
++            ),
++            Err(EdisonError::AuditChainBroken)
++        );
++    }
++
++    #[test]
++    fn p35_authenticated_checkpoint_cannot_parse_as_legacy() {
++        let checkpoint = authenticate_audit_checkpoint(
++            5,
++            [0xE9u8; 32],
++            "checkpoint-store-secret",
++            [0x84u8; CHECKPOINT_STORE_SALT_LEN],
++        )
++        .unwrap();
++
++        let encoded = serde_json::to_vec(&checkpoint).unwrap();
++
++        assert!(
++            serde_json::from_slice::<AuditCheckpoint>(&encoded).is_err(),
++            "authenticated checkpoint must not downgrade to legacy parsing"
++        );
++
++        let decoded =
++            serde_json::from_slice::<AuthenticatedAuditCheckpoint>(&encoded)
++                .unwrap();
++
++        assert_eq!(decoded, checkpoint);
++    }
++
+     #[test]
+     fn same_password_same_key() {
+         let salt = [1u8; 32];
+diff --git a/src/sdk.rs b/src/sdk.rs
+index d2f789c..da2b92f 100644
+--- a/src/sdk.rs
++++ b/src/sdk.rs
+@@ -86,6 +86,29 @@ impl EdisonDB {
+         Ok(Self { executor })
+     }
+ 
++    /// Open or create an EdisonDB database with an authenticated audit
++    /// checkpoint controlled by a database-global store secret.
++    ///
++    /// `password` remains the owner's record-encryption credential.
++    /// `store_secret` is a distinct authority shared by legitimate clients
++    /// of the same authenticated database.
++    ///
++    /// Legacy checkpoints are rejected rather than implicitly migrated.
++    pub fn connect_authenticated(
++        path: &str,
++        owner_id: &str,
++        password: &str,
++        store_secret: &str,
++    ) -> Result<Self, EdisonError> {
++        let executor = EqlExecutor::open_authenticated(
++            path,
++            owner_id,
++            password,
++            store_secret,
++        )?;
++        Ok(Self { executor })
++    }
++
+     /// Write a new record to the database.
+     ///
+     /// # Arguments
+diff --git a/src/server.rs b/src/server.rs
+index c20b8fb..8e36a45 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -37,6 +37,9 @@ struct SearchBody {
+ 
+ struct AppState {
+     db_path: String,
++    // Database-global checkpoint authority, distinct from request passwords.
++    // FV-5 P4 owns long-lived secret zeroization.
++    store_secret: String,
+ }
+ 
+ type SharedState = Arc<Mutex<AppState>>;
+@@ -58,7 +61,12 @@ fn extract_auth(headers: &HeaderMap) -> Option<(String, String)> {
+ fn open_db(state: &AppState, owner: &str, password: &str)
+     -> Result<EdisonDB, (StatusCode, Json<ApiError>)>
+ {
+-    EdisonDB::connect(&state.db_path, owner, password)
++    EdisonDB::connect_authenticated(
++        &state.db_path,
++        owner,
++        password,
++        &state.store_secret,
++    )
+         .map_err(|e| (
+             StatusCode::UNAUTHORIZED,
+             Json(ApiError { error: e.to_string() })
+@@ -286,7 +294,20 @@ async fn main() {
+         .and_then(|p| p.parse::<u16>().ok())
+         .unwrap_or(7777);
+ 
+-    let state = Arc::new(Mutex::new(AppState { db_path: db_path.clone() }));
++    let store_secret = match std::env::var("EDISONDB_STORE_SECRET") {
++        Ok(secret) if !secret.is_empty() => secret,
++        _ => {
++            eprintln!(
++                "Error: EDISONDB_STORE_SECRET is required and must not be empty."
++            );
++            std::process::exit(1);
++        }
++    };
++
++    let state = Arc::new(Mutex::new(AppState {
++        db_path: db_path.clone(),
++        store_secret: store_secret.clone(),
++    }));
+ 
+     let app = Router::new()
+         .route("/health",          get(health))
+@@ -311,10 +332,16 @@ async fn main() {
+     println!("  Listening: http://{addr}");
+     println!("  Press Ctrl-C to stop.\n");
+ 
+-    // Spawn gRPC server on port 50051 alongside REST
++    // Spawn gRPC server with the same database-global checkpoint authority.
+     let grpc_db_path = db_path.clone();
++    let grpc_store_secret = store_secret;
+     tokio::spawn(async move {
+-        grpc::serve_grpc(grpc_db_path, 50051).await;
++        grpc::serve_grpc(
++            grpc_db_path,
++            grpc_store_secret,
++            50051,
++        )
++        .await;
+     });
+ 
+     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+diff --git a/src/verification.rs b/src/verification.rs
+index e00b4bd..09a9dfc 100644
+--- a/src/verification.rs
++++ b/src/verification.rs
+@@ -691,6 +691,53 @@ mod kani_harnesses {
+         }
+     }
+ 
++    /// FV-5 P3.5: authenticated checkpoint MAC input has one canonical
++    /// byte layout: domain || big-endian count || checkpoint head.
++    ///
++    /// Symbolic indices cover every byte position in each component.
++    /// This proves only structural encoding. It does not prove BLAKE3,
++    /// Argon2, MAC unforgeability, constant-time execution, or anti-rollback.
++    #[kani::proof]
++    fn kani_p35_checkpoint_mac_input_canonical_layout() {
++        let expected_count: u64 = kani::any();
++        let expected_head: [u8; 32] = kani::any();
++
++        let input =
++            crate::checkpoint_mac_input(expected_count, &expected_head);
++        let domain = crate::CHECKPOINT_MAC_DOMAIN;
++        let domain_len = domain.len();
++        let count_bytes = expected_count.to_be_bytes();
++
++        assert_eq!(
++            input.len(),
++            domain_len + count_bytes.len() + expected_head.len()
++        );
++
++        let domain_index: u8 = kani::any();
++        kani::assume((domain_index as usize) < domain_len);
++        let domain_index = domain_index as usize;
++        assert_eq!(
++            input[domain_index],
++            domain[domain_index]
++        );
++
++        let count_index: u8 = kani::any();
++        kani::assume((count_index as usize) < count_bytes.len());
++        let count_index = count_index as usize;
++        assert_eq!(
++            input[domain_len + count_index],
++            count_bytes[count_index]
++        );
++
++        let head_index: u8 = kani::any();
++        kani::assume((head_index as usize) < expected_head.len());
++        let head_index = head_index as usize;
++        assert_eq!(
++            input[domain_len + count_bytes.len() + head_index],
++            expected_head[head_index]
++        );
++    }
++
+     /// FV-5 P3: the mobile write-counter transition is strictly monotonic
+     /// until the `u64` domain is exhausted.
+     ///
+diff --git a/tests/grpc_tests.rs b/tests/grpc_tests.rs
+index 246f5d8..815bf11 100644
+--- a/tests/grpc_tests.rs
++++ b/tests/grpc_tests.rs
+@@ -30,6 +30,7 @@ pub mod edisondb {
+ const GRPC_ADDR: &str = "http://127.0.0.1:50051";
+ const OWNER_ID:  &str = "test-owner";
+ const PASSWORD:  &str = "test-password-secure-123";
++const STORE_SECRET: &str = "test-database-store-secret-p35";
+ 
+ static GRPC_TEST_LOCK: Mutex<()> = Mutex::const_new(());
+ 
+@@ -55,6 +56,7 @@ fn spawn_server() -> TestServer {
+     let child = Command::new(env!("CARGO_BIN_EXE_edisondb-server"))
+         .arg("--db")
+         .arg(&db_path)
++        .env("EDISONDB_STORE_SECRET", STORE_SECRET)
+         .stdout(Stdio::null())
+         .stderr(Stdio::null())
+         .spawn()
+@@ -88,6 +90,40 @@ fn auth_request<T>(msg: T) -> Request<T> {
+ 
+ // ── Tests ─────────────────────────────────────────────────────────────────────
+ 
++#[tokio::test]
++async fn p35_server_requires_store_secret_at_startup() {
++    let _guard = test_lock().await;
++
++    let nanos = SystemTime::now()
++        .duration_since(UNIX_EPOCH)
++        .unwrap()
++        .as_nanos();
++
++    let db_path = format!(
++        "/tmp/edisondb-grpc-no-store-secret-{}-{nanos}.redb",
++        std::process::id()
++    );
++
++    let status = Command::new(env!("CARGO_BIN_EXE_edisondb-server"))
++        .arg("--db")
++        .arg(&db_path)
++        .env_remove("EDISONDB_STORE_SECRET")
++        .stdout(Stdio::null())
++        .stderr(Stdio::null())
++        .status()
++        .expect("Failed to execute EdisonDB server");
++
++    assert!(
++        !status.success(),
++        "server must fail closed without EDISONDB_STORE_SECRET"
++    );
++
++    assert!(
++        !std::path::Path::new(&db_path).exists(),
++        "missing store authority must fail before database creation"
++    );
++}
++
+ /// Test 1: Write a Critical record and verify it is readable via gRPC Read
+ #[tokio::test]
+ async fn test_grpc_write_critical() {
+diff --git a/tests/sdk_tests.rs b/tests/sdk_tests.rs
+index 3713d8b..20b1e02 100644
+--- a/tests/sdk_tests.rs
++++ b/tests/sdk_tests.rs
+@@ -84,3 +84,83 @@ fn sdk_duplicate_write_fails() {
+     db.write("k1", "NOISE", "first").unwrap();
+     assert!(db.write("k1", "NOISE", "second").is_err());
+ }
++
++
++#[test]
++fn p35_sdk_authenticated_store_secret_is_independent_of_owner_password() {
++    let path = "/tmp/sdk_p35_authenticated_store.redb";
++    let _ = std::fs::remove_file(path);
++    let _ = std::fs::remove_dir_all(path);
++    let _ = std::fs::remove_file(format!("{}.vectors", path));
++
++    {
++        let mut alice = EdisonDB::connect_authenticated(
++            path,
++            "alice",
++            "alice-password",
++            "shared-store-secret",
++        )
++        .unwrap();
++
++        alice
++            .write(
++                "sdk:p35:alice",
++                "CRITICAL",
++                "alice sovereign data",
++            )
++            .unwrap();
++    }
++
++    {
++        let mut bob = EdisonDB::connect_authenticated(
++            path,
++            "bob",
++            "bob-password",
++            "shared-store-secret",
++        )
++        .unwrap();
++
++        assert!(matches!(
++            bob.read("sdk:p35:alice"),
++            Err(edisondb::EdisonError::AccessDenied)
++        ));
++
++        bob.write(
++            "sdk:p35:bob",
++            "CRITICAL",
++            "bob sovereign data",
++        )
++        .unwrap();
++    }
++
++    {
++        let mut alice = EdisonDB::connect_authenticated(
++            path,
++            "alice",
++            "alice-password",
++            "shared-store-secret",
++        )
++        .unwrap();
++
++        let record = alice
++            .read("sdk:p35:alice")
++            .unwrap()
++            .expect("Alice record must remain readable by Alice");
++
++        assert_eq!(record.payload, "alice sovereign data");
++    }
++
++    assert!(matches!(
++        EdisonDB::connect_authenticated(
++            path,
++            "alice",
++            "alice-password",
++            "wrong-store-secret",
++        ),
++        Err(edisondb::EdisonError::AuditChainBroken)
++    ));
++
++    let _ = std::fs::remove_file(path);
++    let _ = std::fs::remove_dir_all(path);
++    let _ = std::fs::remove_file(format!("{}.vectors", path));
++}
