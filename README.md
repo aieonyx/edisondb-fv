@@ -29,26 +29,58 @@ No EdisonDB features are developed here. Every proof targets code that lives in 
 | FV-2 | Sovereignty & access-control kernel — Critical-tier ceiling, policy engine, gRPC concurrent writes | ✅ Complete |
 | FV-3 | Storage invariants — record identity, tier, and ownership across persistence | ✅ Complete |
 | FV-4 | Audit-chain integrity — append-only linkage, tamper-evidence, hash-chain walk | ✅ Complete (with errata) |
-| FV-4b | Remediation sprint — tautological harness replacement, real audit-chain proofs, claims/limits registry, evidence integrity | 🟡 In progress |
-| FV-5 | Encryption & secret boundaries — EncryptedPayload newtype, AAD binding, ARPi counter, zeroization | ⬜ Next |
-| FV-6 | Concurrency, atomicity, crash & recovery model | ⬜ Planned |
+| FV-4b | Remediation sprint — tautological harness replacement, real audit-chain proofs, claims/limits registry, evidence integrity | ✅ Complete |
+| FV-5 | Encryption & secret boundaries — encrypted payload persistence, AAD metadata authority, mobile counter/provenance, authenticated checkpoints | ✅ Complete |
+| FV-6 | Concurrency, atomicity, crash & recovery model | ⬜ Next |
 | FV-7 | External trust boundaries — gRPC / REST / SDK / FFI single-chokepoint | ⬜ Planned |
 | FV-8 | End-to-end composition, traceability matrix, signed evidence release | ⬜ Planned |
 
-### Key findings to date
+### September 2026 — FV-5 complete
 
-- **LIMIT-001** — Audit tail-truncation (dropping only the last entry passes `verify_audit_chain()`).
-  Remediation: persisted `AuditCheckpoint` approved, landing in FV-4b. Keyed BLAKE3 seal deferred to FV-5.
-- **LIMIT-002** — `ArpiHeader::from_audit` is verified at API level but has no production callers.
-  ARPi is not yet a live external audit anchor.
-- **LIMIT-003** — `MobileDb` (Android path) bypasses the verified sovereignty kernel entirely —
-  no `Store`, no tier ceiling, no audit chain. FV-7 single-chokepoint refactor is the remediation.
-- **LIMIT-004** — On `target_os = android`, content-hash verification is cfg-gated off.
-  Remediation: on-device BLAKE3 verification, FV-5.
-- **LIMIT-005** — Record insert and `persist_counter()` are non-atomic; crash window allows
-  duplicate `write_counter` values. FV-6 remediation.
-- **LIMIT-006** — Published check counts (194) identical across FV-2/3/4 despite growing harness
-  sets; under re-audit. Historical counts marked `HISTORICAL / NOT REPRODUCED` until reproduced.
+FV-5 **Encryption & Secret Boundaries** is complete and merged through
+[PR #13](https://github.com/aieonyx/edisondb-fv/pull/13).
+
+The phase adds bounded verification and hardening around EdisonDB's
+encrypted persistence and authenticated metadata boundaries:
+
+- versioned encrypted-payload persistence;
+- validated persisted-record reconstruction;
+- hardened AAD authority for record identity and tier metadata;
+- mobile write-counter monotonicity and fail-closed provenance validation;
+- authenticated audit-checkpoint sealing;
+- authenticated handling of persisted nonzero `created_at` metadata;
+- commit-bound verification evidence for the completed FV-5 claims.
+
+FV-5 closes **CLAIM-FV5-001 through CLAIM-FV5-007** within their documented
+scope. Full cryptographic primitive verification is **not** claimed:
+AES-GCM, BLAKE3, Argon2, MAC unforgeability, external anti-rollback,
+wall-clock correctness, and complete local-state replacement detection
+remain outside these bounded claims.
+
+See [`verification/evidence/FV-5-PHASE-CLOSURE.md`](verification/evidence/FV-5-PHASE-CLOSURE.md)
+for the phase accounting and [`docs/SEPTEMBER-2026.md`](docs/SEPTEMBER-2026.md)
+for the public September summary.
+
+## Key findings to date
+
+- **LIMIT-001** — Local audit-tail truncation remediation is complete in FV-4b.
+  Authenticated checkpoint sealing for authenticated mode is complete in FV-5 P3.5.
+  Total local-state destruction/replacement remains separately tracked by `LIMIT-008`.
+- **LIMIT-002** — ARPi production integration remains assigned to FV-7.
+- **LIMIT-003** — Mobile verified-kernel integration remains assigned to FV-7.
+- **LIMIT-004** — Closed for the bounded mobile fail-closed provenance-validation scope by
+  `CLAIM-FV5-006`.
+- **LIMIT-005** — FV-5 witness complete; crash-consistent remediation remains assigned to FV-6.
+- **LIMIT-006** — Historical Kani check-count reporting was re-audited and corrected;
+  status is `RESOLVED / CORRECTED`.
+- **LIMIT-007** — Current Fjall related-write implementation gap remediated; crash/power-loss
+  qualification remains assigned to FV-6.
+- **LIMIT-008** — Remains `OPEN / TRUST-BOUNDARY`.
+- **LIMIT-009** — Persisted metadata confidentiality remains an explicit nonclaim.
+- **LIMIT-010** — Closed for the bounded public record-salt mutation scope.
+- **LIMIT-011** — Closed for the P1b persisted-reconstruction scope.
+- **LIMIT-012** — Closed for the authenticated checkpoint-v2 persisted-`created_at` scope.
+- **LIMIT-013** — Local zero-timestamp clock anomaly remains open and separate.
 
 ---
 
@@ -67,7 +99,7 @@ All claims are bounded — verified over explicitly stated finite domains. See
 
 **Audit-chain integrity (FV-4 + FV-4b)**
 - Content tamper, `prev_hash` tamper, `entry_hash` tamper, entry reorder, and interior-entry removal are all detected by `Store::verify_audit_chain()` — proven via the two-layer proof structure (chain-walk logic with injective model hash; production SHA-256 integration covered by proptest and known-answer test).
-- Tail-truncation is an open limitation (LIMIT-001) with approved remediation in FV-4b.
+- Local audit-tail truncation remediation was completed in FV-4b; authenticated checkpoint sealing was completed in FV-5 P3.5. Complete local-state destruction/replacement remains the separate `LIMIT-008` trust boundary.
 
 ---
 
@@ -88,8 +120,10 @@ FV-1-FOUNDATION.md
 FV-2-SOVEREIGNTY-KERNEL.md
 FV-3-STORAGE-INVARIANTS.md
 FV-4-AUDIT-INTEGRITY.md
-FV-4B-REMEDIATION.md (in progress)
-THREAT-MODEL.md (FV-5, pending)
+FV-4B-REMEDIATION.md
+FV-5-PHASE-CLOSURE.md
+FV-5-LIMIT-004-MOBILE-PROVENANCE.md
+FV-5-LIMIT-012-CREATED-AT-AUTHENTICITY.md
 src/
 verification.rs — Kani harnesses (cfg(kani)-gated)
 ... — production EdisonDB source (mirrored from primary repo)
